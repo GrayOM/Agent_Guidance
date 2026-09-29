@@ -10,5 +10,7 @@ def test_security_choices_infer_implementation_capabilities() -> None:
     capabilities = infer_capabilities(answer)
     assert Capability.SECURITY_ANALYSIS in capabilities
     assert Capability.SOURCE_ANALYSIS in capabilities
-    assert Capability.REPORT_SUPPORT in capabilities
-
+    assert Capability.REPORTING in capabilities
+    assert Capability.CODE_EDITING in capabilities
+    assert Capability.TESTING in capabilities
+    assert Capability.REPOSITORY_ACCESS in capabilities

@@ -17,9 +17,13 @@ MVP는 Codex의 end-to-end 흐름에 집중한다.
 - 로컬 YAML Registry 기반 추천
 - 역할 중복, 설정 대상, 도구 이름, 권한 및 context 부담 분석
 - LOW/WARNING 보안 결과와 선택·제외 근거 출력
-- 승인 직후 설정 백업, Health Check, 실패 시 Rollback 골격
+- 승인 직후 설정 백업, Skill/MCP 설치, Health Check, 실패 시 자동 Rollback
 
 Claude Code/Cursor 실제 설치, 실시간 공식/GitHub 검색, LLM 추천, 범용 인증 자동화는 MVP 이후다.
+
+Codex Skill은 사용자 범위인 `$HOME/.agents/skills`에 설치한다. 외부 저장소는 Registry에 고정된
+commit SHA만 checkout하고 `SKILL.md` frontmatter 및 symlink 부재를 검증한다. MCP는 기존
+`~/.codex/config.toml`을 `tomlkit`으로 보존 병합하며 인증 비밀값 대신 환경변수 이름만 기록한다.
 
 ## 3. 계층
 
@@ -75,6 +79,6 @@ LOW와 WARNING만 사용한다. WARNING은 차단하지 않으며 최종 Plan에
 ## 9. Health Check
 
 단순 존재 여부 외에 설정 구문 파싱, 실행 명령 해석, Skill discovery 경로, 중복 등록을 검사한다.
-프로세스 시작이나 tool discovery는 Registry가 안전한 probe를 명시한 MCP에 한해 후속 구현한다.
-인증은 비밀값을 읽지 않고 설정 유무와 Agent가 노출하는 상태만 확인한다.
-
+STDIO MCP는 실행 명령 해석을 검사한다. HTTP MCP는 인증 환경변수가 설정된 경우 initialize와
+`tools/list`를 호출한다. 네트워크·인증 문제는 WARNING으로 표시하되 설정 파싱, 설치된 Skill
+discovery, MCP 등록 누락 같은 치명적 실패는 전체 설치를 Rollback한다.

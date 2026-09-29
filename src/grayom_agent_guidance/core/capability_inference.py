@@ -3,38 +3,39 @@ from grayom_agent_guidance.models import Capability, InterviewAnswer, WorkDomain
 
 DOMAIN_CAPABILITIES: dict[WorkDomain, set[Capability]] = {
     WorkDomain.GENERAL_DEVELOPMENT: {
-        Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
-        Capability.TEST_EXECUTION, Capability.CODE_REVIEW,
+        Capability.PLANNING, Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW,
+        Capability.REPOSITORY_ACCESS, Capability.TESTING, Capability.CODE_REVIEW,
     },
     WorkDomain.WEB_DEVELOPMENT: {
-        Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
-        Capability.TEST_EXECUTION, Capability.CODE_REVIEW,
+        Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
+        Capability.TESTING, Capability.CODE_REVIEW,
     },
     WorkDomain.MOBILE_DEVELOPMENT: {
-        Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
-        Capability.TEST_EXECUTION,
+        Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
+        Capability.TESTING,
     },
     WorkDomain.AI_AGENT_DEVELOPMENT: {
-        Capability.AGENT_DEVELOPMENT, Capability.REPOSITORY_ACCESS,
-        Capability.TEST_EXECUTION,
+        Capability.AGENT_DEVELOPMENT, Capability.CODE_EDITING, Capability.REPOSITORY_ACCESS,
+        Capability.TESTING,
     },
     WorkDomain.SECURITY_TOOL_DEVELOPMENT: {
-        Capability.DEVELOPMENT_WORKFLOW, Capability.SECURITY_ANALYSIS,
-        Capability.SOURCE_ANALYSIS, Capability.TEST_EXECUTION, Capability.REPORT_SUPPORT,
+        Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
+        Capability.SECURITY_ANALYSIS, Capability.SOURCE_ANALYSIS, Capability.TESTING,
+        Capability.REPORTING,
     },
     WorkDomain.VULNERABILITY_RESEARCH: {
         Capability.VULNERABILITY_RESEARCH, Capability.SECURITY_ANALYSIS,
-        Capability.SOURCE_ANALYSIS, Capability.NETWORK_ACCESS, Capability.REPORT_SUPPORT,
+        Capability.SOURCE_ANALYSIS, Capability.NETWORK_ACCESS, Capability.REPORTING,
     },
     WorkDomain.OSINT: {
-        Capability.NETWORK_ACCESS, Capability.BROWSER_AUTOMATION, Capability.REPORT_SUPPORT,
+        Capability.NETWORK_ACCESS, Capability.BROWSER_AUTOMATION, Capability.REPORTING,
     },
     WorkDomain.DEVOPS: {
-        Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
-        Capability.TEST_EXECUTION,
+        Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
+        Capability.TESTING,
     },
-    WorkDomain.DATA_ANALYSIS: {Capability.DATA_ANALYSIS, Capability.REPORT_SUPPORT},
-    WorkDomain.RESEARCH_WRITING: {Capability.NETWORK_ACCESS, Capability.REPORT_SUPPORT},
+    WorkDomain.DATA_ANALYSIS: {Capability.DATA_ANALYSIS, Capability.REPORTING},
+    WorkDomain.RESEARCH_WRITING: {Capability.NETWORK_ACCESS, Capability.REPORTING},
 }
 
 TASK_CAPABILITIES: dict[str, set[Capability]] = {
@@ -44,8 +45,12 @@ TASK_CAPABILITIES: dict[str, set[Capability]] = {
     "oss_vulnerability_research": {Capability.VULNERABILITY_RESEARCH, Capability.REPOSITORY_ACCESS},
     "cve_analysis": {Capability.VULNERABILITY_RESEARCH, Capability.NETWORK_ACCESS},
     "osint_recon": {Capability.NETWORK_ACCESS, Capability.BROWSER_AUTOMATION},
-    "security_report_automation": {Capability.REPORT_SUPPORT},
+    "security_report_automation": {Capability.REPORTING},
     "mcp_based_agent": {Capability.AGENT_DEVELOPMENT},
+    "ai_vulnerability_analysis": {
+        Capability.AI_VULNERABILITY_ANALYSIS, Capability.SECURITY_ANALYSIS,
+        Capability.VULNERABILITY_RESEARCH,
+    },
 }
 
 
@@ -56,4 +61,3 @@ def infer_capabilities(answer: InterviewAnswer) -> set[Capability]:
     for task in answer.tasks:
         result.update(TASK_CAPABILITIES.get(task, set()))
     return result
-

@@ -12,5 +12,4 @@ def component(identifier: str) -> Component:
 
 def test_detects_cross_component_conflicts() -> None:
     findings = analyze_conflicts([component("one"), component("two")])
-    assert {finding.kind for finding in findings} == {"tool_name", "config_target"}
-
+    assert {finding.kind for finding in findings} == {"tool_name", "config_target", "duplicate_mcp"}

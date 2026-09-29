@@ -1,14 +1,27 @@
-- id: github-mcp
-  name: GitHub MCP Server
+- id: github
+  name: Official GitHub MCP Server
   type: mcp
-  source_url: https://github.com/github/github-mcp-server
+  source: local_registry
+  github_url: https://github.com/github/github-mcp-server
   official: true
+  supported_agents: [codex]
   capabilities: [repository_access, code_review, vulnerability_research]
-  compatibility:
-    agents: [codex]
   permissions: [network, credentials, repository_write]
   tool_names: [get_file_contents, create_pull_request]
   config_targets: [codex.config.toml]
+  config_keys: [mcp_servers.github]
   context_cost: 3
-  quality_score: 95
-
+  quality_score: 98
+  install_method:
+    kind: mcp_http
+    url: https://api.githubcopilot.com/mcp/
+    bearer_token_env_var: GITHUB_PAT_TOKEN
+    startup_timeout_sec: 10
+  security_metadata:
+    network_access: true
+    credential_access: true
+    repository_write: true
+  maintenance_metadata:
+    status: active
+    last_verified: "2026-09-29"
+    license: MIT

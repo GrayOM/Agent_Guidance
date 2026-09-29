@@ -1,6 +1,6 @@
 from InquirerPy import inquirer
 
-from grayom_agent_guidance.models import AgentType, InterviewAnswer, SetupMode, WorkDomain
+from grayom_agent_guidance.models import AgentInstallation, AgentType, InterviewAnswer, SetupMode, WorkDomain
 
 
 DOMAIN_LABELS = {domain.value.replace("_", " ").title(): domain for domain in WorkDomain}
@@ -12,10 +12,29 @@ TASKS = {
     WorkDomain.AI_AGENT_DEVELOPMENT: ["coding_agent", "research_agent", "security_agent", "browser_agent", "data_agent", "multi_agent", "mcp_based_agent", "rag_agent"],
 }
 
+TASKS[WorkDomain.VULNERABILITY_RESEARCH].append("ai_vulnerability_analysis")
 
-def run_interview() -> InterviewAnswer:
+
+def build_answer(
+    agents: list[AgentType], domains: list[WorkDomain], tasks: list[str], mode: SetupMode,
+) -> InterviewAnswer:
+    return InterviewAnswer(agents=agents, domains=domains, tasks=tasks, mode=mode)
+
+
+def run_interview(detected: list[AgentInstallation] | None = None) -> InterviewAnswer:
+    detected_map = {item.agent: item.detected for item in detected or []}
+    agent_choices = []
+    for agent, label in (
+        (AgentType.CODEX, "Codex"), (AgentType.CLAUDE_CODE, "Claude Code"), (AgentType.CURSOR, "Cursor"),
+    ):
+        choice = {"name": label, "value": agent, "enabled": agent == AgentType.CODEX}
+        if agent != AgentType.CODEX:
+            choice["disabled"] = "Adapter will be added after the Codex MVP"
+        elif detected and not detected_map.get(agent, False):
+            choice["disabled"] = "Codex is not installed"
+        agent_choices.append(choice)
     agents = inquirer.checkbox(
-        message="Select AI Agents:", choices=[{"name": "Codex", "value": AgentType.CODEX}],
+        message="Select AI Agents:", choices=agent_choices,
         validate=lambda value: bool(value) or "Select at least one Agent",
     ).execute()
     domains = inquirer.checkbox(
@@ -35,5 +54,4 @@ def run_interview() -> InterviewAnswer:
         message="Configuration mode:",
         choices=[{"name": "Minimal", "value": SetupMode.MINIMAL}, {"name": "Performance", "value": SetupMode.PERFORMANCE}],
     ).execute()
-    return InterviewAnswer(agents=agents, domains=domains, tasks=tasks, mode=mode)
-
+    return build_answer(agents, domains, tasks, mode)

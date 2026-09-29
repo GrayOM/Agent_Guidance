@@ -2,6 +2,10 @@ from enum import StrEnum
 
 
 class Capability(StrEnum):
+    PLANNING = "planning"
+    CODE_EDITING = "code_editing"
+    TESTING = "testing"
+    REPORTING = "reporting"
     DEVELOPMENT_WORKFLOW = "development_workflow"
     REPOSITORY_ACCESS = "repository_access"
     TEST_EXECUTION = "test_execution"
@@ -14,4 +18,4 @@ class Capability(StrEnum):
     REPORT_SUPPORT = "report_support"
     DATA_ANALYSIS = "data_analysis"
     AGENT_DEVELOPMENT = "agent_development"
-
+    AI_VULNERABILITY_ANALYSIS = "ai_vulnerability_analysis"
