@@ -78,6 +78,12 @@ class ClaudeCodeAdapter(AgentAdapter):
             existing = servers.get(component.id) if isinstance(servers, dict) else None
             if existing == desired_json_mcp(component):
                 return True, "compatible Claude Code MCP registration already exists"
+            desired = desired_json_mcp(component)
+            if isinstance(servers, dict) and any(
+                value == desired for name, value in servers.items()
+                if name.startswith(f"{component.id}-grayom")
+            ):
+                return True, "compatible GrayOM MCP alias already exists"
             if existing is not None:
                 return True, "MCP has different settings; a safe GrayOM alias will be used"
         return False, None

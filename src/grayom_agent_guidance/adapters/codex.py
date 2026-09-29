@@ -120,6 +120,8 @@ class CodexAdapter(AgentAdapter):
             )
         if compatible:
             return True, "compatible MCP registration already exists; preserved"
+        if any(dict(value) == desired for name, value in (self._read_config().get("mcp_servers") or {}).items() if name.startswith(f"{component.id}-grayom")):
+            return True, "compatible GrayOM MCP alias already exists; preserved"
         return True, "MCP id already exists with different settings; a safe GrayOM alias will be used"
 
     def backup(self, destination: Path) -> BackupManifest:

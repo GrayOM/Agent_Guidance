@@ -136,13 +136,13 @@ def _interactive_menu() -> None:
     if action == "setup":
         _run_setup()
     elif action == "recommend":
-        recommend_only()
+        recommend_only(offline=False)
     elif action == "doctor":
-        doctor()
+        doctor(probe_mcp=True)
     elif action == "update":
-        update()
+        update(yes=False)
     elif action == "rollback":
-        rollback()
+        rollback(path=None, yes=False)
 
 
 @app.callback(invoke_without_command=True)

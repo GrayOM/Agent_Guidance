@@ -43,3 +43,5 @@ def test_claude_name_collision_preserves_user_entry(tmp_path) -> None:
     assert parsed["github"]["url"] == "https://user.test/mcp"
     assert parsed["github-grayom"]["url"] == "https://example.test/mcp"
     assert result.configured_mcp == ["github-grayom"]
+    exists, reason = adapter.existing_component_status(mcp())
+    assert exists and "alias" in reason
