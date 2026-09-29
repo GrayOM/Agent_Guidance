@@ -41,7 +41,8 @@ def _safe_name(value: str) -> str:
 class CodexAdapter(AgentAdapter):
     def __init__(self, home: Path | None = None) -> None:
         self.home = (home or Path.home()).resolve()
-        self.codex_home = self.home / ".codex"
+        configured_home = os.environ.get("CODEX_HOME") if home is None else None
+        self.codex_home = Path(configured_home).expanduser().resolve() if configured_home else self.home / ".codex"
         self.config_path = self.codex_home / "config.toml"
         self.skills_root = self.home / ".agents" / "skills"
 
@@ -63,6 +64,21 @@ class CodexAdapter(AgentAdapter):
             version=version,
         )
 
+    def get_version(self) -> str | None:
+        return self.detect().version
+
+    def get_config_paths(self) -> list[Path]:
+        return [self.config_path]
+
+    def list_existing_skills(self) -> list[str]:
+        return [path.parent.name for path in self.skills_root.glob("*/SKILL.md")] if self.skills_root.exists() else []
+
+    def list_existing_mcps(self) -> list[str]:
+        return sorted((self._read_config().get("mcp_servers") or {}).keys())
+
+    def list_existing_plugins(self) -> list[str]:
+        return []
+
     def _read_config(self) -> dict[str, Any]:
         if not self.config_path.exists():
             return {}
@@ -80,10 +96,15 @@ class CodexAdapter(AgentAdapter):
             "skills_root": self.skills_root,
             "skills": skills,
             "mcp_servers": sorted((config.get("mcp_servers") or {}).keys()),
+            "plugins": [],
         }
 
     def existing_component_status(self, component: Component) -> tuple[bool, str | None]:
         """Return whether an existing component must be preserved instead of changed."""
+        if component.type == ComponentType.SKILL:
+            prefix = f"{_safe_name(component.id)}--"
+            exists = any(name.startswith(prefix) for name in self.list_existing_skills())
+            return exists, "existing Codex Skill preserved" if exists else None
         if component.type != ComponentType.MCP:
             return False, None
         server = (self._read_config().get("mcp_servers") or {}).get(component.id)
@@ -99,10 +120,11 @@ class CodexAdapter(AgentAdapter):
             )
         if compatible:
             return True, "compatible MCP registration already exists; preserved"
-        return True, "MCP id already exists with different settings; preserved and skipped"
+        return True, "MCP id already exists with different settings; a safe GrayOM alias will be used"
 
     def backup(self, destination: Path) -> BackupManifest:
         destination.mkdir(parents=True, exist_ok=False)
+        destination.chmod(0o700)
         entry = BackupEntry(original=self.config_path, existed=self.config_path.exists())
         if self.config_path.exists():
             target = destination / "config.toml"
@@ -221,7 +243,8 @@ class CodexAdapter(AgentAdapter):
         if servers is None:
             servers = tomlkit.table()
             document.add("mcp_servers", servers)
-        existing = servers.get(component.id)
+        registration_name = component.id
+        existing = servers.get(registration_name)
         if existing is not None:
             existing_plain = dict(existing)
             if "url" in desired:
@@ -235,24 +258,38 @@ class CodexAdapter(AgentAdapter):
                 result.notes.append("compatible MCP registration already exists and was preserved")
                 result.configured_mcp.append(component.id)
                 return result
-            raise ExistingConfigurationConflict(
-                f"MCP '{component.id}' already exists with different settings; preserved unchanged"
+            base = f"{component.id}-grayom"
+            registration_name = base
+            suffix = 2
+            while servers.get(registration_name) is not None:
+                candidate = dict(servers[registration_name])
+                if candidate == desired:
+                    result.configured_mcp.append(registration_name)
+                    result.notes.append(f"compatible MCP alias already exists: {registration_name}")
+                    return result
+                registration_name = f"{base}-{suffix}"
+                suffix += 1
+            result.notes.append(
+                f"preserved conflicting MCP '{component.id}' and registered '{registration_name}'"
             )
         server = tomlkit.table()
         for key, value in desired.items():
             server.add(key, value)
-        servers.add(component.id, server)
+        servers.add(registration_name, server)
         rendered = tomlkit.dumps(document)
         temporary = self.config_path.with_name(f"config.toml.grayom-{uuid4().hex}.tmp")
         try:
-            temporary.write_text(rendered, encoding="utf-8")
+            with temporary.open("w", encoding="utf-8") as stream:
+                stream.write(rendered)
+                stream.flush()
+                os.fsync(stream.fileno())
             with temporary.open("rb") as stream:
                 tomllib.load(stream)
             os.replace(temporary, self.config_path)
         finally:
             temporary.unlink(missing_ok=True)
         result.changed = True
-        result.configured_mcp.append(component.id)
+        result.configured_mcp.append(registration_name)
         return result
 
     def install_plugin(self, component: Component) -> ComponentInstallResult:
@@ -368,6 +405,9 @@ class CodexAdapter(AgentAdapter):
         expected_mcp = [item for item in expected if item.type == ComponentType.MCP]
         for component in expected_mcp:
             server = servers.get(component.id)
+            if server is None:
+                desired = self._desired_mcp(component)
+                server = next((value for value in servers.values() if dict(value) == desired), None)
             checks.append(CheckResult(
                 name=f"mcp_config:{component.id}", passed=server is not None,
                 message="MCP registration found" if server is not None else "MCP registration missing",

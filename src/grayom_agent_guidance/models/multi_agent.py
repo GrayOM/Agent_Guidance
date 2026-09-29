@@ -1,0 +1,116 @@
+from datetime import datetime, timezone
+from enum import StrEnum
+from pathlib import Path
+from uuid import uuid4
+import os
+
+from pydantic import BaseModel, Field
+
+from .agent import AgentType
+from .component import Component
+from .installation import HealthCheckResult, InstallationManifest, RollbackResult
+from .reconciliation import ReconciliationStatus
+
+
+class CompatibilityStatus(StrEnum):
+    SUPPORTED = "SUPPORTED"
+    PARTIAL = "PARTIAL"
+    UNSUPPORTED = "UNSUPPORTED"
+    UNKNOWN = "UNKNOWN"
+
+
+class Ownership(StrEnum):
+    EXISTING = "EXISTING"
+    GRAYOM_INSTALLED = "GRAYOM_INSTALLED"
+    GRAYOM_MODIFIED = "GRAYOM_MODIFIED"
+    SHARED = "SHARED"
+
+
+class CompatibilityResult(BaseModel):
+    agent: AgentType
+    component_id: str
+    status: CompatibilityStatus
+    reason: str
+    evidence: list[str] = Field(default_factory=list)
+
+
+class AgentComponentAction(BaseModel):
+    component: Component
+    compatibility: CompatibilityResult
+    install: bool
+    already_installed: bool = False
+    reason: str
+    reconciliation: ReconciliationStatus = ReconciliationStatus.ADD
+
+
+class AgentPlan(BaseModel):
+    agent: AgentType
+    version: str | None = None
+    actions: list[AgentComponentAction] = Field(default_factory=list)
+
+    @property
+    def components(self) -> list[Component]:
+        return [action.component for action in self.actions if action.install]
+
+    @property
+    def expected_components(self) -> list[Component]:
+        return [
+            action.component for action in self.actions
+            if action.install or action.already_installed
+        ]
+
+
+class SharedComponentRecord(BaseModel):
+    component_id: str
+    ownership: Ownership
+    shared: bool
+    used_by: list[AgentType]
+    installation_path: Path | None = None
+    prepared_count: int = 1
+
+
+class MultiAgentPlan(BaseModel):
+    agents: dict[AgentType, AgentPlan]
+    shared_components: list[SharedComponentRecord] = Field(default_factory=list)
+
+
+class MultiAgentManifest(BaseModel):
+    transaction_id: str = Field(default_factory=lambda: uuid4().hex)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    root: Path
+    selected_agents: list[AgentType]
+    agent_manifests: dict[AgentType, InstallationManifest] = Field(default_factory=dict)
+    shared_components: list[SharedComponentRecord] = Field(default_factory=list)
+    completed: bool = False
+    rollback_errors: list[str] = Field(default_factory=list)
+    original_hashes: dict[str, str | None] = Field(default_factory=dict)
+    post_install_hashes: dict[str, str | None] = Field(default_factory=dict)
+
+    @property
+    def path(self) -> Path:
+        return self.root / "manifest.json"
+
+    def save(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_name(f".{self.path.name}.{uuid4().hex}.tmp")
+        try:
+            with temporary.open("w", encoding="utf-8") as stream:
+                stream.write(self.model_dump_json(indent=2))
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, self.path)
+        finally:
+            temporary.unlink(missing_ok=True)
+
+    @classmethod
+    def load(cls, path: Path) -> "MultiAgentManifest":
+        target = path / "manifest.json" if path.is_dir() else path
+        return cls.model_validate_json(target.read_text(encoding="utf-8"))
+
+
+class MultiAgentInstallationResult(BaseModel):
+    success: bool
+    manifest: MultiAgentManifest
+    health: dict[AgentType, HealthCheckResult] = Field(default_factory=dict)
+    rollbacks: dict[AgentType, RollbackResult] = Field(default_factory=dict)
+    error: str | None = None

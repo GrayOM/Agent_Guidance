@@ -29,3 +29,7 @@ class RecommendationPlan(BaseModel):
     def selected(self) -> list[Component]:
         return [item.component for item in self.items if item.selected]
 
+    @property
+    def uncovered_capabilities(self) -> set[Capability]:
+        covered = set().union(*(component.capabilities for component in self.selected)) if self.selected else set()
+        return self.capabilities - covered

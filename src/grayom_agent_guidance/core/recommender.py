@@ -41,6 +41,8 @@ def _duplicate_of(candidate: Component, selected: list[Component], mode: SetupMo
     for chosen in selected:
         if candidate.type != chosen.type:
             continue
+        if not (candidate.supported_agents & chosen.supported_agents):
+            continue
         overlap = candidate.capabilities & chosen.capabilities
         union = candidate.capabilities | chosen.capabilities
         ratio = len(overlap) / len(union) if union else 0
@@ -61,13 +63,14 @@ def recommend(answer: InterviewAnswer, candidates: list[Component]) -> Recommend
     relevant.sort(key=lambda item: _priority_key(item, capabilities, answer.mode))
 
     selected: list[Component] = []
-    covered = set()
+    covered: set[tuple] = set()
     items: list[RecommendationItem] = []
     for candidate in relevant:
-        if not set(answer.agents).issubset(candidate.supported_agents):
+        eligible_agents = set(answer.agents) & candidate.supported_agents
+        if not eligible_agents:
             items.append(RecommendationItem(
                 component=candidate, selected=False,
-                reasons=["not supported by every selected Agent"],
+                reasons=["not supported by any selected Agent"],
             ))
             continue
         if not candidate.recommendable:
@@ -78,7 +81,8 @@ def recommend(answer: InterviewAnswer, candidates: list[Component]) -> Recommend
             continue
         explicit_conflict = next((
             chosen for chosen in selected
-            if chosen.id in candidate.conflicts or candidate.id in chosen.conflicts
+            if (chosen.id in candidate.conflicts or candidate.id in chosen.conflicts)
+            and bool(chosen.supported_agents & candidate.supported_agents)
         ), None)
         if explicit_conflict:
             items.append(RecommendationItem(
@@ -88,7 +92,8 @@ def recommend(answer: InterviewAnswer, candidates: list[Component]) -> Recommend
             continue
         explicit_overlap = next((
             chosen for chosen in selected
-            if chosen.id in candidate.overlaps or candidate.id in chosen.overlaps
+            if (chosen.id in candidate.overlaps or candidate.id in chosen.overlaps)
+            and bool(chosen.supported_agents & candidate.supported_agents)
         ), None)
         if explicit_overlap and answer.mode == SetupMode.MINIMAL:
             overlap = candidate.capabilities & explicit_overlap.capabilities
@@ -109,16 +114,20 @@ def recommend(answer: InterviewAnswer, candidates: list[Component]) -> Recommend
             ))
             continue
 
-        new_coverage = (candidate.capabilities & capabilities) - covered
-        overlap = candidate.capabilities & covered
+        candidate_pairs = {
+            (agent, capability) for agent in eligible_agents
+            for capability in candidate.capabilities & capabilities
+        }
+        new_coverage = candidate_pairs - covered
+        overlap = candidate_pairs & covered
         choose = bool(new_coverage)
         if answer.mode == SetupMode.PERFORMANCE and not choose:
             choose = bool(overlap) and candidate.context_cost <= 4
         if choose:
             selected.append(candidate)
-            covered.update(candidate.capabilities)
+            covered.update(candidate_pairs)
             reasons = ["covers: " + ", ".join(sorted(
-                capability.value for capability in new_coverage or overlap
+                f"{agent.value}/{capability.value}" for agent, capability in new_coverage or overlap
             ))]
             if candidate.trust.official:
                 reasons.append("official implementation preferred")

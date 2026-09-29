@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
+import os
 
 from pydantic import BaseModel, Field
 
@@ -66,7 +67,15 @@ class InstallationManifest(BaseModel):
 
     def save(self) -> None:
         self.backup.root.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(self.model_dump_json(indent=2), encoding="utf-8")
+        temporary = self.path.with_name(f".{self.path.name}.{uuid4().hex}.tmp")
+        try:
+            with temporary.open("w", encoding="utf-8") as stream:
+                stream.write(self.model_dump_json(indent=2))
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, self.path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     @classmethod
     def load(cls, path: Path) -> "InstallationManifest":

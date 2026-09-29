@@ -39,6 +39,12 @@ DOMAIN_CAPABILITIES: dict[WorkDomain, set[Capability]] = {
 }
 
 TASK_CAPABILITIES: dict[str, set[Capability]] = {
+    "frontend": {Capability.CODE_EDITING, Capability.TESTING},
+    "backend": {Capability.CODE_EDITING, Capability.REPOSITORY_ACCESS, Capability.TESTING},
+    "full_stack": {Capability.CODE_EDITING, Capability.REPOSITORY_ACCESS, Capability.TESTING},
+    "api_development": {Capability.CODE_EDITING, Capability.TESTING},
+    "testing": {Capability.TESTING, Capability.TEST_EXECUTION},
+    "performance_optimization": {Capability.CODE_EDITING, Capability.TESTING},
     "code_review": {Capability.CODE_REVIEW},
     "security_review": {Capability.SECURITY_ANALYSIS, Capability.SOURCE_ANALYSIS},
     "source_code_analysis": {Capability.SOURCE_ANALYSIS, Capability.SECURITY_ANALYSIS},
@@ -47,6 +53,16 @@ TASK_CAPABILITIES: dict[str, set[Capability]] = {
     "osint_recon": {Capability.NETWORK_ACCESS, Capability.BROWSER_AUTOMATION},
     "security_report_automation": {Capability.REPORTING},
     "mcp_based_agent": {Capability.AGENT_DEVELOPMENT},
+    "coding_agent": {Capability.AGENT_DEVELOPMENT, Capability.CODE_EDITING, Capability.TESTING},
+    "research_agent": {Capability.AGENT_DEVELOPMENT, Capability.NETWORK_ACCESS, Capability.REPORTING},
+    "security_agent": {Capability.AGENT_DEVELOPMENT, Capability.SECURITY_ANALYSIS},
+    "browser_agent": {Capability.AGENT_DEVELOPMENT, Capability.BROWSER_AUTOMATION, Capability.NETWORK_ACCESS},
+    "data_agent": {Capability.AGENT_DEVELOPMENT, Capability.DATA_ANALYSIS},
+    "multi_agent": {Capability.AGENT_DEVELOPMENT, Capability.PLANNING},
+    "rag_agent": {Capability.AGENT_DEVELOPMENT, Capability.REPOSITORY_ACCESS, Capability.DATA_ANALYSIS},
+    "patch_analysis": {Capability.VULNERABILITY_RESEARCH, Capability.SOURCE_ANALYSIS},
+    "supply_chain_security": {Capability.SECURITY_ANALYSIS, Capability.REPOSITORY_ACCESS},
+    "ai_llm_security": {Capability.AI_VULNERABILITY_ANALYSIS, Capability.SECURITY_ANALYSIS},
     "ai_vulnerability_analysis": {
         Capability.AI_VULNERABILITY_ANALYSIS, Capability.SECURITY_ANALYSIS,
         Capability.VULNERABILITY_RESEARCH,

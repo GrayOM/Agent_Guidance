@@ -6,6 +6,11 @@ from grayom_agent_guidance.models import Component, ConflictFinding
 def analyze_conflicts(components: list[Component]) -> list[ConflictFinding]:
     findings: list[ConflictFinding] = []
     for left, right in combinations(components, 2):
+        if overlap := left.capabilities & right.capabilities:
+            findings.append(ConflictFinding(
+                left_id=left.id, right_id=right.id, kind="capability_overlap",
+                message="overlapping roles: " + ", ".join(sorted(item.value for item in overlap)),
+            ))
         if left.id in right.conflicts or right.id in left.conflicts:
             findings.append(ConflictFinding(
                 left_id=left.id, right_id=right.id, kind="explicit_conflict",
@@ -30,6 +35,11 @@ def analyze_conflicts(components: list[Component]) -> list[ConflictFinding]:
             findings.append(ConflictFinding(
                 left_id=left.id, right_id=right.id, kind="bundled_duplicate",
                 message="component is already included by another component",
+            ))
+        if overlap := left.included_components & right.included_components:
+            findings.append(ConflictFinding(
+                left_id=left.id, right_id=right.id, kind="bundled_duplicate",
+                message="both bundle: " + ", ".join(sorted(overlap)),
             ))
         if overlap := left.install_paths & right.install_paths:
             findings.append(ConflictFinding(

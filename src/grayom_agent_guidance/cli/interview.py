@@ -27,20 +27,18 @@ def run_interview(detected: list[AgentInstallation] | None = None) -> InterviewA
     for agent, label in (
         (AgentType.CODEX, "Codex"), (AgentType.CLAUDE_CODE, "Claude Code"), (AgentType.CURSOR, "Cursor"),
     ):
-        choice = {"name": label, "value": agent, "enabled": agent == AgentType.CODEX}
-        if agent != AgentType.CODEX:
-            choice["disabled"] = "Adapter will be added after the Codex MVP"
-        elif detected and not detected_map.get(agent, False):
-            choice["disabled"] = "Codex is not installed"
+        choice = {"name": label, "value": agent, "enabled": bool(detected_map.get(agent, False))}
+        if detected and not detected_map.get(agent, False):
+            choice["disabled"] = f"{label} is not installed"
         agent_choices.append(choice)
     agents = inquirer.checkbox(
         message="Select AI Agents:", choices=agent_choices,
-        validate=lambda value: bool(value) or "Select at least one Agent",
+        validate=lambda value: bool(value), invalid_message="Select at least one Agent",
     ).execute()
     domains = inquirer.checkbox(
         message="Select Work Domains:",
         choices=[{"name": label, "value": value} for label, value in DOMAIN_LABELS.items()],
-        validate=lambda value: bool(value) or "Select at least one domain",
+        validate=lambda value: bool(value), invalid_message="Select at least one domain",
     ).execute()
     tasks: list[str] = []
     for domain in domains:

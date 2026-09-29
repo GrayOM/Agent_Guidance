@@ -4,12 +4,12 @@
   source: local_registry
   github_url: https://github.com/github/github-mcp-server
   official: true
-  supported_agents: [codex]
+  supported_agents: [codex, claude_code, cursor]
   capabilities: [repository_access, code_review, vulnerability_research]
   permissions: [network, credentials, repository_write]
   tool_names: [get_file_contents, create_pull_request]
-  config_targets: [codex.config.toml]
-  config_keys: [mcp_servers.github]
+  config_targets: [codex.config.toml, claude.json, cursor.mcp.json]
+  config_keys: [mcp_servers.github, mcpServers.github]
   context_cost: 3
   quality_score: 98
   install_method:

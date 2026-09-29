@@ -6,6 +6,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from grayom_agent_guidance.models import Component
+from grayom_agent_guidance.config import load_config
 
 
 class CacheEntry(BaseModel):
@@ -22,10 +23,10 @@ class CacheDocument(BaseModel):
 
 
 class CandidateCache:
-    def __init__(self, path: Path | None = None, ttl: timedelta = timedelta(hours=6)) -> None:
+    def __init__(self, path: Path | None = None, ttl: timedelta | None = None) -> None:
         root = Path(os.environ.get("GRAYOM_HOME", Path.home() / ".grayom"))
         self.path = path or root / "cache" / "candidates.json"
-        self.ttl = ttl
+        self.ttl = ttl or timedelta(hours=load_config().cache.ttl_hours)
         self.document = self._load()
 
     @staticmethod

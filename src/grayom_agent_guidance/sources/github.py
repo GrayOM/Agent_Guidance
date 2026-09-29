@@ -5,7 +5,9 @@ from typing import Any
 
 import httpx
 
+from grayom_agent_guidance import __version__
 from grayom_agent_guidance.models import SourceType
+from grayom_agent_guidance.network import create_async_client
 
 from .base import ComponentSource, RawCandidate, SourceResult, SourceUnavailable
 from .cache import CandidateCache
@@ -42,7 +44,7 @@ class GitHubSource(ComponentSource):
         headers = {
             "Accept": "application/vnd.github.raw+json" if raw else "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "grayom-agent-guidance/0.1",
+            "User-Agent": f"grayom-agent-guidance/{__version__}",
         }
         token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
         if token:
@@ -51,7 +53,15 @@ class GitHubSource(ComponentSource):
 
     async def _request(self, method: str, url: str, *, raw: bool = False, **kwargs) -> httpx.Response:
         async def perform(client: httpx.AsyncClient) -> httpx.Response:
-            response = await client.request(method, url, headers=self._headers(raw), **kwargs)
+            response = None
+            for attempt in range(2):
+                try:
+                    response = await client.request(method, url, headers=self._headers(raw), **kwargs)
+                    break
+                except httpx.TransportError:
+                    if attempt:
+                        raise
+            assert response is not None
             remaining = response.headers.get("x-ratelimit-remaining")
             if remaining and remaining.isdigit():
                 self.rate_limit_remaining = int(remaining)
@@ -64,7 +74,7 @@ class GitHubSource(ComponentSource):
 
         if self.client:
             return await perform(self.client)
-        async with httpx.AsyncClient(base_url="https://api.github.com", timeout=5, follow_redirects=True) as client:
+        async with create_async_client(base_url="https://api.github.com", timeout=5) as client:
             return await perform(client)
 
     async def search(self, queries: list[str]) -> list[RawCandidate]:

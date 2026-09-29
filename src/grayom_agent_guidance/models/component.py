@@ -132,6 +132,11 @@ class Compatibility(BaseModel):
     notes: str | None = None
 
 
+class AgentRequirement(BaseModel):
+    min_version: str | None = None
+    evidence: str | None = None
+
+
 class Component(BaseModel):
     id: str
     name: str
@@ -143,6 +148,7 @@ class Component(BaseModel):
     official: bool = False
     capabilities: set[Capability] = Field(default_factory=set)
     supported_agents: set[AgentType] = Field(default_factory=set)
+    agent_requirements: dict[AgentType, AgentRequirement] = Field(default_factory=dict)
     compatibility: Compatibility | None = None
     permissions: set[Permission] = Field(default_factory=set)
     tool_names: set[str] = Field(default_factory=set)

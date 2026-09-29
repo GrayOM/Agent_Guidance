@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "grayom-agent-guidance"
-version = "0.1.0"
+dynamic = ["version"]
 description = "CLI manager for AI Agent skills, MCP servers, and plugins"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -27,6 +27,9 @@ grayom = "grayom_agent_guidance.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/grayom_agent_guidance"]
+
+[tool.hatch.version]
+path = "src/grayom_agent_guidance/__init__.py"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
