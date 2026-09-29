@@ -1,0 +1,23 @@
+- id: trailofbits-skills
+  name: Trail of Bits Skills
+  type: skill
+  source_url: https://github.com/trailofbits/skills
+  official: false
+  capabilities: [security_analysis, source_analysis, vulnerability_research]
+  compatibility:
+    agents: [codex]
+  permissions: [filesystem_read, shell]
+  context_cost: 3
+  quality_score: 85
+- id: superpowers
+  name: Superpowers
+  type: skill
+  source_url: https://github.com/obra/superpowers
+  official: false
+  capabilities: [development_workflow, test_execution, code_review]
+  compatibility:
+    agents: [codex]
+  permissions: [filesystem_read, filesystem_write, shell]
+  context_cost: 4
+  quality_score: 80
+

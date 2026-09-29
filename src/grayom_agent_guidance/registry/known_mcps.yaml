@@ -1,0 +1,14 @@
+- id: github-mcp
+  name: GitHub MCP Server
+  type: mcp
+  source_url: https://github.com/github/github-mcp-server
+  official: true
+  capabilities: [repository_access, code_review, vulnerability_research]
+  compatibility:
+    agents: [codex]
+  permissions: [network, credentials, repository_write]
+  tool_names: [get_file_contents, create_pull_request]
+  config_targets: [codex.config.toml]
+  context_cost: 3
+  quality_score: 95
+
