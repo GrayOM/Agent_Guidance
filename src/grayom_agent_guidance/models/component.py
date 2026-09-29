@@ -34,6 +34,48 @@ class InstallKind(StrEnum):
     PLUGIN_GIT = "plugin_git"
 
 
+class SourceType(StrEnum):
+    OFFICIAL = "official"
+    GITHUB = "github"
+    REGISTRY = "registry"
+    CACHE = "cache"
+
+
+class MaintenanceStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    STALE = "STALE"
+    UNKNOWN = "UNKNOWN"
+
+
+class CandidateState(StrEnum):
+    DISCOVERED = "DISCOVERED"
+    VALIDATING = "VALIDATING"
+    VERIFIED = "VERIFIED"
+    REVIEW = "REVIEW"
+
+
+class EvidenceItem(BaseModel):
+    field: str
+    value: Any
+    source: str
+    location: str | None = None
+
+
+class TrustMetadata(BaseModel):
+    source_type: SourceType = SourceType.REGISTRY
+    official: bool = False
+    verified: bool = False
+    verification_reason: str = "local registry entry"
+
+
+class DependencyRequirement(BaseModel):
+    name: str
+    executable: str
+    required: bool = True
+    detected: bool | None = None
+    evidence: str | None = None
+
+
 class InstallMethod(BaseModel):
     kind: InstallKind = InstallKind.NONE
     repository: HttpUrl | None = None
@@ -73,10 +115,16 @@ class SecurityMetadata(BaseModel):
 
 
 class MaintenanceMetadata(BaseModel):
-    status: str = "unknown"
+    status: MaintenanceStatus = MaintenanceStatus.UNKNOWN
     last_verified: str | None = None
     license: str | None = None
     stars: int | None = Field(default=None, ge=0)
+    forks: int | None = Field(default=None, ge=0)
+    last_commit: str | None = None
+    latest_release: str | None = None
+    archived: bool = False
+    issue_activity: str | None = None
+    release_activity: str | None = None
 
 
 class Compatibility(BaseModel):
@@ -91,6 +139,7 @@ class Component(BaseModel):
     source: str = "local_registry"
     source_url: HttpUrl | None = None
     github_url: HttpUrl | None = None
+    repository_url: HttpUrl | None = None
     official: bool = False
     capabilities: set[Capability] = Field(default_factory=set)
     supported_agents: set[AgentType] = Field(default_factory=set)
@@ -110,6 +159,13 @@ class Component(BaseModel):
     install_method: InstallMethod = Field(default_factory=InstallMethod)
     security_metadata: SecurityMetadata = Field(default_factory=SecurityMetadata)
     maintenance_metadata: MaintenanceMetadata = Field(default_factory=MaintenanceMetadata)
+    trust: TrustMetadata = Field(default_factory=TrustMetadata)
+    evidence: list[EvidenceItem] = Field(default_factory=list)
+    dependencies: list[DependencyRequirement] = Field(default_factory=list)
+    candidate_state: CandidateState = CandidateState.VERIFIED
+    recommendable: bool = True
+    validation_warnings: list[str] = Field(default_factory=list)
+    install_complexity: int = Field(default=1, ge=1, le=5)
 
     @model_validator(mode="after")
     def normalize_compatibility(self) -> "Component":
@@ -119,10 +175,19 @@ class Component(BaseModel):
             self.compatibility = Compatibility(agents=set(self.supported_agents))
         if not self.github_url and self.source_url:
             self.github_url = self.source_url
+        if not self.github_url and self.repository_url:
+            self.github_url = self.repository_url
         if not self.source_url and self.github_url:
             self.source_url = self.github_url
+        if not self.repository_url and self.github_url:
+            self.repository_url = self.github_url
         if not self.source_url:
             raise ValueError("component requires github_url or source_url")
+        if self.source == "local_registry" and self.trust.source_type == SourceType.REGISTRY:
+            self.trust.verified = True
+            self.trust.verification_reason = "curated local registry entry"
+        if self.official:
+            self.trust.official = True
         return self
 
     def install_payload(self) -> dict[str, Any]:

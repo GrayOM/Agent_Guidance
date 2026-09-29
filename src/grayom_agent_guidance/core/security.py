@@ -47,4 +47,16 @@ def analyze_security(components: list[Component]) -> list[SecurityFinding]:
                     level=RiskLevel.LOW if field == "network_access" else RiskLevel.WARNING,
                     rule=f"security.{field}", message=field.replace("_", " "),
                 ))
+        for dependency in component.dependencies:
+            if dependency.required and dependency.detected is False:
+                findings.append(SecurityFinding(
+                    component_id=component.id, level=RiskLevel.WARNING,
+                    rule=f"dependency.{dependency.executable}",
+                    message=f"{dependency.name} is required but was not detected",
+                ))
+        for warning in component.validation_warnings:
+            findings.append(SecurityFinding(
+                component_id=component.id, level=RiskLevel.WARNING,
+                rule="candidate.validation", message=warning,
+            ))
     return findings

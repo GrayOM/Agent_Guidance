@@ -1,6 +1,7 @@
 from grayom_agent_guidance.core import analyze_security
 from grayom_agent_guidance.models import (
-    AgentType, Compatibility, Component, ComponentType, Permission, RiskLevel,
+    AgentType, Compatibility, Component, ComponentType, DependencyRequirement,
+    Permission, RiskLevel,
 )
 
 
@@ -14,3 +15,13 @@ def test_shell_is_warning_but_network_is_low() -> None:
     assert levels["permission.shell"] == RiskLevel.WARNING
     assert levels["permission.network"] == RiskLevel.LOW
 
+
+def test_missing_runtime_creates_warning_without_installing_it() -> None:
+    target = Component(
+        id="runtime", name="runtime", type=ComponentType.MCP,
+        source_url="https://github.com/example/runtime",
+        compatibility=Compatibility(agents={AgentType.CODEX}),
+        dependencies=[DependencyRequirement(name="Node.js", executable="node", detected=False)],
+    )
+    findings = analyze_security([target])
+    assert any(item.rule == "dependency.node" and item.level == RiskLevel.WARNING for item in findings)

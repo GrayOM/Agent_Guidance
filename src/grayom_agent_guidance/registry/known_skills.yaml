@@ -20,7 +20,7 @@
     external_download: true
     filesystem_write: true
   maintenance_metadata:
-    status: active
+    status: ACTIVE
     last_verified: "2026-09-29"
     license: CC-BY-SA-4.0
 
@@ -46,7 +46,7 @@
     external_download: true
     filesystem_write: true
   maintenance_metadata:
-    status: active
+    status: ACTIVE
     last_verified: "2026-09-29"
     license: MIT
 
@@ -72,5 +72,5 @@
     external_download: true
     filesystem_write: true
   maintenance_metadata:
-    status: active
+    status: ACTIVE
     last_verified: "2026-09-29"

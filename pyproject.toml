@@ -14,7 +14,7 @@ dependencies = [
   "rich>=13.7,<15",
   "InquirerPy>=0.3.4,<1",
   "pydantic>=2.7,<3",
-  "httpx>=0.27,<1",
+  "httpx[socks]>=0.27,<1",
   "PyYAML>=6.0,<7",
   "tomlkit>=0.13,<1",
 ]

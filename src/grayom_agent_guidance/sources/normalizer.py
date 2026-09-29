@@ -1,0 +1,180 @@
+import math
+import re
+import shutil
+from datetime import datetime, timezone
+from pathlib import PurePosixPath
+
+from grayom_agent_guidance.models import (
+    AgentType, CandidateState, Capability, Component, ComponentType,
+    DependencyRequirement, EvidenceItem, InstallKind, InstallMethod,
+    MaintenanceMetadata, MaintenanceStatus, Permission, SourceType, TrustMetadata,
+)
+
+from .base import RawCandidate
+from .repository_security import scan_repository
+
+
+CAPABILITY_KEYWORDS: dict[Capability, tuple[str, ...]] = {
+    Capability.SECURITY_ANALYSIS: ("security analysis", "security review", "sast", "audit"),
+    Capability.SOURCE_ANALYSIS: ("source code analysis", "code analysis", "static analysis"),
+    Capability.VULNERABILITY_RESEARCH: ("vulnerability", "cve", "exploit research"),
+    Capability.REPOSITORY_ACCESS: ("repository", "github", "pull request", "issues"),
+    Capability.TESTING: ("testing", "test automation", "pytest"),
+    Capability.CODE_EDITING: ("code editing", "coding agent", "implementation"),
+    Capability.CODE_REVIEW: ("code review", "pull request review"),
+    Capability.BROWSER_AUTOMATION: ("browser automation", "playwright", "browser agent"),
+    Capability.DATA_ANALYSIS: ("data analysis", "analytics"),
+    Capability.REPORTING: ("reporting", "report generation", "documentation"),
+    Capability.AGENT_DEVELOPMENT: ("agent development", "multi-agent", "rag agent"),
+    Capability.AI_VULNERABILITY_ANALYSIS: ("llm security", "ai security", "prompt injection"),
+    Capability.NETWORK_ACCESS: ("osint", "reconnaissance", "network access"),
+}
+
+
+def _maintenance(metadata: dict) -> MaintenanceMetadata:
+    pushed_at = metadata.get("pushed_at") or metadata.get("updated_at")
+    status = MaintenanceStatus.UNKNOWN
+    if pushed_at:
+        try:
+            updated = datetime.fromisoformat(str(pushed_at).replace("Z", "+00:00"))
+            age = (datetime.now(timezone.utc) - updated).days
+            status = MaintenanceStatus.ACTIVE if age <= 365 else MaintenanceStatus.STALE
+        except ValueError:
+            pass
+    license_data = metadata.get("license") or {}
+    license_name = license_data.get("spdx_id") if isinstance(license_data, dict) else license_data
+    return MaintenanceMetadata(
+        status=status,
+        license=license_name if license_name not in {"NOASSERTION", "Other"} else None,
+        stars=metadata.get("stargazers_count"), forks=metadata.get("forks_count"),
+        last_commit=pushed_at, latest_release=metadata.get("latest_release"),
+        archived=bool(metadata.get("archived", False)),
+        issue_activity=(
+            f"{metadata.get('open_issues_count')} open issues"
+            if metadata.get("open_issues_count") is not None else None
+        ),
+        release_activity=metadata.get("latest_release"),
+    )
+
+
+def _component_type(raw: RawCandidate, text: str) -> ComponentType:
+    if raw.expected_type:
+        return raw.expected_type
+    lowered_paths = [path.lower() for path in raw.tree_paths]
+    if any(path.endswith(".codex-plugin/plugin.json") or path.endswith("plugin.json") for path in lowered_paths):
+        return ComponentType.PLUGIN
+    if any(path.endswith("skill.md") for path in lowered_paths):
+        return ComponentType.SKILL
+    if any("mcp" in PurePosixPath(path).name.lower() for path in lowered_paths) or "mcp server" in text or "model context protocol" in text:
+        return ComponentType.MCP
+    raise ValueError("repository structure does not identify a Skill, MCP, or Plugin")
+
+
+def _supported_agents(text: str, paths: list[str]) -> set[AgentType]:
+    joined = text + " " + " ".join(paths).lower()
+    result = set()
+    if "codex" in joined or ".agents/skills" in joined:
+        result.add(AgentType.CODEX)
+    if "claude code" in joined or ".claude" in joined:
+        result.add(AgentType.CLAUDE_CODE)
+    if "cursor" in joined or ".cursor" in joined:
+        result.add(AgentType.CURSOR)
+    return result
+
+
+def _dependencies(raw: RawCandidate) -> list[DependencyRequirement]:
+    paths = {path.lower() for path in raw.tree_paths}
+    readme = (raw.readme or "").lower()
+    requirements: list[DependencyRequirement] = []
+    definitions = [
+        ("Node.js", "node", any(path.endswith("package.json") for path in paths) or "npx " in readme),
+        ("Python", "python", any(path.endswith(("pyproject.toml", "requirements.txt")) for path in paths)),
+        ("uv", "uv", " uv " in f" {readme} " or any(path.endswith("uv.lock") for path in paths)),
+        ("Docker", "docker", any(PurePosixPath(path).name.lower() == "dockerfile" for path in paths) or "docker run" in readme),
+    ]
+    for name, executable, required in definitions:
+        if required:
+            requirements.append(DependencyRequirement(
+                name=name, executable=executable, detected=shutil.which(executable) is not None,
+                evidence="repository structure or README",
+            ))
+    return requirements
+
+
+def _install_method(raw: RawCandidate, component_type: ComponentType) -> InstallMethod:
+    if component_type == ComponentType.SKILL:
+        return InstallMethod(
+            kind=InstallKind.GIT_SKILLS, repository=raw.repository_url,
+            ref=raw.metadata.get("head_sha") or raw.source_version or raw.metadata.get("default_branch"),
+        )
+    if component_type == ComponentType.PLUGIN:
+        return InstallMethod(
+            kind=InstallKind.PLUGIN_GIT, repository=raw.repository_url,
+            ref=raw.metadata.get("head_sha") or raw.source_version or raw.metadata.get("default_branch"),
+        )
+    readme = raw.readme or ""
+    urls = re.findall(r"https://[^\s)`\"']+/mcp/?", readme, flags=re.I)
+    if urls:
+        return InstallMethod(kind=InstallKind.MCP_HTTP, url=urls[0].rstrip(".,"))
+    npx = re.search(r"\bnpx\s+(?:-y\s+)?([@\w./-]+)([^\n`]*)", readme)
+    if npx:
+        args = ["-y", npx.group(1)] + [item for item in npx.group(2).strip().split() if not item.startswith("$")]
+        return InstallMethod(kind=InstallKind.MCP_STDIO, command="npx", args=args[:12])
+    return InstallMethod()
+
+
+def normalize_candidate(raw: RawCandidate) -> Component:
+    readme = raw.readme or ""
+    text = f"{raw.metadata.get('description') or ''}\n{readme}".lower()
+    component_type = _component_type(raw, text)
+    capabilities = {
+        capability for capability, keywords in CAPABILITY_KEYWORDS.items()
+        if any(keyword in text for keyword in keywords)
+    }
+    agents = _supported_agents(text, raw.tree_paths)
+    security = scan_repository({"README.md": readme, **raw.files})
+    maintenance = _maintenance(raw.metadata)
+    official = raw.official_hint
+    trust = TrustMetadata(
+        source_type=raw.source_type, official=official,
+        verified=bool(official and raw.verification_reason),
+        verification_reason=raw.verification_reason or "GitHub repository metadata and contents",
+    )
+    evidence = list(security.evidence)
+    evidence.extend([
+        EvidenceItem(field="readme_present", value=bool(readme.strip()), source="GitHub contents"),
+        EvidenceItem(field="component_type", value=component_type.value, source="repository_structure"),
+        EvidenceItem(field="supported_agents", value=sorted(agent.value for agent in agents), source="README/repository_structure"),
+        EvidenceItem(field="maintenance", value=maintenance.status.value, source="GitHub metadata"),
+    ])
+    stars = maintenance.stars or 0
+    quality = min(95, 45 + (10 if readme else 0) + (10 if maintenance.license else 0) + int(math.log10(stars + 1) * 6))
+    permissions = set()
+    if security.metadata.network_access:
+        permissions.add(Permission.NETWORK)
+    if security.metadata.shell_execution:
+        permissions.add(Permission.SHELL)
+    if security.metadata.subprocess:
+        permissions.add(Permission.SUBPROCESS)
+    if security.metadata.filesystem_delete:
+        permissions.add(Permission.FILESYSTEM_DELETE)
+    if security.metadata.credential_access:
+        permissions.add(Permission.CREDENTIALS)
+    dependencies = _dependencies(raw)
+    install_method = _install_method(raw, component_type)
+    evidence.append(EvidenceItem(
+        field="install_method", value=install_method.kind.value,
+        source="README/repository_structure",
+    ))
+    return Component(
+        id=raw.component_id or re.sub(r"[^a-z0-9._-]+", "-", raw.repository_full_name.lower().replace("/", "-")),
+        name=raw.metadata.get("name") or raw.repository_full_name.split("/")[-1],
+        type=component_type, source=raw.source_type.value, repository_url=raw.repository_url,
+        official=official, supported_agents=agents, capabilities=capabilities,
+        permissions=permissions, context_cost=3, quality_score=quality,
+        install_method=install_method, security_metadata=security.metadata,
+        maintenance_metadata=maintenance, trust=trust, evidence=evidence,
+        dependencies=dependencies, candidate_state=CandidateState.DISCOVERED,
+        validation_warnings=security.warnings,
+        install_complexity=min(5, 1 + len(dependencies)),
+    )

@@ -2,6 +2,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from grayom_agent_guidance.core.discovery import DiscoveryResult
 from grayom_agent_guidance.models import AgentInstallation, ComponentType, HealthCheckResult, RecommendationPlan
 
 
@@ -34,9 +35,16 @@ def show_plan(console: Console, plan: RecommendationPlan) -> None:
     table.add_column("Decision")
     table.add_column("Type")
     table.add_column("Component")
+    table.add_column("Source")
+    table.add_column("Maintenance")
     table.add_column("Reason")
     for item in plan.items:
-        table.add_row("Install" if item.selected else "Skipped", item.component.type.value, item.component.name, "; ".join(item.reasons))
+        source = "Official" if item.component.trust.official else item.component.trust.source_type.value.title()
+        table.add_row(
+            "Install" if item.selected else "Skipped", item.component.type.value,
+            item.component.name, source, item.component.maintenance_metadata.status.value.title(),
+            "; ".join(item.reasons),
+        )
     console.print(table)
     counts = {
         kind: sum(1 for component in plan.selected if component.type == kind)
@@ -59,6 +67,21 @@ def show_plan(console: Console, plan: RecommendationPlan) -> None:
         "- Existing Codex config will be backed up and merged",
     ])
     console.print(Panel("\n".join(lines), title="Security & Conflicts"))
+
+
+def show_discovery(console: Console, result: DiscoveryResult) -> None:
+    console.print("[bold]Component discovery:[/bold]")
+    for source in result.sources:
+        mark = "[green]✓[/green]" if source.checked else "[yellow]![/yellow]"
+        console.print(
+            f"{mark} {source.source.title()}: {source.discovered} discovered, "
+            f"{source.validated} validated"
+        )
+        if source.rate_limit_remaining is not None:
+            console.print(f"  GitHub rate limit remaining: {source.rate_limit_remaining}")
+    for warning in result.warnings:
+        console.print(f"[yellow]Warning:[/yellow] {warning}")
+    console.print(f"[green]✓[/green] {result.validated} unique candidates available\n")
 
 
 def show_health(console: Console, result: HealthCheckResult) -> None:

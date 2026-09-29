@@ -1,21 +1,64 @@
 from grayom_agent_guidance.models import (
-    Component, InterviewAnswer, RecommendationItem, RecommendationPlan, SetupMode,
+    Component, ComponentType, InterviewAnswer, MaintenanceStatus, RecommendationItem,
+    RecommendationPlan, SetupMode,
 )
 
 from .capability_inference import infer_capabilities
 
 
+def _priority_key(component: Component, needed: set, mode: SetupMode) -> tuple:
+    coverage = len(component.capabilities & needed)
+    active = component.maintenance_metadata.status == MaintenanceStatus.ACTIVE
+    stars = component.maintenance_metadata.stars or 0
+    if mode == SetupMode.MINIMAL:
+        return (
+            -coverage,
+            -int(component.trust.official),
+            -int(component.trust.verified),
+            -int(active),
+            len(component.validation_warnings),
+            component.context_cost,
+            component.install_complexity,
+            -component.quality_score,
+            -stars,
+            component.id,
+        )
+    return (
+        -coverage,
+        -int(component.trust.verified),
+        -int(component.trust.official),
+        -int(active),
+        len(component.validation_warnings),
+        -component.quality_score,
+        component.install_complexity,
+        component.context_cost,
+        -stars,
+        component.id,
+    )
+
+
+def _duplicate_of(candidate: Component, selected: list[Component], mode: SetupMode) -> Component | None:
+    for chosen in selected:
+        if candidate.type != chosen.type:
+            continue
+        overlap = candidate.capabilities & chosen.capabilities
+        union = candidate.capabilities | chosen.capabilities
+        ratio = len(overlap) / len(union) if union else 0
+        if candidate.type == ComponentType.MCP and (
+            candidate.capabilities == chosen.capabilities
+            or bool(candidate.tool_names & chosen.tool_names)
+            or ratio >= 0.8
+        ):
+            return chosen
+        if mode == SetupMode.MINIMAL and candidate.type == ComponentType.SKILL and ratio >= 0.75:
+            return chosen
+    return None
+
+
 def recommend(answer: InterviewAnswer, candidates: list[Component]) -> RecommendationPlan:
     capabilities = infer_capabilities(answer)
     relevant = [item for item in candidates if item.capabilities & capabilities]
-    relevant.sort(
-        key=lambda item: (
-            len(item.capabilities & capabilities) * 20 + item.quality_score
-            - (item.context_cost * (12 if answer.mode == SetupMode.MINIMAL else 3))
-            + (10 if item.official else 0)
-        ),
-        reverse=True,
-    )
+    relevant.sort(key=lambda item: _priority_key(item, capabilities, answer.mode))
 
     selected: list[Component] = []
     covered = set()
@@ -27,67 +70,69 @@ def recommend(answer: InterviewAnswer, candidates: list[Component]) -> Recommend
                 reasons=["not supported by every selected Agent"],
             ))
             continue
-        new_coverage = (candidate.capabilities & capabilities) - covered
-        overlaps = candidate.capabilities & covered
+        if not candidate.recommendable:
+            items.append(RecommendationItem(
+                component=candidate, selected=False,
+                reasons=candidate.validation_warnings or ["candidate requires manual review"],
+            ))
+            continue
         explicit_conflict = next((
             chosen for chosen in selected
             if chosen.id in candidate.conflicts or candidate.id in chosen.conflicts
         ), None)
-        explicit_overlap = next((
-            chosen for chosen in selected
-            if chosen.id in candidate.overlaps or candidate.id in chosen.overlaps
-        ), None)
-        duplicate_mcp = next((
-            chosen for chosen in selected
-            if candidate.type.value == "mcp" and chosen.type.value == "mcp"
-            and (
-                candidate.capabilities == chosen.capabilities
-                or bool(candidate.tool_names & chosen.tool_names)
-            )
-        ), None)
-        if duplicate_mcp:
-            items.append(RecommendationItem(
-                component=candidate, selected=False,
-                reasons=[f"duplicates MCP functionality provided by {duplicate_mcp.name}"],
-            ))
-            continue
         if explicit_conflict:
             items.append(RecommendationItem(
                 component=candidate, selected=False,
                 reasons=[f"conflicts with {explicit_conflict.name}"],
             ))
             continue
+        explicit_overlap = next((
+            chosen for chosen in selected
+            if chosen.id in candidate.overlaps or candidate.id in chosen.overlaps
+        ), None)
         if explicit_overlap and answer.mode == SetupMode.MINIMAL:
+            overlap = candidate.capabilities & explicit_overlap.capabilities
             items.append(RecommendationItem(
                 component=candidate, selected=False,
                 reasons=[
                     f"overlaps with {explicit_overlap.name} in "
-                    + ", ".join(sorted(c.value for c in candidate.capabilities & explicit_overlap.capabilities))
+                    + ", ".join(sorted(capability.value for capability in overlap))
                 ],
             ))
             continue
-        choose = bool(new_coverage) or (
-            answer.mode == SetupMode.PERFORMANCE
-            and bool(candidate.capabilities & capabilities)
-            and candidate.context_cost <= 3
-        )
-        if answer.mode == SetupMode.MINIMAL and not new_coverage:
-            choose = False
-        reasons = []
+        duplicate = _duplicate_of(candidate, selected, answer.mode)
+        if duplicate:
+            prefix = "Official implementation" if duplicate.trust.official else duplicate.name
+            items.append(RecommendationItem(
+                component=candidate, selected=False,
+                reasons=[f"duplicates MCP functionality; {prefix} provides the same capability"],
+            ))
+            continue
+
+        new_coverage = (candidate.capabilities & capabilities) - covered
+        overlap = candidate.capabilities & covered
+        choose = bool(new_coverage)
+        if answer.mode == SetupMode.PERFORMANCE and not choose:
+            choose = bool(overlap) and candidate.context_cost <= 4
         if choose:
             selected.append(candidate)
             covered.update(candidate.capabilities)
-            reasons.append("covers: " + ", ".join(sorted(c.value for c in new_coverage or overlaps)))
+            reasons = ["covers: " + ", ".join(sorted(
+                capability.value for capability in new_coverage or overlap
+            ))]
+            if candidate.trust.official:
+                reasons.append("official implementation preferred")
+            elif candidate.trust.verified:
+                reasons.append("repository evidence validated")
         else:
-            reasons.append("adds no capability beyond selected components")
+            reasons = ["adds no capability beyond selected components"]
         items.append(RecommendationItem(component=candidate, selected=choose, reasons=reasons))
 
-    known_ids = {item.component.id for item in items}
+    handled = {item.component.id for item in items}
     for candidate in candidates:
-        if candidate.id not in known_ids:
+        if candidate.id not in handled:
             items.append(RecommendationItem(
                 component=candidate, selected=False,
                 reasons=["not relevant to inferred capabilities"],
             ))
-
     return RecommendationPlan(interview=answer, capabilities=capabilities, items=items)

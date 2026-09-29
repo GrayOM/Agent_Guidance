@@ -19,7 +19,7 @@ MVP는 Codex의 end-to-end 흐름에 집중한다.
 - LOW/WARNING 보안 결과와 선택·제외 근거 출력
 - 승인 직후 설정 백업, Skill/MCP 설치, Health Check, 실패 시 자동 Rollback
 
-Claude Code/Cursor 실제 설치, 실시간 공식/GitHub 검색, LLM 추천, 범용 인증 자동화는 MVP 이후다.
+Claude Code/Cursor 실제 설치, LLM 추천, 범용 인증 자동화는 MVP 이후다.
 
 Codex Skill은 사용자 범위인 `$HOME/.agents/skills`에 설치한다. 외부 저장소는 Registry에 고정된
 commit SHA만 checkout하고 `SKILL.md` frontmatter 및 symlink 부재를 검증한다. MCP는 기존
@@ -34,9 +34,25 @@ commit SHA만 checkout하고 `SKILL.md` frontmatter 및 symlink 부재를 검증
 | `adapters` | Agent 감지, 조사, 백업, 설치, 검증, 복구 |
 | `models` | 단계 간 Pydantic 계약 |
 | `registry` | 검증된 후보와 업무-capability 규칙 |
-| `sources` | 후속 공식/GitHub 수집기의 추상 경계 |
+| `sources` | Registry·공식·GitHub 수집, 정규화, 검증, 보안 증거, 캐시 |
 
 의존성 방향은 `cli -> core -> models`, `core -> adapters`, `core -> registry`로 제한한다.
+
+## 3.1 실시간 후보 탐색
+
+추천 후보는 Local Registry, 검증된 공식 프로젝트 catalog, GitHub 검색 결과를 합쳐 만든다.
+
+1. 선택 Agent와 capability로 Skill/MCP/Plugin 검색 쿼리를 생성한다.
+2. GitHub 메타데이터, README, release, repository tree와 설치 관련 파일을 수집한다.
+3. 모든 결과를 공통 `Component` 모델로 정규화한다.
+4. Trust, Maintenance, Agent compatibility, install method, dependency를 검증한다.
+5. repository 파일 증거로 보안 metadata와 evidence를 만든다.
+6. 동일 repository 후보는 공식 → curated registry → verified community 순으로 병합한다.
+7. API 실패 시 Local Registry와 verified cache로 계속 추천한다.
+
+캐시는 검색 자체를 생략하는 영구 catalog가 아니다. 검색 결과의 `pushed_at`이 같을 때만 TTL 안의
+정규화 결과를 재사용하며 신규 검색은 계속 수행한다. GitHub 토큰은 환경변수로만 읽고 캐시나
+로그에 기록하지 않는다.
 
 ## 4. 실행 흐름
 
@@ -56,7 +72,9 @@ commit SHA만 checkout하고 `SKILL.md` frontmatter 및 symlink 부재를 검증
 사용자에게 MCP나 브라우저 같은 구현 수단을 묻지 않는다. `domain + task` 규칙이 capability를
 생성하며 후보의 `capabilities`와 교차해 coverage를 계산한다. Minimal은 적은 구성요소, 낮은 context
 비용, 낮은 중복을 우선한다. Performance는 전문 coverage와 품질을 우선하고 일부 중복을 허용한다.
-모든 선택 및 제외 결과에는 사람이 읽을 수 있는 이유가 필요하다.
+모든 선택 및 제외 결과에는 사람이 읽을 수 있는 이유가 필요하다. 추천 정책은 필수 조건
+(Agent 호환성, 검증 상태, 설치 가능성), 우선 조건(capability coverage, official/trust,
+maintenance), tie-breaker(context cost, 설치 복잡도, 품질, stars) 순으로 판단한다.
 
 ## 6. 충돌 및 보안
 
