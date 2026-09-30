@@ -40,17 +40,135 @@ Agent별 지원 범위가 다르면 지원되는 Agent에만 적용합니다. `U
 
 ## Installation
 
-Python 3.11 이상과 대상 Agent가 먼저 설치되어 있어야 합니다.
+### 1. 설치 전 확인
+
+GrayOM은 Agent 자체를 설치하지 않습니다. 아래 항목을 먼저 준비합니다.
+
+- Python 3.11 이상
+- 설정할 Agent 중 하나 이상: Codex, Claude Code, Cursor
+- Git
+- 권장: [pipx](https://pipx.pypa.io/stable/installation/)
+
+버전을 확인합니다.
 
 ```bash
+python --version
+git --version
+pipx --version
+```
+
+### 2. 권장 설치: pipx
+
+현재 `0.1.0rc1`은 PyPI에 게시하지 않았으므로 GitHub source에서 설치합니다. `main` 브랜치를 clone한
+다음 repository root에서 실행합니다.
+
+```bash
+git clone https://github.com/GrayOM/Agent_Guidance.git
+cd Agent_Guidance
 pipx install .
 ```
 
-개발 환경:
+`pipx`는 GrayOM 전용 가상환경과 `grayom` 명령을 생성하므로 일반 Python 환경을 변경하지 않습니다.
+
+![GrayOM source installation](docs/assets/install-source.svg)
+
+설치 확인:
 
 ```bash
-python -m pip install -e '.[dev]'
-python -m pytest
+grayom --version
+grayom --help
+```
+
+`grayom` 명령을 찾지 못하면 터미널을 다시 열거나 다음 명령을 실행합니다.
+
+```bash
+pipx ensurepath
+```
+
+### 3. 가상환경 설치
+
+`pipx`를 사용하지 않는 경우 프로젝트 전용 가상환경에 설치합니다.
+
+Linux / macOS:
+
+```bash
+git clone https://github.com/GrayOM/Agent_Guidance.git
+cd Agent_Guidance
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install .
+grayom --version
+```
+
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/GrayOM/Agent_Guidance.git
+Set-Location .\Agent_Guidance
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install .
+grayom --version
+```
+
+![GrayOM Windows virtual environment installation](docs/assets/install-windows.svg)
+
+PowerShell에서 실행 정책 오류가 발생하면 현재 터미널 프로세스에만 적용합니다.
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+```
+
+### 4. 최초 실행
+
+```bash
+grayom
+```
+
+GrayOM이 설치된 Agent를 표시한 뒤 Setup, Recommend, Doctor, Update, Rollback 중 수행할 작업을
+선택합니다. `setup`에서는 업무 분야와 세부 작업만 선택하며 Skill/MCP/Plugin을 직접 선택하지 않습니다.
+
+![GrayOM first run](docs/assets/first-run.svg)
+
+설치 전에 변경 Plan만 확인하려면 다음 명령을 먼저 실행하는 것을 권장합니다.
+
+```bash
+grayom setup --dry-run
+```
+
+실제 설치는 Plan 전체에 대해 한 번만 승인받으며, 승인 전에는 Agent 설정이나 backup을 만들지 않습니다.
+
+### 5. 업데이트와 제거
+
+GitHub source를 최신 상태로 받은 뒤 재설치합니다.
+
+```bash
+cd Agent_Guidance
+git pull --ff-only
+pipx uninstall grayom-agent-guidance
+pipx install .
+```
+
+GrayOM 프로그램만 제거:
+
+```bash
+pipx uninstall grayom-agent-guidance
+```
+
+프로그램 제거는 이미 적용된 Agent 설정을 자동으로 되돌리지 않습니다. 설정을 되돌릴 필요가 있으면
+프로그램 제거 전에 `grayom rollback`을 실행합니다.
+
+### 6. 개발 환경
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.lock
+python -m pip install -e . --no-deps
+python -m pytest -q
 ```
 
 ## Usage
