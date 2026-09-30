@@ -10,23 +10,56 @@ from grayom_agent_guidance.core.explainer import PlanExplanation
 from grayom_agent_guidance import __version__
 
 
-LOGO = r"""
-  ####   ####      #     #   #    ###    #   #
- #       #   #    # #     # #    #   #   ## ##
- #  ##   ####    #####     #     #     #  # # #
- #   #   #  #    #   #     #      #   #   #   #
-  ####   #   #   #   #     #       ###    #   #
+LOGO = """
+       ╭──────────╮
+    ╭──╯   ╭──╮   ╰──╮
+ ◀──╯      │◉ │      ╰──▶
+    ╰──╮   ╰──╯   ╭──╯
+       ╰──────────╯
 """
 
 
-def show_header(console: Console) -> None:
-    console.print(LOGO, style="bold bright_cyan")
-    console.print(
-        "[bold bright_cyan]Gray[/bold bright_cyan]"
-        "[bold bright_magenta]OM[/bold bright_magenta] "
-        "[bold white]Agent Guidance[/bold white]\n"
-        f"[dim]AI Agent Environment Manager[/dim]  [cyan]v{__version__}[/cyan]\n"
+def _brand() -> Group:
+    name = Text.assemble(
+        ("Gray", "bold bright_cyan"),
+        ("OM", "bold bright_magenta"),
     )
+    name.stylize("bold", 0, len(name))
+    return Group(
+        Text("WELCOME TO", style="bold white"),
+        Text(""),
+        name,
+        Text("AGENT GUIDANCE", style="bold white"),
+        Text("AI Agent Environment Manager", style="dim"),
+    )
+
+
+def _eye_logo() -> Text:
+    eye = Text(LOGO, style="bold bright_blue")
+    eye.highlight_regex(r"╭──╮|│◉ │|╰──╯", style="bold bright_cyan")
+    eye.highlight_regex("◉", style="bold bright_magenta")
+    return eye
+
+
+def show_header(console: Console) -> None:
+    if console.size.width >= 78:
+        layout = Table.grid(expand=True)
+        layout.add_column(ratio=3, vertical="middle")
+        layout.add_column(ratio=2, justify="center", vertical="middle")
+        layout.add_row(_brand(), Align.center(_eye_logo(), vertical="middle"))
+        content = layout
+    else:
+        content = Group(_brand(), Text(""), Align.center(_eye_logo()))
+    console.print(
+        Panel(
+            content,
+            border_style="bright_blue",
+            padding=(1, 2),
+            subtitle=f"v{__version__}",
+            subtitle_align="right",
+        )
+    )
+    console.print()
 
 
 def show_detected_agents(console: Console, agents: list[AgentInstallation]) -> None:
