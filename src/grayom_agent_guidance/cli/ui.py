@@ -11,17 +11,18 @@ from grayom_agent_guidance import __version__
 
 
 LOGO = r"""
-  ██████╗ ██████╗  █████╗ ██╗   ██╗ ██████╗ ███╗   ███╗
- ██╔════╝ ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔═══██╗████╗ ████║
- ██║  ███╗██████╔╝███████║ ╚████╔╝ ██║   ██║██╔████╔██║
- ██║   ██║██╔══██╗██╔══██║  ╚██╔╝  ██║   ██║██║╚██╔╝██║
- ╚██████╔╝██║  ██║██║  ██║   ██║   ╚██████╔╝██║ ╚═╝ ██║
-  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝
+  GGGG   RRRR      A     Y   Y   OOOO   M   M
+ G       R   R    A A     Y Y   O    O  MM MM
+ G  GG   RRRR    AAAAA     Y    O    O  M M M
+ G   G   R  R    A   A     Y    O    O  M   M
+  GGG    R   R   A   A     Y     OOOO   M   M
+
+                  G R A Y O M
 """
 
 
 def show_header(console: Console) -> None:
-    console.print(LOGO, style="bold bright_black")
+    console.print(LOGO, style="bold bright_cyan")
     console.print(
         f"[bold]GrayOM Agent Guidance[/bold]\nAI Agent Environment Manager\nVersion: {__version__}\n"
     )
