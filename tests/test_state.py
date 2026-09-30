@@ -13,3 +13,6 @@ def test_state_round_trip_contains_no_profile_or_secret(tmp_path) -> None:
     loaded = StateStore(path)
     assert loaded.document.components["demo"].transaction_id == "tx"
     assert "profile" not in path.read_text(encoding="utf-8").lower()
+    component_manifest = path.parent / "component-manifests" / "demo.json"
+    assert component_manifest.exists()
+    assert '"schema_version": 1' in component_manifest.read_text(encoding="utf-8")

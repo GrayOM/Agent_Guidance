@@ -1,4 +1,5 @@
 import json
+import hashlib
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +17,7 @@ class UpdateItem(BaseModel):
     current_ref: str | None
     target_ref: str | None
     reason: str
+    warnings: list[str] = Field(default_factory=list)
 
 
 class UpdatePlan(BaseModel):
@@ -42,9 +44,18 @@ def build_update_plan(state: StateStore, candidates: list[Component]) -> UpdateP
             continue
         target = component.install_method.ref
         if target and target != managed.source_ref:
+            warnings = []
+            for filename, expected_hash in managed.file_hashes.items():
+                path = Path(filename)
+                if not path.is_file():
+                    warnings.append(f"managed file is missing: {path}")
+                    continue
+                current_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+                if current_hash != expected_hash:
+                    warnings.append(f"file was modified after GrayOM installed it: {path}")
             plan.items.append(UpdateItem(
                 component=component, agents=managed.agents, current_ref=managed.source_ref,
-                target_ref=target, reason="verified upstream reference changed",
+                target_ref=target, reason="verified upstream reference changed", warnings=warnings,
             ))
         else:
             plan.unchanged.append(f"{component_id}: up to date")

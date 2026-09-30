@@ -1,3 +1,5 @@
+import sys
+
 from InquirerPy import inquirer
 
 from grayom_agent_guidance.models import AgentInstallation, AgentType, InterviewAnswer, SetupMode, WorkDomain
@@ -22,6 +24,10 @@ def build_answer(
 
 
 def run_interview(detected: list[AgentInstallation] | None = None) -> InterviewAnswer:
+    if not sys.stdin.isatty():
+        raise RuntimeError(
+            "the setup interview requires a TTY; run 'grayom doctor' in automation or use a terminal"
+        )
     detected_map = {item.agent: item.detected for item in detected or []}
     agent_choices = []
     for agent, label in (

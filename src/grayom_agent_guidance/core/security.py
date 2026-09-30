@@ -24,6 +24,13 @@ def analyze_security(components: list[Component]) -> list[SecurityFinding]:
                 component_id=component.id, level=RiskLevel.WARNING,
                 rule="install.external_command", message="installation executes an external command",
             ))
+        executable = component.install_method.command
+        if executable and executable.lower() in {"sudo", "su", "doas", "runas"}:
+            findings.append(SecurityFinding(
+                component_id=component.id, level=RiskLevel.WARNING,
+                rule="install.privileged",
+                message="requires a privileged installation step; GrayOM will not elevate privileges",
+            ))
         metadata = component.security_metadata
         permission_equivalents = {
             "shell_execution": Permission.SHELL,

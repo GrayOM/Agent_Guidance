@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from grayom_agent_guidance.models import Component
 from grayom_agent_guidance.config import load_config
+from grayom_agent_guidance.schema import load_versioned_json
 
 
 class CacheEntry(BaseModel):
@@ -27,6 +28,7 @@ class CandidateCache:
         root = Path(os.environ.get("GRAYOM_HOME", Path.home() / ".grayom"))
         self.path = path or root / "cache" / "candidates.json"
         self.ttl = ttl or timedelta(hours=load_config().cache.ttl_hours)
+        self.warnings: list[str] = []
         self.document = self._load()
 
     @staticmethod
@@ -37,8 +39,9 @@ class CandidateCache:
         if not self.path.exists():
             return CacheDocument()
         try:
-            return CacheDocument.model_validate_json(self.path.read_text(encoding="utf-8"))
+            return CacheDocument.model_validate(load_versioned_json(self.path))
         except (OSError, ValueError):
+            self.warnings.append(f"ignored damaged cache: {self.path}")
             return CacheDocument()
 
     def get(self, repository_url: str, source_version: str | None = None) -> Component | None:
@@ -69,7 +72,10 @@ class CandidateCache:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_name(f"{self.path.name}.{uuid4().hex}.tmp")
         try:
-            temporary.write_text(self.document.model_dump_json(indent=2), encoding="utf-8")
+            with temporary.open("w", encoding="utf-8") as stream:
+                stream.write(self.document.model_dump_json(indent=2))
+                stream.flush()
+                os.fsync(stream.fileno())
             os.replace(temporary, self.path)
         finally:
             temporary.unlink(missing_ok=True)

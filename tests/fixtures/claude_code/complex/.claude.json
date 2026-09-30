@@ -1,0 +1,6 @@
+{
+  "theme": "dark",
+  "numStartups": 42,
+  "projects": {"/workspace/example": {"allowedTools": ["Read"]}},
+  "mcpServers": {"existing": {"type": "stdio", "command": "existing-server"}}
+}

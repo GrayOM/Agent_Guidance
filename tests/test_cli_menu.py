@@ -12,4 +12,4 @@ def test_help_and_version_are_fast_and_non_networked(monkeypatch) -> None:
     assert runner.invoke(app, ["--help"]).exit_code == 0
     version = runner.invoke(app, ["--version"])
     assert version.exit_code == 0
-    assert "0.2.0" in version.output
+    assert "0.1.0rc1" in version.output

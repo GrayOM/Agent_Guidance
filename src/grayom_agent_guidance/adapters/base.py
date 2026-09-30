@@ -2,12 +2,16 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from grayom_agent_guidance.models import (
-    AgentInstallation, BackupManifest, Component, ComponentInstallResult,
+    AdapterCapabilities, AgentInstallation, BackupManifest, Component, ComponentInstallResult,
     HealthCheckResult, InstallationManifest, RollbackResult,
 )
 
 
 class AgentAdapter(ABC):
+    @property
+    @abstractmethod
+    def capabilities(self) -> AdapterCapabilities: ...
+
     @abstractmethod
     def detect(self) -> AgentInstallation: ...
 

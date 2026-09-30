@@ -61,7 +61,8 @@ class GitHubSource(ComponentSource):
                 except httpx.TransportError:
                     if attempt:
                         raise
-            assert response is not None
+            if response is None:
+                raise SourceUnavailable("GitHub returned no response")
             remaining = response.headers.get("x-ratelimit-remaining")
             if remaining and remaining.isdigit():
                 self.rate_limit_remaining = int(remaining)

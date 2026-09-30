@@ -26,6 +26,17 @@ class Ownership(StrEnum):
     SHARED = "SHARED"
 
 
+class TransactionState(StrEnum):
+    PREPARED = "PREPARED"
+    BACKING_UP = "BACKING_UP"
+    APPLYING = "APPLYING"
+    VERIFYING = "VERIFYING"
+    COMMITTED = "COMMITTED"
+    ROLLING_BACK = "ROLLING_BACK"
+    ROLLED_BACK = "ROLLED_BACK"
+    FAILED = "FAILED"
+
+
 class CompatibilityResult(BaseModel):
     agent: AgentType
     component_id: str
@@ -75,6 +86,7 @@ class MultiAgentPlan(BaseModel):
 
 
 class MultiAgentManifest(BaseModel):
+    schema_version: int = 1
     transaction_id: str = Field(default_factory=lambda: uuid4().hex)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     root: Path
@@ -82,6 +94,9 @@ class MultiAgentManifest(BaseModel):
     agent_manifests: dict[AgentType, InstallationManifest] = Field(default_factory=dict)
     shared_components: list[SharedComponentRecord] = Field(default_factory=list)
     completed: bool = False
+    state: TransactionState = TransactionState.PREPARED
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    error: str | None = None
     rollback_errors: list[str] = Field(default_factory=list)
     original_hashes: dict[str, str | None] = Field(default_factory=dict)
     post_install_hashes: dict[str, str | None] = Field(default_factory=dict)
@@ -91,6 +106,7 @@ class MultiAgentManifest(BaseModel):
         return self.root / "manifest.json"
 
     def save(self) -> None:
+        self.updated_at = datetime.now(timezone.utc)
         self.root.mkdir(parents=True, exist_ok=True)
         temporary = self.path.with_name(f".{self.path.name}.{uuid4().hex}.tmp")
         try:

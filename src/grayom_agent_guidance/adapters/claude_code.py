@@ -1,21 +1,27 @@
 import json
 import shutil
-import subprocess
 from pathlib import Path
 from urllib.parse import urlparse
 
 from grayom_agent_guidance.models import (
-    AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
-    ComponentInstallResult, ComponentType, HealthCheckResult, InstallationManifest,
+    AdapterCapabilities, AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
+    ComponentInstallResult, ComponentType, HealthCheckResult, HealthLevel, InstallationManifest,
     RollbackResult,
 )
+from grayom_agent_guidance.runtime import ProcessRunner
 
 from .base import AgentAdapter
 from .codex import AdapterError
 from .json_support import desired_json_mcp, install_git_skills, merge_mcp, read_json_object
+from grayom_agent_guidance.runtime import validate_managed_path
 
 
 class ClaudeCodeAdapter(AgentAdapter):
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        # Plugin installation is intentionally disabled until a marketplace identifier is verified.
+        return AdapterCapabilities(skills=True, mcp=True, plugins=False, health_probe=False)
+
     """User-scope Claude Code adapter based on the documented ~/.claude paths."""
 
     def __init__(self, home: Path | None = None) -> None:
@@ -30,10 +36,8 @@ class ClaudeCodeAdapter(AgentAdapter):
         version = None
         if executable:
             try:
-                version = subprocess.run(
-                    [executable, "--version"], capture_output=True, text=True, timeout=3, check=False,
-                ).stdout.strip() or None
-            except (OSError, subprocess.SubprocessError):
+                version = ProcessRunner().run([executable, "--version"], timeout=3).stdout.strip() or None
+            except (OSError, RuntimeError):
                 pass
         detected = bool(executable or self.claude_home.exists() or self.config_path.exists())
         return AgentInstallation(
@@ -139,6 +143,7 @@ class ClaudeCodeAdapter(AgentAdapter):
                 checks.append(CheckResult(
                     name=f"claude_skill_discovery:{component.id}", passed=component.id in markers,
                     message="Skill discovery metadata found" if component.id in markers else "Skill was not discoverable",
+                    level=HealthLevel.INITIALIZATION,
                 ))
             elif component.type == ComponentType.MCP:
                 desired = desired_json_mcp(component)
@@ -152,12 +157,14 @@ class ClaudeCodeAdapter(AgentAdapter):
                     checks.append(CheckResult(
                         name=f"claude_mcp_endpoint:{component.id}", passed=parsed.scheme == "https" and bool(parsed.netloc),
                         message="MCP HTTPS endpoint is valid",
+                        level=HealthLevel.INITIALIZATION,
                     ))
                 elif registered and "command" in registered:
                     available = shutil.which(str(registered["command"])) is not None
                     checks.append(CheckResult(
                         name=f"claude_mcp_process:{component.id}", passed=available,
                         message="MCP command is executable" if available else "MCP command not found",
+                        level=HealthLevel.INITIALIZATION,
                     ))
         return HealthCheckResult(checks=checks)
 
@@ -166,6 +173,7 @@ class ClaudeCodeAdapter(AgentAdapter):
         allowed = self.skills_root.resolve()
         for path in reversed(manifest.created_paths):
             try:
+                validate_managed_path(path, self.skills_root, allow_missing=False)
                 resolved = path.resolve()
                 if not resolved.is_relative_to(allowed) or not (resolved / ".grayom-component.json").exists():
                     raise AdapterError(f"refusing to remove unmanaged path: {resolved}")
@@ -174,6 +182,9 @@ class ClaudeCodeAdapter(AgentAdapter):
                 result.errors.append(str(exc))
         for entry in manifest.backup.entries:
             try:
+                allowed_configs = {path.resolve(strict=False) for path in self.get_config_paths()}
+                if entry.original.resolve(strict=False) not in allowed_configs:
+                    raise AdapterError(f"refusing to restore unexpected config path: {entry.original}")
                 if entry.existed:
                     if not entry.backup:
                         raise AdapterError(f"missing backup for {entry.original}")

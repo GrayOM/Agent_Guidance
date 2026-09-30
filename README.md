@@ -35,6 +35,8 @@ Agent별 지원 범위가 다르면 지원되는 Agent에만 적용합니다. `U
 - 통합 Health Check와 전체 rollback
 - GrayOM-managed component update
 - dry-run, doctor, sanitized debug info, JSONL event log
+- explicit transaction lifecycle, crash recovery, concurrent-operation lock, and component hash manifests
+- shared timeout-bound process runner and managed-path/symlink validation
 
 ## Installation
 
@@ -100,8 +102,8 @@ GrayOM 데이터는 기본적으로 `~/.grayom/` 아래에 저장합니다.
 ```
 
 `GRAYOM_HOME`으로 위치를 바꿀 수 있습니다. 업무 Profile 전체는 저장하지 않습니다. state에는
-GrayOM이 관리하는 component ID, Agent 사용 관계, ownership, source ref, transaction 참조만
-저장합니다.
+GrayOM이 관리하는 component ID, Agent 사용 관계, ownership, source ref, transaction 참조와
+설치 경로·생성 파일 SHA-256을 기록합니다. credential 값은 포함하지 않습니다.
 
 ## Security Model
 
@@ -109,6 +111,7 @@ GrayOM이 관리하는 component ID, Agent 사용 관계, ownership, source ref,
 - 설정은 parse → merge → validate → atomic replace 순서로 처리합니다.
 - 사용자 기존 component와 충돌하는 MCP 이름은 보존하고 안전한 `-grayom` 별칭을 사용합니다.
 - rollback은 GrayOM marker와 manifest로 소유권이 확인된 경로만 제거합니다.
+- 원격 README의 shell 명령을 실행하지 않으며 모든 child process는 argument list와 timeout을 사용합니다.
 - token, password, OAuth 값, SSH key, `.env` secret은 state/log에 저장하지 않습니다.
 - WARNING은 차단 등급이 아니며 최종 Plan에 근거와 함께 표시합니다.
 
@@ -122,13 +125,19 @@ Windows 호스트에 설치된 Cursor 설정을 추측해 수정하지 않고 �
 ## Limitations
 
 - Claude Code Plugin은 검증된 marketplace 식별자 없이 임의 Git URL만으로 자동 설치하지 않습니다.
-- Cursor local Plugin은 공식 manifest가 있는 Git repository만 지원합니다.
+- Cursor Plugin은 공식 Marketplace/API의 transaction-safe 설치 방식이 확인될 때까지 Plan에서 제외합니다.
 - Codex는 HTTP MCP initialize/tool discovery를 시도할 수 있지만 Claude Code/Cursor의 현재 Health
   Check는 설정 parse, discovery metadata, endpoint/command 유효성 중심입니다.
 - `grayom update`는 현재 Local Registry의 검증된 ref 변경을 기준으로 동작합니다. live upstream
   release 비교와 자동 migration은 후속 범위입니다.
 - WSL과 Windows host 사이의 cross-environment 설정 변경은 지원하지 않습니다.
 - 새 추천에서 제외된 기존 GrayOM component를 자동 삭제하지 않습니다.
+- JSON 기반 Agent 설정은 알 수 없는 key를 보존하지만 whitespace/key formatting은 정규화될 수 있습니다.
+- Windows/macOS/Linux fixture CI는 제공하지만 실제 Agent 애플리케이션을 설치한 물리 환경 검증은
+  `0.1.0rc1`에서 `NOT VERIFIED`입니다.
+
+현재 버전은 `0.1.0rc1` Release Candidate입니다. 안정 릴리스 판정과 남은 검증은
+[RC 감사](docs/release-audit.md)에 기록합니다.
 
 ## Development
 

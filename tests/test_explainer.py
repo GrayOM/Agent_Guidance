@@ -1,5 +1,5 @@
 from grayom_agent_guidance.core import explain_plan
-from grayom_agent_guidance.models import AgentType, InterviewAnswer, RecommendationPlan, SetupMode, WorkDomain
+from grayom_agent_guidance.models import AgentType, InterviewAnswer, SetupMode, WorkDomain
 from grayom_agent_guidance.core import recommend
 from grayom_agent_guidance.registry import load_registry
 

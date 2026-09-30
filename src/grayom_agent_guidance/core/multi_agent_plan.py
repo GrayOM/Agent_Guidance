@@ -23,6 +23,17 @@ def build_multi_agent_plan(
                 continue
             component = item.component
             compatibility = evaluate_compatibility(component, installation)
+            type_supported = {
+                ComponentType.SKILL: adapter.capabilities.skills,
+                ComponentType.MCP: adapter.capabilities.mcp,
+                ComponentType.PLUGIN: adapter.capabilities.plugins,
+            }[component.type]
+            if not type_supported:
+                compatibility.status = CompatibilityStatus.UNSUPPORTED
+                compatibility.reason = (
+                    f"{agent.value.replace('_', ' ').title()} adapter does not safely support "
+                    f"{component.type.value} installation"
+                )
             reconciliation = reconcile_component(
                 agent, component, compatibility.status, adapter,
             )

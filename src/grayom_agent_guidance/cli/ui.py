@@ -139,4 +139,4 @@ def show_health(console: Console, result: HealthCheckResult) -> None:
             label = "[red]FAIL[/red]"
         else:
             label = "[yellow]WARN[/yellow]"
-        console.print(f"{label} {check.name}: {check.message}")
+        console.print(f"{label} L{check.level.value} {check.name}: {check.message}")

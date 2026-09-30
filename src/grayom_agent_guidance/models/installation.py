@@ -4,6 +4,20 @@ from uuid import uuid4
 import os
 
 from pydantic import BaseModel, Field
+from enum import IntEnum, StrEnum
+
+
+class HealthLevel(IntEnum):
+    STATIC = 1
+    INITIALIZATION = 2
+    FUNCTIONAL = 3
+
+
+class HealthStatus(StrEnum):
+    PASS = "PASS"  # nosec B105
+    WARNING = "WARNING"
+    FAIL = "FAIL"
+    SKIPPED = "SKIPPED"
 
 
 class BackupEntry(BaseModel):
@@ -13,6 +27,7 @@ class BackupEntry(BaseModel):
 
 
 class BackupManifest(BaseModel):
+    schema_version: int = 1
     root: Path
     entries: list[BackupEntry] = Field(default_factory=list)
 
@@ -22,6 +37,14 @@ class CheckResult(BaseModel):
     passed: bool
     message: str
     fatal: bool = True
+    level: HealthLevel = HealthLevel.STATIC
+    status: HealthStatus | None = None
+
+    def model_post_init(self, __context: object) -> None:
+        if self.status is None:
+            self.status = HealthStatus.PASS if self.passed else (
+                HealthStatus.FAIL if self.fatal else HealthStatus.WARNING
+            )
 
 
 class HealthCheckResult(BaseModel):
@@ -42,6 +65,7 @@ class ComponentInstallResult(BaseModel):
 
 
 class InstallationManifest(BaseModel):
+    schema_version: int = 1
     transaction_id: str = Field(default_factory=lambda: uuid4().hex)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     backup: BackupManifest

@@ -52,6 +52,6 @@ def detect_platform(home: Path | None = None) -> PlatformInfo:
         warnings.append("unsupported platform; only explicit user-home paths are considered")
     return PlatformInfo(
         os=os_type, environment=EnvironmentType.WSL if is_wsl else EnvironmentType.NATIVE,
-        home=(home or Path.home()).resolve(), shell=os.environ.get("SHELL") or os.environ.get("COMSPEC"),
+        home=(home or Path.home()).resolve(), shell=os.environ.get("SHELL") or os.environ.get("COMSPEC"),  # nosec
         path_style="windows" if os_type == OperatingSystem.WINDOWS else "posix", warnings=warnings,
     )

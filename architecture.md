@@ -20,7 +20,8 @@ Component × Agent compatibility를 다시 계산해 지원되는 Agent에만 �
 | `registry` | 검증된 후보와 고정 install ref |
 | `sources` | Registry·공식·GitHub 수집, 정규화, 검증, 보안 증거, cache |
 | `network` | timeout, proxy 환경, User-Agent를 포함한 공통 HTTP client |
-| `state` | GrayOM ownership, Agent 사용 관계, source ref, transaction 참조 |
+| `runtime` | `shell=False` process runner, timeout/redaction, path validation, operation lock |
+| `state` | GrayOM ownership, Agent 사용 관계, source/ref/path/hash, transaction 참조 |
 
 CLI 입력은 `InterviewAnswer`로 core에 전달하며 core에서 `input()`을 호출하지 않는다.
 
@@ -29,6 +30,7 @@ CLI 입력은 `InterviewAnswer`로 core에 전달하며 core에서 `input()`을 
 모든 Adapter는 다음 공통 interface를 구현한다.
 
 - `detect`, `inspect`, `get_version`, `get_config_paths`
+- `capabilities` (`skills`, `mcp`, `plugins`, `config_merge`, `health_probe`)
 - `list_existing_skills`, `list_existing_mcps`, `list_existing_plugins`
 - `backup`, `install_skill`, `configure_mcp`, `install_plugin`
 - `health_check`, `rollback`
@@ -39,7 +41,7 @@ Agent별 사용자 범위는 공식 문서에 근거한다.
 |---|---|---|---|
 | Codex | `~/.agents/skills` | `CODEX_HOME/config.toml` 또는 `~/.codex/config.toml` | 자동 설치 제외 |
 | Claude Code | `~/.claude/skills` | `~/.claude.json`의 `mcpServers` | marketplace ID 없으면 `PARTIAL` |
-| Cursor | `~/.cursor/skills` | `~/.cursor/mcp.json` | `~/.cursor/plugins/local`의 검증 manifest |
+| Cursor | `~/.cursor/skills` | `~/.cursor/mcp.json` | 공식 Marketplace/API 방식 미확정으로 자동 설치 제외 |
 
 설정은 read → parse → merge → validate → fsync → atomic replace 순으로 쓴다. 같은 MCP 이름에 다른
 구현이 있으면 사용자 설정을 보존하고 가능한 경우 `-grayom` 별칭을 사용한다.
@@ -76,7 +78,8 @@ Cache는 영구 catalog가 아니다. live search는 계속 수행하며 source 
 
 ## 6. Compatibility와 reconciliation
 
-Compatibility 상태는 `SUPPORTED`, `PARTIAL`, `UNSUPPORTED`, `UNKNOWN`이다. version requirement가
+Compatibility 상태는 `SUPPORTED`, `PARTIAL`, `UNSUPPORTED`, `UNKNOWN`이다. Adapter capability가
+false인 component type은 설치 Plan에서 `UNSUPPORTED`로 제외한다. version requirement가
 있는데 Agent version을 확인할 수 없으면 `UNKNOWN`이며 자동 설치하지 않는다. Agent 하나에서
 미지원이어도 다른 Agent의 지원되는 적용은 유지한다.
 
@@ -92,11 +95,12 @@ Compatibility 상태는 `SUPPORTED`, `PARTIAL`, `UNSUPPORTED`, `UNKNOWN`이다. 
 
 Ownership은 `EXISTING`, `GRAYOM_INSTALLED`, `GRAYOM_MODIFIED`, `SHARED`다. `EXISTING` component는
 update나 rollback 삭제 대상이 아니다. State에는 component ID, source ref, 사용 Agent, ownership,
-transaction 참조만 저장하고 업무 Profile과 secret은 저장하지 않는다.
+transaction 참조, 설치 경로와 SHA-256을 저장하고 업무 Profile과 secret은 저장하지 않는다.
 
 ## 8. Transaction, Health Check, rollback
 
-Multi-Agent 설치 순서는 다음과 같다.
+Multi-Agent 설치는 `PREPARED → BACKING_UP → APPLYING → VERIFYING → COMMITTED` 상태로 기록한다.
+실패하면 `ROLLING_BACK → ROLLED_BACK`이며 rollback 오류가 있으면 `FAILED`다. 순서는 다음과 같다.
 
 1. 모든 선택 Agent backup
 2. shared component 1회 준비
@@ -108,6 +112,9 @@ Multi-Agent 설치 순서는 다음과 같다.
 Manifest에는 원본/사후 hash, backup, 생성 경로, 설치/기존 component, shared ownership을 기록한다.
 Rollback은 GrayOM marker가 있고 Adapter 관리 root 안에 있는 경로만 제거한다. 일부 rollback 실패는
 숨기지 않고 Agent별 오류를 남긴다.
+
+Mutating command는 `~/.grayom/grayom.lock`을 원자적으로 획득한다. 다음 setup은 미완료 transaction을
+탐지해 새 변경 전에 rollback을 우선하며, live PID lock은 거부하고 stale lock만 회수한다.
 
 Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적 HTTP initialize/tools/list를
 검사한다. Claude Code/Cursor는 JSON parse, marker discovery, MCP endpoint/command를 검사한다. 수행할
@@ -126,4 +133,6 @@ Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적
 
 `grayom update`는 `EXISTING`을 제외하고 Local Registry의 검증된 source ref가 달라진 GrayOM-managed
 component만 대상으로 한다. Update 전 backup, 적용 후 Health Check, 실패 시 asset/config 복구를
-수행한다. Live upstream release 비교와 schema migration은 후속 범위다.
+수행한다. 저장 hash와 달라진 사용자 수정 파일은 승인 전에 경고한다. Live upstream release 비교와
+실제 version migration은 후속 범위이며 state/cache/manifest는 schema version 1과 미래 schema 거부를
+지원한다.

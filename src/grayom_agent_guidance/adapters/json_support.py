@@ -1,7 +1,6 @@
 import json
 import os
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -10,6 +9,7 @@ from uuid import uuid4
 import yaml
 
 from grayom_agent_guidance.models import Component, ComponentInstallResult, InstallKind
+from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
 
 from .codex import AdapterError, _safe_name
 
@@ -27,6 +27,7 @@ def read_json_object(path: Path) -> dict[str, Any]:
 
 
 def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
+    validate_managed_path(path, path.parent)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.grayom-{uuid4().hex}.tmp")
     try:
@@ -123,11 +124,11 @@ def install_git_skills(component: Component, skills_root: Path) -> ComponentInst
         ]
         for command in commands:
             try:
-                subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
+                ProcessRunner().run(command, check=True, timeout=60)
             except FileNotFoundError as exc:
                 raise AdapterError("git executable is required for Skill installation") from exc
-            except subprocess.CalledProcessError as exc:
-                raise AdapterError(exc.stderr.strip() or f"failed: {' '.join(command)}") from exc
+            except RuntimeError as exc:
+                raise AdapterError(str(exc)) from exc
         files = ([repo / subpath / "SKILL.md" for subpath in method.subpaths]
                  if method.subpaths else sorted(repo.rglob("SKILL.md")))
         files = [item for item in files if ".git" not in item.parts]
@@ -144,6 +145,7 @@ def install_git_skills(component: Component, skills_root: Path) -> ComponentInst
             if any(path.is_symlink() for path in source.rglob("*")):
                 raise AdapterError(f"symlinks are not installed from external Skills: {source}")
             target = skills_root / f"{_safe_name(component.id)}--{_safe_name(str(metadata['name']))}"
+            validate_managed_path(target, skills_root)
             if target.exists():
                 result.preserved_paths.append(target)
                 continue

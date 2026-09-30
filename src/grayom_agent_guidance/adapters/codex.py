@@ -2,7 +2,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import tempfile
 import tomllib
 from pathlib import Path
@@ -15,10 +14,11 @@ import tomlkit
 import yaml
 
 from grayom_agent_guidance.models import (
-    AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
-    ComponentInstallResult, ComponentType, HealthCheckResult, InstallationManifest,
+    AdapterCapabilities, AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
+    ComponentInstallResult, ComponentType, HealthCheckResult, HealthLevel, InstallationManifest,
     InstallKind, RollbackResult,
 )
+from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
 
 from .base import AgentAdapter
 
@@ -39,6 +39,10 @@ def _safe_name(value: str) -> str:
 
 
 class CodexAdapter(AgentAdapter):
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        return AdapterCapabilities(skills=True, mcp=True, plugins=False, health_probe=True)
+
     def __init__(self, home: Path | None = None) -> None:
         self.home = (home or Path.home()).resolve()
         configured_home = os.environ.get("CODEX_HOME") if home is None else None
@@ -52,10 +56,8 @@ class CodexAdapter(AgentAdapter):
         version = None
         if executable:
             try:
-                version = subprocess.run(
-                    [executable, "--version"], capture_output=True, text=True, timeout=3, check=False,
-                ).stdout.strip() or None
-            except (OSError, subprocess.SubprocessError):
+                version = ProcessRunner().run([executable, "--version"], timeout=3).stdout.strip() or None
+            except (OSError, RuntimeError):
                 pass
         return AgentInstallation(
             agent=AgentType.CODEX, detected=detected,
@@ -148,11 +150,11 @@ class CodexAdapter(AgentAdapter):
         ]
         for command in commands:
             try:
-                subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
+                ProcessRunner().run(command, check=True, timeout=60)
             except FileNotFoundError as exc:
                 raise AdapterError("git executable is required for Skill installation") from exc
-            except subprocess.CalledProcessError as exc:
-                raise AdapterError(exc.stderr.strip() or f"failed: {' '.join(command)}") from exc
+            except RuntimeError as exc:
+                raise AdapterError(str(exc)) from exc
         return repo
 
     @staticmethod
@@ -193,6 +195,7 @@ class CodexAdapter(AgentAdapter):
                 self._reject_symlinks(source_dir)
                 suffix = _safe_name(str(metadata["name"]))
                 target = self.skills_root / f"{_safe_name(component.id)}--{suffix}"
+                validate_managed_path(target, self.skills_root)
                 if target.exists():
                     result.preserved_paths.append(target)
                     result.notes.append(f"preserved existing Skill: {target.name}")
@@ -280,6 +283,7 @@ class CodexAdapter(AgentAdapter):
         servers.add(registration_name, server)
         rendered = tomlkit.dumps(document)
         temporary = self.config_path.with_name(f"config.toml.grayom-{uuid4().hex}.tmp")
+        validate_managed_path(self.config_path, self.codex_home)
         try:
             with temporary.open("w", encoding="utf-8") as stream:
                 stream.write(rendered)
@@ -357,6 +361,7 @@ class CodexAdapter(AgentAdapter):
                         checks.append(CheckResult(
                             name=f"skill_duplicate:{name}", passed=False, fatal=False,
                             message=f"duplicate Skill name in {names[name]} and {skill_file}",
+                            level=HealthLevel.INITIALIZATION,
                         ))
                     names[name] = skill_file
                     marker = skill_file.parent / ".grayom-component.json"
@@ -374,13 +379,14 @@ class CodexAdapter(AgentAdapter):
                             pass
                     checks.append(CheckResult(
                         name=f"skill_parse:{skill_file.parent.name}", passed=False, fatal=managed_expected,
-                        message=str(exc),
+                        message=str(exc), level=HealthLevel.INITIALIZATION,
                     ))
         for component_id in expected_ids:
             checks.append(CheckResult(
                 name=f"skill_discovery:{component_id}", passed=component_id in discovered_ids,
                 message="Skill discovery metadata found" if component_id in discovered_ids
                 else "installed Skill was not discoverable",
+                level=HealthLevel.INITIALIZATION,
             ))
         return checks
 
@@ -421,6 +427,7 @@ class CodexAdapter(AgentAdapter):
                 checks.append(CheckResult(
                     name=f"mcp_process:{component.id}", passed=command_ok,
                     message="MCP command is executable" if command_ok else "MCP command was not found",
+                    level=HealthLevel.INITIALIZATION,
                 ))
             elif "url" in server:
                 parsed = urlparse(str(server["url"]))
@@ -428,12 +435,13 @@ class CodexAdapter(AgentAdapter):
                 checks.append(CheckResult(
                     name=f"mcp_url:{component.id}", passed=url_ok,
                     message="MCP HTTPS endpoint is valid" if url_ok else "MCP endpoint is not valid HTTPS",
+                    level=HealthLevel.INITIALIZATION,
                 ))
                 if probe_mcp and url_ok:
                     passed, message = self._probe_http_mcp(component.id, server)
                     checks.append(CheckResult(
                         name=f"mcp_tool_discovery:{component.id}", passed=passed, fatal=False,
-                        message=message,
+                        message=message, level=HealthLevel.FUNCTIONAL,
                     ))
         return HealthCheckResult(checks=checks)
 
@@ -442,6 +450,7 @@ class CodexAdapter(AgentAdapter):
         allowed_root = self.skills_root.resolve()
         for path in reversed(manifest.created_paths):
             try:
+                validate_managed_path(path, self.skills_root, allow_missing=False)
                 resolved = path.resolve()
                 if not resolved.is_relative_to(allowed_root):
                     raise AdapterError(f"refusing to remove path outside managed Skill root: {resolved}")
@@ -453,6 +462,9 @@ class CodexAdapter(AgentAdapter):
                 result.errors.append(str(exc))
         for entry in manifest.backup.entries:
             try:
+                allowed_configs = {path.resolve(strict=False) for path in self.get_config_paths()}
+                if entry.original.resolve(strict=False) not in allowed_configs:
+                    raise AdapterError(f"refusing to restore unexpected config path: {entry.original}")
                 if entry.existed:
                     if not entry.backup:
                         raise AdapterError(f"missing backup for {entry.original}")

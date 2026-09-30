@@ -7,7 +7,7 @@ from pathlib import PurePosixPath
 from grayom_agent_guidance.models import (
     AgentType, CandidateState, Capability, Component, ComponentType,
     DependencyRequirement, EvidenceItem, InstallKind, InstallMethod,
-    MaintenanceMetadata, MaintenanceStatus, Permission, SourceType, TrustMetadata,
+    MaintenanceMetadata, MaintenanceStatus, Permission, TrustMetadata,
 )
 
 from .base import RawCandidate

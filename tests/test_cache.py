@@ -31,3 +31,11 @@ def test_cache_ttl_and_source_version(tmp_path, monkeypatch) -> None:
     entry = next(iter(loaded.document.entries.values()))
     entry.fetched_at = datetime.now(timezone.utc) - timedelta(hours=2)
     assert loaded.get("https://github.com/example/cached", "v1") is None
+
+
+def test_damaged_cache_is_ignored_with_warning(tmp_path) -> None:
+    path = tmp_path / "cache.json"
+    path.write_text("{partial", encoding="utf-8")
+    cache = CandidateCache(path=path)
+    assert cache.document.entries == {}
+    assert cache.warnings and "damaged cache" in cache.warnings[0]

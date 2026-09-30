@@ -10,6 +10,16 @@ class AgentType(StrEnum):
     CURSOR = "cursor"
 
 
+class AdapterCapabilities(BaseModel):
+    """Operations an adapter can safely apply using its current implementation."""
+
+    skills: bool = False
+    mcp: bool = False
+    plugins: bool = False
+    config_merge: bool = True
+    health_probe: bool = False
+
+
 class AgentInstallation(BaseModel):
     agent: AgentType
     detected: bool
@@ -17,4 +27,3 @@ class AgentInstallation(BaseModel):
     config_path: Path | None = None
     version: str | None = None
     details: dict[str, str] = Field(default_factory=dict)
-

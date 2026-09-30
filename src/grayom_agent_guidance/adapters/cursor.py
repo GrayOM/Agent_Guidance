@@ -1,17 +1,14 @@
 import json
-import os
 import shutil
-import subprocess
-import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
-from uuid import uuid4
 
 from grayom_agent_guidance.models import (
-    AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
-    ComponentInstallResult, ComponentType, HealthCheckResult, InstallationManifest,
-    InstallKind, RollbackResult,
+    AdapterCapabilities, AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
+    ComponentInstallResult, ComponentType, HealthCheckResult, HealthLevel, InstallationManifest,
+    RollbackResult,
 )
+from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
 
 from .base import AgentAdapter
 from .codex import AdapterError, _safe_name
@@ -20,6 +17,12 @@ from .json_support import desired_json_mcp, install_git_skills, merge_mcp, read_
 
 class CursorAdapter(AgentAdapter):
     """Limits writes to Cursor's documented AI customization directories."""
+
+    @property
+    def capabilities(self) -> AdapterCapabilities:
+        # Official docs define plugin manifests and Marketplace distribution, but do not document
+        # a stable user directory that GrayOM can mutate transactionally.
+        return AdapterCapabilities(skills=True, mcp=True, plugins=False, health_probe=False)
 
     def __init__(self, home: Path | None = None) -> None:
         self.home = (home or Path.home()).resolve()
@@ -33,10 +36,8 @@ class CursorAdapter(AgentAdapter):
         version = None
         if executable:
             try:
-                version = subprocess.run(
-                    [executable, "--version"], capture_output=True, text=True, timeout=3, check=False,
-                ).stdout.strip().splitlines()[0] or None
-            except (OSError, subprocess.SubprocessError, IndexError):
+                version = ProcessRunner().run([executable, "--version"], timeout=3).stdout.strip().splitlines()[0] or None
+            except (OSError, RuntimeError, IndexError):
                 pass
         detected = bool(executable or self.cursor_home.exists())
         return AgentInstallation(
@@ -111,42 +112,10 @@ class CursorAdapter(AgentAdapter):
         return merge_mcp(self.config_path, component, cursor=True)
 
     def install_plugin(self, component: Component) -> ComponentInstallResult:
-        if component.install_method.kind != InstallKind.PLUGIN_GIT:
-            raise AdapterError(f"unsupported Cursor Plugin install method: {component.install_method.kind}")
-        repository = str(component.install_method.repository or component.github_url)
-        if not repository.startswith("https://github.com/"):
-            raise AdapterError("Cursor local Plugins must use an HTTPS GitHub repository")
-        result = ComponentInstallResult(component_id=component.id)
-        target = self.plugins_root / _safe_name(component.id)
-        if target.exists():
-            result.preserved_paths.append(target)
-            return result
-        self.plugins_root.mkdir(parents=True, exist_ok=True)
-        staging = self.plugins_root / f".grayom-{uuid4().hex}"
-        with tempfile.TemporaryDirectory(prefix="grayom-plugin-") as temp_name:
-            repo = Path(temp_name) / "repo"
-            commands = [
-                ["git", "init", "--quiet", str(repo)],
-                ["git", "-C", str(repo), "remote", "add", "origin", repository],
-                ["git", "-C", str(repo), "fetch", "--quiet", "--depth", "1", "origin", component.install_method.ref or "HEAD"],
-                ["git", "-C", str(repo), "checkout", "--quiet", "--detach", "FETCH_HEAD"],
-            ]
-            for command in commands:
-                try:
-                    subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
-                except (OSError, subprocess.SubprocessError) as exc:
-                    raise AdapterError(f"Cursor Plugin checkout failed: {exc}") from exc
-            if not ((repo / "plugin.json").is_file() or (repo / ".cursor-plugin" / "plugin.json").is_file()):
-                raise AdapterError("Cursor Plugin manifest was not found")
-            shutil.copytree(repo, staging, ignore=shutil.ignore_patterns(".git", "__pycache__"))
-        (staging / ".grayom-component.json").write_text(
-            json.dumps({"component_id": component.id, "source": repository, "ref": component.install_method.ref}, indent=2),
-            encoding="utf-8",
+        raise AdapterError(
+            "Cursor Plugin installation requires an official Marketplace/API flow; "
+            "GrayOM will not write to an undocumented local plugin path"
         )
-        os.replace(staging, target)
-        result.changed = True
-        result.created_paths.append(target)
-        return result
 
     def health_check(self, expected: list[Component] | None = None, probe_mcp: bool = True) -> HealthCheckResult:
         del probe_mcp
@@ -175,6 +144,7 @@ class CursorAdapter(AgentAdapter):
                 checks.append(CheckResult(
                     name=f"cursor_{component.type.value}_discovery:{component.id}", passed=component.id in markers,
                     message="component discovery metadata found" if component.id in markers else "component was not discoverable",
+                    level=HealthLevel.INITIALIZATION,
                 ))
             elif component.type == ComponentType.MCP:
                 desired = desired_json_mcp(component, cursor=True)
@@ -188,12 +158,14 @@ class CursorAdapter(AgentAdapter):
                     checks.append(CheckResult(
                         name=f"cursor_mcp_endpoint:{component.id}", passed=parsed.scheme == "https" and bool(parsed.netloc),
                         message="MCP HTTPS endpoint is valid",
+                        level=HealthLevel.INITIALIZATION,
                     ))
                 elif registered and "command" in registered:
                     available = shutil.which(str(registered["command"])) is not None
                     checks.append(CheckResult(
                         name=f"cursor_mcp_process:{component.id}", passed=available,
                         message="MCP command is executable" if available else "MCP command not found",
+                        level=HealthLevel.INITIALIZATION,
                     ))
         return HealthCheckResult(checks=checks)
 
@@ -202,6 +174,10 @@ class CursorAdapter(AgentAdapter):
         allowed = [self.skills_root.resolve(), self.plugins_root.resolve()]
         for path in reversed(manifest.created_paths):
             try:
+                root = next((item for item in allowed if path.resolve(strict=False).is_relative_to(item)), None)
+                if root is None:
+                    raise AdapterError(f"refusing to remove unmanaged path: {path}")
+                validate_managed_path(path, root, allow_missing=False)
                 resolved = path.resolve()
                 if not any(resolved.is_relative_to(root) for root in allowed) or not (resolved / ".grayom-component.json").exists():
                     raise AdapterError(f"refusing to remove unmanaged path: {resolved}")
@@ -210,6 +186,9 @@ class CursorAdapter(AgentAdapter):
                 result.errors.append(str(exc))
         for entry in manifest.backup.entries:
             try:
+                allowed_configs = {path.resolve(strict=False) for path in self.get_config_paths()}
+                if entry.original.resolve(strict=False) not in allowed_configs:
+                    raise AdapterError(f"refusing to restore unexpected config path: {entry.original}")
                 if entry.existed:
                     if not entry.backup:
                         raise AdapterError(f"missing backup for {entry.original}")

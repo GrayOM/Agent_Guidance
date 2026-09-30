@@ -1,0 +1,5 @@
+# user comment must survive
+model = "gpt-user-choice"
+
+[features]
+custom_flag = true

@@ -2,15 +2,19 @@ import shutil
 from pathlib import Path
 
 from grayom_agent_guidance.adapters import AgentAdapter
-from grayom_agent_guidance.core import MultiAgentInstallationTransaction
+from grayom_agent_guidance.core import MultiAgentInstallationTransaction, find_incomplete_transactions
 from grayom_agent_guidance.models import (
-    AgentComponentAction, AgentInstallation, AgentPlan, AgentType, BackupEntry, BackupManifest,
+    AdapterCapabilities, AgentComponentAction, AgentInstallation, AgentPlan, AgentType, BackupEntry, BackupManifest,
     CheckResult, CompatibilityResult, CompatibilityStatus, Component, ComponentInstallResult,
     ComponentType, HealthCheckResult, InstallationManifest, MultiAgentPlan, RollbackResult,
+    TransactionState,
 )
 
 
 class FakeAdapter(AgentAdapter):
+    @property
+    def capabilities(self): return AdapterCapabilities(skills=True, mcp=True, plugins=True, health_probe=True)
+
     def __init__(self, agent: AgentType, root: Path, fail: bool = False) -> None:
         self.agent, self.root, self.fail = agent, root, fail
         self.config = root / "config.json"
@@ -68,5 +72,25 @@ def test_third_agent_failure_rolls_back_every_agent(tmp_path) -> None:
     }
     result = MultiAgentInstallationTransaction(adapters, tmp_path / "backups").execute(_plan())
     assert not result.success
+    assert result.manifest.state == TransactionState.ROLLED_BACK
     assert all(adapter.config.read_text(encoding="utf-8") == "original" for adapter in adapters.values())
     assert set(result.rollbacks) == set(AgentType)
+
+
+def test_successful_transaction_is_committed_and_not_incomplete(tmp_path) -> None:
+    adapters = {agent: FakeAdapter(agent, tmp_path / agent.value) for agent in AgentType}
+    root = tmp_path / "backups"
+    result = MultiAgentInstallationTransaction(adapters, root).execute(_plan())
+    assert result.success
+    assert result.manifest.state == TransactionState.COMMITTED
+    assert result.manifest.completed
+    assert find_incomplete_transactions(root) == []
+
+
+def test_prepared_manifest_is_detected_for_crash_recovery(tmp_path) -> None:
+    from grayom_agent_guidance.models import MultiAgentManifest
+
+    manifest = MultiAgentManifest(root=tmp_path / "backups" / "crashed", selected_agents=[AgentType.CODEX])
+    manifest.save()
+    found = find_incomplete_transactions(tmp_path / "backups")
+    assert [item.transaction_id for item in found] == [manifest.transaction_id]

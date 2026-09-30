@@ -1,4 +1,4 @@
-from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter, CursorAdapter
+from grayom_agent_guidance.adapters import CodexAdapter, CursorAdapter
 from grayom_agent_guidance.core import build_multi_agent_plan
 from grayom_agent_guidance.models import (
     AgentInstallation, AgentType, Capability, Component, ComponentType, InterviewAnswer,

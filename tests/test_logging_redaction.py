@@ -1,5 +1,3 @@
-import json
-
 from grayom_agent_guidance.observability import EventLogger, redact
 
 

@@ -29,23 +29,25 @@ def scan_repository(files: dict[str, str]) -> RepositorySecurityResult:
     matches: dict[str, list[tuple[str, str]]] = {key: [] for key in PATTERNS}
     for path, content in files.items():
         sample = content[:250_000]
-        for field, patterns in PATTERNS.items():
+        for finding_field, patterns in PATTERNS.items():
             for pattern in patterns:
                 match = pattern.search(sample)
                 if match:
-                    matches[field].append((path, match.group(0)[:120]))
+                    matches[finding_field].append((path, match.group(0)[:120]))
                     break
 
-    for field, found in matches.items():
+    for finding_field, found in matches.items():
         if not found:
             continue
         # Generic URLs alone are LOW evidence; dangerous execution and deletion patterns are high-confidence.
-        setattr(result.metadata, field, True)
+        setattr(result.metadata, finding_field, True)
         for path, excerpt in found[:3]:
             result.evidence.append(EvidenceItem(
-                field=f"security.{field}", value=True, source="repository_file",
+                field=f"security.{finding_field}", value=True, source="repository_file",
                 location=f"{path}: {excerpt}",
             ))
-        if field != "network_access":
-            result.warnings.append(f"repository evidence indicates {field.replace('_', ' ')}")
+        if finding_field != "network_access":
+            result.warnings.append(
+                f"repository evidence indicates {finding_field.replace('_', ' ')}"
+            )
     return result

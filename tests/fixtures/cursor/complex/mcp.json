@@ -1,0 +1,5 @@
+{
+  "userPreference": "preserve",
+  "unknownFutureKey": {"enabled": true},
+  "mcpServers": {"existing": {"command": "existing-server", "args": ["--safe"]}}
+}

@@ -1,7 +1,7 @@
 from grayom_agent_guidance.core import analyze_security
 from grayom_agent_guidance.models import (
     AgentType, Compatibility, Component, ComponentType, DependencyRequirement,
-    Permission, RiskLevel,
+    InstallKind, InstallMethod, Permission, RiskLevel,
 )
 
 
@@ -25,3 +25,14 @@ def test_missing_runtime_creates_warning_without_installing_it() -> None:
     )
     findings = analyze_security([target])
     assert any(item.rule == "dependency.node" and item.level == RiskLevel.WARNING for item in findings)
+
+
+def test_privileged_process_is_warning_and_never_implicit() -> None:
+    target = Component(
+        id="privileged", name="Privileged", type=ComponentType.MCP,
+        source_url="https://github.com/example/privileged",
+        compatibility=Compatibility(agents={AgentType.CODEX}),
+        install_method=InstallMethod(kind=InstallKind.MCP_STDIO, command="sudo", args=["server"]),
+    )
+    findings = analyze_security([target])
+    assert any(item.rule == "install.privileged" and item.level == RiskLevel.WARNING for item in findings)

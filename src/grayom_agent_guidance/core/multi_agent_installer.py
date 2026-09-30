@@ -5,10 +5,11 @@ from pathlib import Path
 from grayom_agent_guidance.adapters import AgentAdapter
 from grayom_agent_guidance.models import (
     AgentType, ComponentType, InstallationManifest, MultiAgentInstallationResult,
-    MultiAgentManifest, MultiAgentPlan,
+    MultiAgentManifest, MultiAgentPlan, TransactionState,
 )
 
 from .shared_components import SharedComponentManager
+from grayom_agent_guidance.runtime import validate_managed_path
 
 
 def _hash(path: Path) -> str | None:
@@ -29,15 +30,20 @@ class MultiAgentInstallationTransaction:
 
     def _destination(self) -> Path:
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
-        return self.backup_root / stamp
+        destination = self.backup_root / stamp
+        validate_managed_path(destination, self.backup_root)
+        return destination
 
     def execute(self, plan: MultiAgentPlan, probe_mcp: bool = True) -> MultiAgentInstallationResult:
         root = self._destination()
         manifest = MultiAgentManifest(
             root=root, selected_agents=list(plan.agents), shared_components=plan.shared_components,
         )
+        manifest.save()
         try:
             # Back up every selected Agent before the first mutation.
+            manifest.state = TransactionState.BACKING_UP
+            manifest.save()
             for agent, agent_plan in plan.agents.items():
                 adapter = self.adapters[agent]
                 for path in adapter.get_config_paths():
@@ -48,6 +54,8 @@ class MultiAgentInstallationTransaction:
                 manifest.agent_manifests[agent] = agent_manifest
             manifest.save()
 
+            manifest.state = TransactionState.APPLYING
+            manifest.save()
             component_by_id = {
                 action.component.id: action.component
                 for agent_plan in plan.agents.values() for action in agent_plan.actions
@@ -70,6 +78,8 @@ class MultiAgentInstallationTransaction:
                     agent_manifest.record(change)
                     agent_manifest.save()
 
+            manifest.state = TransactionState.VERIFYING
+            manifest.save()
             health = {}
             fatal = []
             for agent, agent_plan in plan.agents.items():
@@ -90,9 +100,13 @@ class MultiAgentInstallationTransaction:
                 agent_manifest.completed = True
                 agent_manifest.save()
             manifest.completed = True
+            manifest.state = TransactionState.COMMITTED
             manifest.save()
             return MultiAgentInstallationResult(success=True, manifest=manifest, health=health)
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
+            manifest.error = str(exc)
+            manifest.state = TransactionState.ROLLING_BACK
+            manifest.save()
             rollbacks = {}
             for agent in reversed(list(manifest.agent_manifests)):
                 result = self.adapters[agent].rollback(manifest.agent_manifests[agent])
@@ -100,6 +114,9 @@ class MultiAgentInstallationTransaction:
                 manifest.rollback_errors.extend(
                     f"{agent.value}: {error}" for error in result.errors
                 )
+            manifest.state = (
+                TransactionState.FAILED if manifest.rollback_errors else TransactionState.ROLLED_BACK
+            )
             manifest.save()
             return MultiAgentInstallationResult(
                 success=False, manifest=manifest, rollbacks=rollbacks, error=str(exc),
@@ -109,9 +126,30 @@ class MultiAgentInstallationTransaction:
 def rollback_multi_agent(
     manifest: MultiAgentManifest, adapters: dict[AgentType, AgentAdapter],
 ) -> dict[AgentType, object]:
+    manifest.state = TransactionState.ROLLING_BACK
+    manifest.save()
     results = {}
     for agent in reversed(list(manifest.agent_manifests)):
         if agent not in adapters:
             continue
         results[agent] = adapters[agent].rollback(manifest.agent_manifests[agent])
+    errors = [error for result in results.values() for error in result.errors]
+    manifest.rollback_errors.extend(errors)
+    manifest.state = TransactionState.FAILED if errors else TransactionState.ROLLED_BACK
+    manifest.save()
     return results
+
+
+def find_incomplete_transactions(root: Path) -> list[MultiAgentManifest]:
+    incomplete: list[MultiAgentManifest] = []
+    terminal = {TransactionState.COMMITTED, TransactionState.ROLLED_BACK, TransactionState.FAILED}
+    if not root.exists():
+        return incomplete
+    for path in sorted(root.glob("*/manifest.json")):
+        try:
+            manifest = MultiAgentManifest.load(path)
+        except (OSError, ValueError):
+            continue
+        if manifest.state not in terminal:
+            incomplete.append(manifest)
+    return incomplete

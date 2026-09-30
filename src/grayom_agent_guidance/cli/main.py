@@ -1,5 +1,6 @@
 import json
 import sys
+from enum import IntEnum
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from grayom_agent_guidance.config import grayom_home, load_config
 from grayom_agent_guidance.core import (
     MultiAgentInstallationTransaction, UpdateTransaction, analyze_conflicts,
     analyze_security, build_multi_agent_plan, build_update_plan, detect_platform,
-    discover_components_sync, explain_plan, recommend, rollback_multi_agent,
+    discover_components_sync, explain_plan, find_incomplete_transactions, recommend, rollback_multi_agent,
 )
 from grayom_agent_guidance.errors import GrayOMError
 from grayom_agent_guidance.models import (
@@ -25,6 +26,7 @@ from grayom_agent_guidance.models import (
 from grayom_agent_guidance.observability import EventLogger, redact
 from grayom_agent_guidance.registry import load_registry
 from grayom_agent_guidance.state import StateStore
+from grayom_agent_guidance.runtime import OperationLock
 
 from .interview import run_interview
 from .ui import show_detected_agents, show_discovery, show_header, show_health, show_plan
@@ -32,6 +34,16 @@ from .ui import show_detected_agents, show_discovery, show_header, show_health, 
 app = typer.Typer(no_args_is_help=False, help="GrayOM AI Agent Environment Manager")
 console = Console()
 _verbose = False
+
+
+class ExitCode(IntEnum):
+    SUCCESS = 0
+    FAILURE = 1
+    CANCELLED = 2
+    CONFIGURATION = 3
+    INSTALLATION = 4
+    HEALTH = 5
+    ROLLBACK = 6
 
 
 def _adapter_map(home: Path | None = None) -> dict[AgentType, AgentAdapter]:
@@ -91,11 +103,27 @@ def _run_setup(probe_mcp: bool = True, offline: bool = False, dry_run: bool = Fa
         approved = inquirer.confirm(message="Install all changes?", default=False).execute()
         if not approved:
             console.print("Cancelled. No Agent settings were changed.")
-            return
+            raise typer.Exit(code=ExitCode.CANCELLED)
         logger = EventLogger(verbose=_verbose)
-        result = MultiAgentInstallationTransaction(
-            {agent: adapters[agent] for agent in multi_plan.agents}, grayom_home() / "backups",
-        ).execute(multi_plan, probe_mcp=probe_mcp)
+        selected_adapters = {agent: adapters[agent] for agent in multi_plan.agents}
+        with OperationLock(grayom_home() / "grayom.lock", "setup"):
+            incomplete = find_incomplete_transactions(grayom_home() / "backups")
+            for prior in incomplete:
+                console.print(
+                    f"[yellow]! WARNING[/yellow] Incomplete transaction {prior.transaction_id} "
+                    f"({prior.state.value}) detected; restoring it before setup."
+                )
+                recovery = rollback_multi_agent(prior, adapters)
+                recovery_errors = [error for item in recovery.values() for error in item.errors]
+                if recovery_errors:
+                    raise RuntimeError("incomplete transaction recovery failed: " + "; ".join(recovery_errors))
+            try:
+                result = MultiAgentInstallationTransaction(
+                    selected_adapters, grayom_home() / "backups",
+                ).execute(multi_plan, probe_mcp=probe_mcp)
+            except KeyboardInterrupt:
+                console.print("\nOperation interrupted. GrayOM stopped before reporting success.")
+                raise typer.Exit(code=ExitCode.INSTALLATION)
         logger.write(
             "setup_complete", transaction_id=result.manifest.transaction_id,
             result="success" if result.success else "failed", error=result.error,
@@ -107,7 +135,7 @@ def _run_setup(probe_mcp: bool = True, offline: bool = False, dry_run: bool = Fa
                 console.print(f"{agent.value} rollback {state}.")
                 for error in rollback_result.errors:
                     console.print(f"[red]- {error}[/red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=ExitCode.INSTALLATION)
         StateStore().record(multi_plan, result.manifest)
         console.print("\n[bold green]Installation completed.[/bold green]")
         for agent, health in result.health.items():
@@ -122,6 +150,9 @@ def _run_setup(probe_mcp: bool = True, offline: bool = False, dry_run: bool = Fa
 
 
 def _interactive_menu() -> None:
+    if not sys.stdin.isatty():
+        console.print("Interactive mode requires a TTY. Use a direct command such as 'grayom doctor'.")
+        raise typer.Exit(code=ExitCode.CONFIGURATION)
     show_header(console)
     detected = detect_agents()
     show_detected_agents(console, detected)
@@ -249,19 +280,20 @@ def rollback(
         console.print(f"Latest GrayOM Transaction\nDate: {raw.get('created_at', 'unknown')}\nAgents: {', '.join(agents)}")
         if not yes and not inquirer.confirm(message="Rollback this transaction?", default=False).execute():
             console.print("Cancelled. No changes were made.")
-            return
-        if "selected_agents" in raw:
-            manifest = MultiAgentManifest.model_validate(raw)
-            results = rollback_multi_agent(manifest, _adapter_map())
-            errors = [error for result in results.values() for error in result.errors]
-        else:
-            manifest = InstallationManifest.model_validate(raw)
-            result = CodexAdapter().rollback(manifest)
-            errors = result.errors
+            raise typer.Exit(code=ExitCode.CANCELLED)
+        with OperationLock(grayom_home() / "grayom.lock", "rollback"):
+            if "selected_agents" in raw:
+                manifest = MultiAgentManifest.model_validate(raw)
+                results = rollback_multi_agent(manifest, _adapter_map())
+                errors = [error for result in results.values() for error in result.errors]
+            else:
+                manifest = InstallationManifest.model_validate(raw)
+                result = CodexAdapter().rollback(manifest)
+                errors = result.errors
         if errors:
             for error in errors:
                 console.print(f"[red]- {error}[/red]")
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=ExitCode.ROLLBACK)
         console.print("[green]Rollback completed.[/green]")
     except typer.Exit:
         raise
@@ -282,21 +314,25 @@ def update(
         return
     for item in plan.items:
         console.print(f"[yellow]UPDATE[/yellow] {item.component.name}: {item.current_ref} -> {item.target_ref}")
+        for warning in item.warnings:
+            console.print(f"  [yellow]! WARNING[/yellow] {warning}")
         for finding in analyze_security([item.component]):
             console.print(f"  [{finding.level.value}] {finding.message}")
     if not yes and not inquirer.confirm(message="Install all updates?", default=False).execute():
         console.print("Cancelled. No changes were made.")
-        return
-    result = UpdateTransaction(_adapter_map(), grayom_home() / "backups").execute(plan)
+        raise typer.Exit(code=ExitCode.CANCELLED)
+    with OperationLock(grayom_home() / "grayom.lock", "update"):
+        result = UpdateTransaction(_adapter_map(), grayom_home() / "backups").execute(plan)
     if not result.success:
         console.print(f"[red]Update failed: {result.error}[/red]")
         for error in result.rollback_errors:
             console.print(f"[red]- rollback: {error}[/red]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=ExitCode.INSTALLATION)
     for item in plan.items:
         managed = state.document.components[item.component.id]
         managed.source_ref = item.target_ref
         managed.updated_at = datetime.now(timezone.utc)
+        state.refresh_hashes(item.component.id)
     state.save()
     console.print("[green]Update completed.[/green]")
 
