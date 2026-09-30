@@ -1,4 +1,5 @@
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -12,6 +13,7 @@ from grayom_agent_guidance.runtime import (
     OperationLock, OperationLockedError, PathSecurityError, ProcessRunner,
     ProcessTimeoutError, validate_managed_path,
 )
+from grayom_agent_guidance.runtime.lock import _pid_alive
 from grayom_agent_guidance.state import StateStore
 
 
@@ -56,6 +58,10 @@ def test_operation_lock_rejects_concurrent_owner_and_recovers_stale_lock(tmp_pat
     with OperationLock(path, "doctor"):
         assert path.exists()
     assert not path.exists()
+
+
+def test_current_pid_is_alive_without_signalling_process() -> None:
+    assert _pid_alive(os.getpid())
 
 
 def test_path_validation_rejects_escape_and_symlink(tmp_path) -> None:
