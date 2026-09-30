@@ -5,7 +5,7 @@ from grayom_agent_guidance.cli.ui import LOGO, show_header
 
 def test_logo_is_ascii_only_and_identifies_grayom() -> None:
     assert LOGO.isascii()
-    assert "G R A Y O M" in LOGO
+    assert "####" in LOGO\n    assert "G R A Y O M" not in LOGO
 
 
 def test_header_prints_product_name() -> None:
@@ -14,4 +14,4 @@ def test_header_prints_product_name() -> None:
 
     output = console.export_text()
     assert "G R A Y O M" in output
-    assert "GrayOM Agent Guidance" in output
+    assert "GrayOM Agent Guidance" in output\n    assert "AI Agent Environment Manager" in output
