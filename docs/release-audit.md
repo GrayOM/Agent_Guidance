@@ -26,8 +26,11 @@ exist. `PARTIAL` means the safe subset is implemented and the missing behavior i
 | Packaging/clean install | IMPLEMENTED | wheel build, wheel reinstall, entry-point smoke in CI/release checks |
 | Update | PARTIAL | verified Registry ref updates only; no live upstream version migration |
 
-## Release blockers
+## Release gate result
 
-The RC gate requires CI and clean-wheel checks to pass on the published commit. A final `0.1.0`
-release must not be declared until the three-OS workflow has completed. Real Agent application
-integration on Windows and macOS remains explicitly not verified and is a stable-release validation item.
+`0.1.0rc1`: **READY**. GitHub Actions run 36652076601 passed the Ubuntu, Windows, and macOS matrix on
+Python 3.11/3.12 plus quality, dependency-audit, and clean-wheel packaging checks.
+
+This is an RC decision, not a claim that final `0.1.0` is fully field-validated. Real installed-Agent
+application sessions on Windows and macOS remain explicitly `NOT VERIFIED` and are a stable-release
+validation item.
