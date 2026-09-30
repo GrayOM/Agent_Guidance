@@ -1,6 +1,8 @@
-from rich.console import Console
+from rich.align import Align
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from grayom_agent_guidance.core.discovery import DiscoveryResult
 from grayom_agent_guidance.models import (
