@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="760" viewBox="0 0 1440 760">
+  <rect width="1440" height="760" rx="18" fill="#0d1117"/>
+  <rect width="1440" height="54" rx="18" fill="#161b22"/>
+  <circle cx="30" cy="27" r="8" fill="#ff5f57"/><circle cx="56" cy="27" r="8" fill="#febc2e"/><circle cx="82" cy="27" r="8" fill="#28c840"/>
+  <text x="720" y="34" text-anchor="middle" fill="#8b949e" font-family="DejaVu Sans Mono, monospace" font-size="18">grayom — first run</text>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="22">
+    <text x="34" y="104" fill="#58a6ff">  ██████╗ ██████╗  █████╗ ██╗   ██╗ ██████╗ ███╗   ███╗</text>
+    <text x="34" y="140" fill="#58a6ff"> ██╔════╝ ██╔══██╗██╔══██╗╚██╗ ██╔╝██╔═══██╗████╗ ████║</text>
+    <text x="34" y="176" fill="#58a6ff"> ██║  ███╗██████╔╝███████║ ╚████╔╝ ██║   ██║██╔████╔██║</text>
+    <text x="34" y="212" fill="#58a6ff"> ██║   ██║██╔══██╗██╔══██║  ╚██╔╝  ██║   ██║██║╚██╔╝██║</text>
+    <text x="34" y="248" fill="#58a6ff"> ╚██████╔╝██║  ██║██║  ██║   ██║   ╚██████╔╝██║ ╚═╝ ██║</text>
+    <text x="34" y="284" fill="#58a6ff">  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝    ╚═════╝ ╚═╝     ╚═╝</text>
+    <text x="34" y="340" fill="#f0f6fc">GrayOM Agent Guidance</text>
+    <text x="34" y="376" fill="#8b949e">AI Agent Environment Manager · Version 0.1.0rc1</text>
+    <text x="34" y="438" fill="#f0f6fc">Detected Agents:</text>
+    <text x="34" y="476" fill="#7ee787">✓ Codex</text>
+    <text x="34" y="514" fill="#f85149">✗ Claude Code</text>
+    <text x="34" y="552" fill="#f85149">✗ Cursor</text>
+    <text x="34" y="614" fill="#f0f6fc">? What would you like to do?</text>
+    <rect x="28" y="635" width="480" height="42" rx="6" fill="#1f6feb"/>
+    <text x="43" y="664" fill="#ffffff">❯ Setup Agent Environment</text>
+    <text x="43" y="708" fill="#8b949e">  Get Recommendations   ·   Run Doctor</text>
+  </g>
+</svg>

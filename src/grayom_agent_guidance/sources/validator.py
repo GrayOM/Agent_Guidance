@@ -1,0 +1,43 @@
+from grayom_agent_guidance.models import (
+    AgentType, CandidateState, Component, ComponentType, InstallKind, MaintenanceStatus,
+)
+
+
+class ComponentValidator:
+    def __init__(self, selected_agents: set[AgentType] | None = None) -> None:
+        self.selected_agents = selected_agents or set()
+
+    def validate(self, component: Component) -> Component:
+        warnings = list(component.validation_warnings)
+        hard_failures: list[str] = []
+        evidence = {item.field: item.value for item in component.evidence}
+
+        if self.selected_agents and not self.selected_agents.issubset(component.supported_agents):
+            hard_failures.append("selected Agent support is not evidenced")
+        if not component.capabilities:
+            hard_failures.append("no relevant capability could be verified")
+        if not evidence.get("readme_present", True):
+            warnings.append("README is missing or empty")
+        if component.maintenance_metadata.archived:
+            warnings.append("repository is archived")
+        if component.maintenance_metadata.status == MaintenanceStatus.STALE:
+            warnings.append("project appears stale")
+        if not component.maintenance_metadata.license:
+            warnings.append("license is missing or unclear")
+        if component.install_method.kind == InstallKind.NONE:
+            hard_failures.append("install method could not be determined")
+        if component.type == ComponentType.PLUGIN:
+            hard_failures.append("Codex Plugin installation is not supported in the current MVP")
+        for dependency in component.dependencies:
+            if dependency.required and dependency.detected is False:
+                warnings.append(f"{dependency.name} is required but was not detected")
+
+        component.validation_warnings = list(dict.fromkeys(warnings + hard_failures))
+        component.recommendable = not hard_failures
+        component.candidate_state = CandidateState.VERIFIED if component.recommendable else CandidateState.REVIEW
+        if component.recommendable and not component.trust.verified:
+            component.trust.verified = True
+            component.trust.verification_reason = (
+                "repository metadata, README, structure, compatibility, and install method validated"
+            )
+        return component

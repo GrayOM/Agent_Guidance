@@ -1,0 +1,10 @@
+# custom user configuration
+model = "custom-model"
+approval_policy = "on-request"
+
+[projects."/workspace/example"]
+trust_level = "trusted"
+
+[mcp_servers.existing]
+command = "existing-server"
+args = ["--safe"]

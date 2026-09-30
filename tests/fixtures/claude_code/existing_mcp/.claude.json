@@ -1,0 +1,3 @@
+{
+  "mcpServers": {"user_server": {"type": "http", "url": "https://user.example/mcp"}}
+}

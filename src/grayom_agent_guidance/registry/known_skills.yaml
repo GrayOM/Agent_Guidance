@@ -1,0 +1,76 @@
+- id: trailofbits-skills
+  name: Trail of Bits Skills
+  type: skill
+  source: local_registry
+  github_url: https://github.com/trailofbits/skills
+  official: false
+  supported_agents: [codex, claude_code]
+  capabilities: [security_analysis, source_analysis, vulnerability_research, reporting]
+  permissions: [filesystem_read, shell, subprocess, external_download]
+  context_cost: 3
+  quality_score: 88
+  install_paths: [user_skills/trailofbits-skills--*]
+  install_method:
+    kind: git_skills
+    repository: https://github.com/trailofbits/skills
+    ref: 82fe8226252622fa807643bdca1710901198553a
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+    external_download: true
+    filesystem_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-09-29"
+    license: CC-BY-SA-4.0
+
+- id: superpowers
+  name: Superpowers
+  type: skill
+  source: local_registry
+  github_url: https://github.com/obra/superpowers
+  official: false
+  supported_agents: [codex, claude_code, cursor]
+  capabilities: [planning, code_editing, development_workflow, testing, code_review]
+  permissions: [filesystem_read, filesystem_write, shell, external_download]
+  context_cost: 4
+  quality_score: 82
+  overlaps: [addy-agent-skills]
+  install_paths: [user_skills/superpowers--*]
+  install_method:
+    kind: git_skills
+    repository: https://github.com/obra/superpowers
+    ref: 8ca22dba9a94f28898bbce59f2537ff4d87c747d
+  security_metadata:
+    shell_execution: true
+    external_download: true
+    filesystem_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-09-29"
+    license: MIT
+
+- id: addy-agent-skills
+  name: Addy Osmani Agent Skills
+  type: skill
+  source: local_registry
+  github_url: https://github.com/addyosmani/agent-skills
+  official: false
+  supported_agents: [codex, claude_code, cursor]
+  capabilities: [planning, code_editing, testing, code_review]
+  permissions: [filesystem_read, filesystem_write, shell, external_download]
+  context_cost: 4
+  quality_score: 76
+  overlaps: [superpowers]
+  install_paths: [user_skills/addy-agent-skills--*]
+  install_method:
+    kind: git_skills
+    repository: https://github.com/addyosmani/agent-skills
+    ref: 2686b620fc1fed2e8f60c704839c766b8594c6b6
+  security_metadata:
+    shell_execution: true
+    external_download: true
+    filesystem_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-09-29"
