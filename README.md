@@ -1,270 +1,179 @@
 # GrayOM Agent Guidance
 
-업무 중심 인터뷰로 AI Agent용 Skill, MCP, Plugin을 추천하고 기존 Agent 환경에 안전하게 적용하는 CLI입니다.
+**업무만 선택하면 필요한 AI Agent 확장 구성을 찾아서 설치·검증해 주는 CLI 도구입니다.**
 
-## What is GrayOM Agent Guidance?
+GrayOM은 사용자가 Skill, MCP, Plugin을 직접 공부하거나 고르게 하지 않습니다. 사용하는 Agent와
+업무를 선택하면 호환성, 기능 중복, 충돌, 보안 위험을 분석하고 설치 전 전체 Plan을 보여줍니다.
 
-GrayOM은 사용자가 Skill이나 MCP 구현을 직접 고르게 하지 않습니다. 선택한 Agent, 업무 분야, 세부
-작업에서 필요한 capability를 결정적으로 추론하고 Local Registry, 공식 프로젝트, GitHub 후보를
-검증합니다. 이후 호환성, 중복, 충돌, 유지보수 상태, 권한과 보안 신호를 분석해 Agent별 변경 Plan을
-만듭니다.
+> GrayOM은 Codex, Claude Code, Cursor 자체를 설치하지 않습니다. 이미 설치된 Agent의 확장 환경만
+> 안전하게 설정합니다.
 
-GrayOM은 Agent나 Node.js, Python, Docker, Git, IDE를 설치하지 않습니다. 이미 설치된 Agent의 AI
-확장 환경만 관리합니다.
+## 빠른 시작
 
-## Supported Agents
-
-- Codex
-- Claude Code
-- Cursor
-
-Agent별 지원 범위가 다르면 지원되는 Agent에만 적용합니다. `UNKNOWN` 호환성을 자동으로
-`SUPPORTED`로 취급하지 않습니다.
-
-## Features
-
-- 업무/세부 작업 복수 선택과 Minimal/Performance 모드
-- Local Registry, 공식 catalog, GitHub 실시간 후보 탐색과 검증 캐시
-- 결정적 capability inference와 추천 근거 설명
-- Agent별 compatibility 및 version requirement 분석
-- Skill/MCP/Plugin 중복, capability overlap, config/tool/path 충돌 분석
-- LOW/WARNING 보안 검토와 repository 정적 증거
-- shared MCP 1회 준비 및 Agent별 설정 참조
-- 기존 구성 reconciliation과 반복 실행 idempotency
-- 모든 Agent 선백업 후 적용하는 전역 transaction
-- 통합 Health Check와 전체 rollback
-- GrayOM-managed component update
-- dry-run, doctor, sanitized debug info, JSONL event log
-- explicit transaction lifecycle, crash recovery, concurrent-operation lock, and component hash manifests
-- shared timeout-bound process runner and managed-path/symlink validation
-
-## Installation
-
-### 1. 설치 전 확인
-
-GrayOM은 Agent 자체를 설치하지 않습니다. 아래 항목을 먼저 준비합니다.
+### 1. 준비 사항
 
 - Python 3.11 이상
-- 설정할 Agent 중 하나 이상: Codex, Claude Code, Cursor
 - Git
-- 권장: [pipx](https://pipx.pypa.io/stable/installation/)
+- [pipx](https://pipx.pypa.io/stable/installation/)
+- Codex, Claude Code, Cursor 중 하나 이상
 
-버전을 확인합니다.
+### 2. 설치
 
-```bash
-python --version
-git --version
-pipx --version
-```
-
-### 2. 권장 설치: pipx
-
-현재 `0.1.0rc1`은 PyPI에 게시하지 않았으므로 GitHub source에서 설치합니다. `main` 브랜치를 clone한
-다음 repository root에서 실행합니다.
+Windows, macOS, Linux에서 같은 명령을 사용합니다.
 
 ```bash
-git clone https://github.com/GrayOM/Agent_Guidance.git
-cd Agent_Guidance
-pipx install .
+pipx install "git+https://github.com/GrayOM/Agent_Guidance.git@main"
 ```
 
-`pipx`는 GrayOM 전용 가상환경과 `grayom` 명령을 생성하므로 일반 Python 환경을 변경하지 않습니다.
-
-![GrayOM source installation](docs/assets/install-source.svg)
-
-설치 확인:
-
-```bash
-grayom --version
-grayom --help
-```
-
-`grayom` 명령을 찾지 못하면 터미널을 다시 열거나 다음 명령을 실행합니다.
-
-```bash
-pipx ensurepath
-```
-
-### 3. 가상환경 설치
-
-`pipx`를 사용하지 않는 경우 프로젝트 전용 가상환경에 설치합니다.
-
-Linux / macOS:
-
-```bash
-git clone https://github.com/GrayOM/Agent_Guidance.git
-cd Agent_Guidance
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install .
-grayom --version
-```
-
-Windows PowerShell:
-
-```powershell
-git clone https://github.com/GrayOM/Agent_Guidance.git
-Set-Location .\Agent_Guidance
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install .
-grayom --version
-```
-
-![GrayOM Windows virtual environment installation](docs/assets/install-windows.svg)
-
-PowerShell에서 실행 정책 오류가 발생하면 현재 터미널 프로세스에만 적용합니다.
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-```
-
-### 4. 최초 실행
+### 3. 실행
 
 ```bash
 grayom
 ```
 
-GrayOM이 설치된 Agent를 표시한 뒤 Setup, Recommend, Doctor, Update, Rollback 중 수행할 작업을
-선택합니다. `setup`에서는 업무 분야와 세부 작업만 선택하며 Skill/MCP/Plugin을 직접 선택하지 않습니다.
+이후에는 화면의 선택지만 따라가면 됩니다. 다른 명령어를 외울 필요가 없습니다.
 
 ![GrayOM first run](docs/assets/first-run.svg)
 
-설치 전에 변경 Plan만 확인하려면 다음 명령을 먼저 실행하는 것을 권장합니다.
+## 어떻게 동작하나요?
+
+1. 설치된 Agent를 찾습니다.
+2. 사용할 Agent와 업무 분야, 세부 작업을 선택합니다.
+3. GrayOM이 필요한 기능을 내부적으로 추론합니다.
+4. Local Registry와 검증된 후보에서 Skill, MCP, Plugin을 추천합니다.
+5. 호환성, 중복, 충돌, 권한과 보안 위험을 검사합니다.
+6. 실제 변경 내용을 하나의 Plan으로 보여줍니다.
+7. 사용자가 한 번 승인하면 설정을 백업한 뒤 설치합니다.
+8. Health Check에 실패하면 변경 전 상태로 되돌립니다.
+
+사용자에게 `GitHub MCP가 필요한가?`, `브라우저 자동화가 필요한가?` 같은 기술 질문을 하지 않습니다.
+사용자는 자신의 업무만 선택하면 됩니다.
+
+## 사용자가 선택하는 항목
+
+- Agent: Codex, Claude Code, Cursor
+- 업무 분야: 일반 개발, 웹 개발, AI Agent 개발, 보안 도구 개발, 취약점 연구, OSINT 등
+- 세부 작업: 소스코드 분석, 테스트, 보안 검토, CVE 분석, 보고서 자동화 등
+- 구성 모드
+  - **Minimal**: 필요한 구성만 최소한으로 설치
+  - **Performance**: 전문 구성과 기능 범위를 더 넓게 사용
+
+## 설치 전 확인할 수 있는 내용
+
+최종 Plan에는 다음 내용이 한 번에 표시됩니다.
+
+- 설치할 Skill, MCP, Plugin
+- 선택한 이유와 제외한 후보
+- Agent별 호환성
+- 기능 중복과 설정 충돌
+- 파일·네트워크·Shell·Credential 접근 위험
+- 변경할 설정과 백업 여부
+
+보안 등급은 `LOW`와 `WARNING`만 사용합니다. `WARNING`은 설치 차단이 아니라 사용자가 승인 전에
+확인해야 할 정보입니다.
+
+## 안전하게 변경하는 방식
+
+- 최종 승인 전에는 Agent 설정을 수정하지 않습니다.
+- 기존 설정은 덮어쓰지 않고 merge합니다.
+- 모든 대상 Agent를 먼저 백업한 뒤 설치를 시작합니다.
+- 기존에 사용자가 설치한 Component는 삭제하지 않습니다.
+- 설정 parse, Skill discovery, MCP 등록과 실행 가능 여부를 확인합니다.
+- 중간 실패 시 새로 만든 항목을 제거하고 기존 설정을 복원합니다.
+- Token, password, OAuth 값, SSH key를 로그나 상태 파일에 저장하지 않습니다.
+
+자세한 보안 정책은 [SECURITY.md](SECURITY.md)를 참고하십시오.
+
+## 자주 쓰는 기능
+
+일반 사용자는 `grayom`만 실행하면 됩니다. 문제가 있는 경우에만 아래 명령을 사용합니다.
+
+```bash
+grayom doctor    # 현재 Agent 설정 점검
+grayom rollback  # 최근 GrayOM 변경 복원
+```
+
+설치하지 않고 추천 Plan만 확인하려면:
 
 ```bash
 grayom setup --dry-run
 ```
 
-실제 설치는 Plan 전체에 대해 한 번만 승인받으며, 승인 전에는 Agent 설정이나 backup을 만들지 않습니다.
+## 업데이트와 제거
 
-### 5. 업데이트와 제거
-
-GitHub source를 최신 상태로 받은 뒤 재설치합니다.
+업데이트:
 
 ```bash
+pipx upgrade grayom-agent-guidance
+```
+
+제거:
+
+```bash
+pipx uninstall grayom-agent-guidance
+```
+
+프로그램을 제거해도 이미 적용된 Agent 설정은 자동 복원되지 않습니다. 설정까지 되돌리려면 제거 전에
+`grayom rollback`을 실행하십시오.
+
+## 설치 문제 해결
+
+### `grayom` 명령을 찾을 수 없는 경우
+
+```bash
+pipx ensurepath
+```
+
+명령 실행 후 터미널을 다시 엽니다.
+
+### pipx를 사용할 수 없는 경우
+
+<details>
+<summary>Python 가상환경으로 설치하기</summary>
+
+```bash
+git clone https://github.com/GrayOM/Agent_Guidance.git
 cd Agent_Guidance
-git pull --ff-only
-pipx uninstall grayom-agent-guidance
-pipx install .
-```
-
-GrayOM 프로그램만 제거:
-
-```bash
-pipx uninstall grayom-agent-guidance
-```
-
-프로그램 제거는 이미 적용된 Agent 설정을 자동으로 되돌리지 않습니다. 설정을 되돌릴 필요가 있으면
-프로그램 제거 전에 `grayom rollback`을 실행합니다.
-
-### 6. 개발 환경
-
-```bash
 python -m venv .venv
-source .venv/bin/activate  # Windows: .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.lock
-python -m pip install -e . --no-deps
-python -m pytest -q
 ```
 
-## Usage
+가상환경을 활성화한 뒤 설치합니다.
 
 ```bash
-grayom                 # interactive menu
-grayom setup           # recommend, approve once, install, verify
-grayom setup --dry-run # no backup or mutation
-grayom recommend       # Plan only
-grayom doctor          # read-only diagnosis
-grayom update          # GrayOM-managed components only
-grayom rollback        # latest transaction
-grayom debug-info      # sanitized diagnostic JSON
-grayom --version
+python -m pip install .
+grayom
 ```
 
-네트워크 없이 Registry와 검증 캐시만 사용하려면:
+Windows PowerShell의 활성화 경로는 `.venv\Scripts\Activate.ps1`, macOS/Linux는
+`source .venv/bin/activate`입니다.
 
-```bash
-grayom setup --offline
-grayom recommend --offline
-```
+</details>
 
-GitHub API 인증은 환경변수로만 제공합니다.
+## 지원 범위
 
-```bash
-export GITHUB_TOKEN="..."
-export GITHUB_PAT_TOKEN="..."  # GitHub MCP가 요구하는 경우
-```
+| Agent | 감지 | Skill | MCP | Plugin | Health Check / Rollback |
+|---|---:|---:|---:|---:|---:|
+| Codex | 지원 | 지원 | 지원 | 지원 | 지원 |
+| Claude Code | 지원 | 지원 | 지원 | 제한적 | 지원 |
+| Cursor | 지원 | 지원 | 지원 | 제한적 | 지원 |
 
-## Example
+Claude Code와 Cursor는 현재 MCP 설정 및 discovery metadata 중심으로 확인합니다. Cursor Plugin은
+공식적인 transaction-safe 설치 방식이 확인될 때까지 자동 설치하지 않습니다.
 
-`Codex + Claude Code + Cursor`, `Security Tool Development`, `Source Code Analysis`, `Minimal`을
-선택하면 GrayOM은 필요한 capability를 추론하고 전체 후보를 추천한 뒤 Agent별 지원 여부를 다시
-평가합니다. 공통 MCP는 한 번 준비하고 각 Agent의 공식 설정 포맷에 별도로 등록합니다. 설치 승인은
-Plan 전체에 대해 한 번만 받습니다.
+## 데이터 저장 위치
 
-## Configuration and State
+GrayOM의 백업, 캐시, 로그, 상태 정보는 기본적으로 `~/.grayom/`에 저장됩니다. 사용자의 업무 선택
+Profile 전체와 Credential 값은 저장하지 않습니다.
 
-GrayOM 데이터는 기본적으로 `~/.grayom/` 아래에 저장합니다.
+## 개발자 문서
 
-```text
-~/.grayom/
-├── config.yaml
-├── cache/
-├── backups/
-├── logs/
-└── state/
-```
+- [Architecture](architecture.md)
+- [Release audit](docs/release-audit.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
 
-`GRAYOM_HOME`으로 위치를 바꿀 수 있습니다. 업무 Profile 전체는 저장하지 않습니다. state에는
-GrayOM이 관리하는 component ID, Agent 사용 관계, ownership, source ref, transaction 참조와
-설치 경로·생성 파일 SHA-256을 기록합니다. credential 값은 포함하지 않습니다.
-
-## Security Model
-
-- 승인 전 Agent 설정을 수정하거나 backup을 만들지 않습니다.
-- 설정은 parse → merge → validate → atomic replace 순서로 처리합니다.
-- 사용자 기존 component와 충돌하는 MCP 이름은 보존하고 안전한 `-grayom` 별칭을 사용합니다.
-- rollback은 GrayOM marker와 manifest로 소유권이 확인된 경로만 제거합니다.
-- 원격 README의 shell 명령을 실행하지 않으며 모든 child process는 argument list와 timeout을 사용합니다.
-- token, password, OAuth 값, SSH key, `.env` secret은 state/log에 저장하지 않습니다.
-- WARNING은 차단 등급이 아니며 최종 Plan에 근거와 함께 표시합니다.
-
-자세한 내용은 [SECURITY.md](SECURITY.md)를 참고하십시오.
-
-## Supported Platforms
-
-Linux, macOS, Windows의 사용자 home 경로를 `pathlib`으로 처리합니다. WSL은 감지하지만 WSL에서
-Windows 호스트에 설치된 Cursor 설정을 추측해 수정하지 않고 경고만 표시합니다.
-
-## Limitations
-
-- Claude Code Plugin은 검증된 marketplace 식별자 없이 임의 Git URL만으로 자동 설치하지 않습니다.
-- Cursor Plugin은 공식 Marketplace/API의 transaction-safe 설치 방식이 확인될 때까지 Plan에서 제외합니다.
-- Codex는 HTTP MCP initialize/tool discovery를 시도할 수 있지만 Claude Code/Cursor의 현재 Health
-  Check는 설정 parse, discovery metadata, endpoint/command 유효성 중심입니다.
-- `grayom update`는 현재 Local Registry의 검증된 ref 변경을 기준으로 동작합니다. live upstream
-  release 비교와 자동 migration은 후속 범위입니다.
-- WSL과 Windows host 사이의 cross-environment 설정 변경은 지원하지 않습니다.
-- 새 추천에서 제외된 기존 GrayOM component를 자동 삭제하지 않습니다.
-- JSON 기반 Agent 설정은 알 수 없는 key를 보존하지만 whitespace/key formatting은 정규화될 수 있습니다.
-- Windows/macOS/Linux fixture CI는 제공하지만 실제 Agent 애플리케이션을 설치한 물리 환경 검증은
-  `0.1.0rc1`에서 `NOT VERIFIED`입니다.
-
-현재 버전은 `0.1.0rc1` Release Candidate입니다. 안정 릴리스 판정과 남은 검증은
-[RC 감사](docs/release-audit.md)에 기록합니다.
-
-## Development
-
-```bash
-python -m compileall -q src tests
-python -m pytest -q --cov=grayom_agent_guidance
-```
-
-Architecture는 [architecture.md](architecture.md)에 정리되어 있습니다.
+현재 버전은 `0.1.0rc1` Release Candidate입니다.
 
 ## License
 
