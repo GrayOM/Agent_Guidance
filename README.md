@@ -1,6 +1,10 @@
-# GrayOM Agent Guidance
+<p align="center">
+  <img src="docs/assets/grayom-eye.svg" width="220" alt="GrayOM eye logo">
+</p>
 
-**업무만 선택하면 필요한 AI Agent 확장 구성을 찾아서 설치·검증해 주는 CLI 도구입니다.**
+<h1 align="center">GrayOM Agent Guidance</h1>
+
+<p align="center"><strong>업무만 선택하면 필요한 AI Agent 확장 구성을 찾아서 설치·검증해 주는 CLI 도구</strong></p>
 
 GrayOM은 사용자가 Skill, MCP, Plugin을 직접 공부하거나 고르게 하지 않습니다. 사용하는 Agent와
 업무를 선택하면 호환성, 기능 중복, 충돌, 보안 위험을 분석하고 설치 전 전체 Plan을 보여줍니다.
