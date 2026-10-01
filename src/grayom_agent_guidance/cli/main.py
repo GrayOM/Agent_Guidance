@@ -206,11 +206,21 @@ def setup(
 
 
 def _state_components(state: StateStore, agent: AgentType) -> list[Component]:
+    """Components GrayOM installed for this Agent, as installed.
+
+    State is preferred over the Registry because it records the component that was actually
+    applied; the Registry is only a fallback for records written before state carried the
+    type and install method, and it never contains a component discovered on GitHub.
+    """
     registry = {component.id: component for component in load_registry()}
-    return [
-        registry[item.component_id] for item in state.document.components.values()
-        if agent in item.agents and item.component_id in registry
-    ]
+    components = []
+    for item in state.document.components.values():
+        if agent not in item.agents:
+            continue
+        restored = item.to_component() or registry.get(item.component_id)
+        if restored:
+            components.append(restored)
+    return components
 
 
 @app.command()
@@ -223,6 +233,8 @@ def doctor(
     show_detected_agents(console, detected)
     adapters = _adapter_map()
     state = StateStore()
+    for warning in state.warnings:
+        console.print(f"[yellow]! WARNING[/yellow] {warning}")
     overall = True
     for installation in detected:
         if not installation.detected:
@@ -311,6 +323,8 @@ def update(
 ) -> None:
     """Update only GrayOM-managed components whose verified source ref changed."""
     state = StateStore()
+    for warning in state.warnings:
+        console.print(f"[yellow]! WARNING[/yellow] {warning}")
     plan = build_update_plan(state, load_registry())
     if not plan.items:
         console.print("[green]All GrayOM-managed components are up to date.[/green]")
