@@ -131,16 +131,26 @@ def _dependencies(raw: RawCandidate) -> list[DependencyRequirement]:
     return requirements
 
 
+def _install_ref(raw: RawCandidate) -> str | None:
+    """A ref git can resolve.
+
+    source_version carries the repository's pushed_at timestamp, which is a cache key rather
+    than a reference, so it must never become one: `git fetch origin 2026-01-01T00:00:00Z`
+    cannot resolve. The head commit is preferred because it pins the install.
+    """
+    return raw.metadata.get("head_sha") or raw.metadata.get("default_branch")
+
+
 def _install_method(raw: RawCandidate, component_type: ComponentType) -> InstallMethod:
     if component_type == ComponentType.SKILL:
         return InstallMethod(
             kind=InstallKind.GIT_SKILLS, repository=raw.repository_url,
-            ref=raw.metadata.get("head_sha") or raw.source_version or raw.metadata.get("default_branch"),
+            ref=_install_ref(raw),
         )
     if component_type == ComponentType.PLUGIN:
         return InstallMethod(
             kind=InstallKind.PLUGIN_GIT, repository=raw.repository_url,
-            ref=raw.metadata.get("head_sha") or raw.source_version or raw.metadata.get("default_branch"),
+            ref=_install_ref(raw),
         )
     readme = raw.readme or ""
     urls = re.findall(r"https://[^\s)`\"']+/mcp/?", readme, flags=re.I)

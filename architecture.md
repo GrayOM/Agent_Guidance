@@ -131,8 +131,12 @@ Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적
 
 ## 10. Update 범위
 
-`grayom update`는 `EXISTING`을 제외하고 Local Registry의 검증된 source ref가 달라진 GrayOM-managed
-component만 대상으로 한다. Update 전 backup, 적용 후 Health Check, 실패 시 asset/config 복구를
-수행한다. 저장 hash와 달라진 사용자 수정 파일은 승인 전에 경고한다. Live upstream release 비교와
-실제 version migration은 후속 범위이며 state/cache/manifest는 schema version 1과 미래 schema 거부를
-지원한다.
+`grayom update`는 `EXISTING`을 제외한 GrayOM-managed component만 대상으로 한다. 비교 기준은
+upstream이 현재 publish하는 ref이며, 고정 방식을 따라 commit pin은 default branch head commit,
+tag pin은 최신 release와 비교한다. upstream을 확인할 수 없는 component는 unchanged가 아니라
+미확인으로 보고하고 Local Registry의 검증된 source ref로 비교를 대체한다. `--offline`은 upstream
+확인 없이 Registry만 사용한다.
+
+Update 전 backup, 적용 후 Health Check, 실패 시 asset/config 복구를 수행한다. 저장 hash와 달라진
+사용자 수정 파일은 승인 전에 경고한다. 실제 version migration은 후속 범위이며
+state/cache/manifest는 schema version 1과 미래 schema 거부를 지원한다.

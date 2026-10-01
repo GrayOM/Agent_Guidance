@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 from grayom_agent_guidance.adapters import AgentAdapter
 from grayom_agent_guidance.models import AgentType, Component, ComponentType, Ownership
 from grayom_agent_guidance.runtime import PathSecurityError, validate_managed_path
-from grayom_agent_guidance.state import StateStore
+from grayom_agent_guidance.sources.upstream import UpstreamRef
+from grayom_agent_guidance.state import ManagedComponent, StateStore
 
 
 class UpdateItem(BaseModel):
@@ -33,30 +34,77 @@ class UpdateResult(BaseModel):
     rollback_errors: list[str] = Field(default_factory=list)
 
 
-def build_update_plan(state: StateStore, candidates: list[Component]) -> UpdatePlan:
+def _modification_warnings(managed: ManagedComponent) -> list[str]:
+    warnings = []
+    for filename, expected_hash in managed.file_hashes.items():
+        path = Path(filename)
+        if not path.is_file():
+            warnings.append(f"managed file is missing: {path}")
+            continue
+        if hashlib.sha256(path.read_bytes()).hexdigest() != expected_hash:
+            warnings.append(f"file was modified after GrayOM installed it: {path}")
+    return warnings
+
+
+def _at_reference(component: Component, ref: str) -> Component:
+    """The component as it would be installed at ref, so the transaction applies that ref."""
+    updated = component.model_copy(deep=True)
+    updated.install_method = updated.install_method.model_copy(update={"ref": ref})
+    return updated
+
+
+def build_update_plan(
+    state: StateStore,
+    candidates: list[Component],
+    upstream: dict[str, UpstreamRef] | None = None,
+) -> UpdatePlan:
+    """Plan updates for GrayOM-managed components.
+
+    Upstream is authoritative when it could be read: it is what the source publishes now.
+    The Local Registry is the fallback for a component whose upstream could not be checked,
+    which keeps an offline run working exactly as it did before.
+    """
     available = {component.id: component for component in candidates}
+    upstream = upstream or {}
     plan = UpdatePlan()
     for component_id, managed in sorted(state.document.components.items()):
         if managed.ownership == Ownership.EXISTING:
             continue
+        installed = managed.to_component()
+        reference = upstream.get(component_id)
+
+        if reference and reference.checked:
+            if not reference.changed:
+                plan.unchanged.append(f"{component_id}: up to date with upstream")
+                continue
+            base = installed or available.get(component_id)
+            if not base:
+                plan.unchanged.append(
+                    f"{component_id}: upstream moved to {reference.latest_ref} but the installed "
+                    "component cannot be rebuilt from state or the Registry"
+                )
+                continue
+            target = str(reference.latest_ref)
+            plan.items.append(UpdateItem(
+                component=_at_reference(base, target), agents=managed.agents,
+                current_ref=managed.source_ref, target_ref=target,
+                reason=reference.describe(), warnings=_modification_warnings(managed),
+            ))
+            continue
+
         component = available.get(component_id)
         if not component:
-            plan.unchanged.append(f"{component_id}: source is not currently available")
+            unreachable = f"; {reference.reason}" if reference and reference.reason else ""
+            plan.unchanged.append(
+                f"{component_id}: source is not currently available{unreachable}"
+            )
             continue
         target = component.install_method.ref
         if target and target != managed.source_ref:
-            warnings = []
-            for filename, expected_hash in managed.file_hashes.items():
-                path = Path(filename)
-                if not path.is_file():
-                    warnings.append(f"managed file is missing: {path}")
-                    continue
-                current_hash = hashlib.sha256(path.read_bytes()).hexdigest()
-                if current_hash != expected_hash:
-                    warnings.append(f"file was modified after GrayOM installed it: {path}")
             plan.items.append(UpdateItem(
                 component=component, agents=managed.agents, current_ref=managed.source_ref,
-                target_ref=target, reason="verified upstream reference changed", warnings=warnings,
+                target_ref=target, reason="verified Registry reference changed",
+                warnings=_modification_warnings(managed),
             ))
         else:
             plan.unchanged.append(f"{component_id}: up to date")
