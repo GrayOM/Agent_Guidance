@@ -31,6 +31,13 @@ class ExistingConfigurationConflict(AdapterError):
     pass
 
 
+# Reconciliation classifies an existing component by this exact reason, so every adapter must
+# report an incompatible registration with this constant rather than its own wording.
+MCP_DIFFERENT_SETTINGS_REASON = (
+    "MCP id already exists with different settings; a safe GrayOM alias will be used"
+)
+
+
 def _safe_name(value: str) -> str:
     normalized = re.sub(r"[^a-z0-9._-]+", "-", value.strip().lower()).strip("-.")
     if not normalized or normalized in {".", ".."}:
@@ -124,7 +131,7 @@ class CodexAdapter(AgentAdapter):
             return True, "compatible MCP registration already exists; preserved"
         if any(dict(value) == desired for name, value in (self._read_config().get("mcp_servers") or {}).items() if name.startswith(f"{component.id}-grayom")):
             return True, "compatible GrayOM MCP alias already exists; preserved"
-        return True, "MCP id already exists with different settings; a safe GrayOM alias will be used"
+        return True, MCP_DIFFERENT_SETTINGS_REASON
 
     def backup(self, destination: Path) -> BackupManifest:
         destination.mkdir(parents=True, exist_ok=False)

@@ -25,6 +25,7 @@ from grayom_agent_guidance.models import (
 )
 from grayom_agent_guidance.observability import EventLogger, redact
 from grayom_agent_guidance.registry import load_registry
+from grayom_agent_guidance.schema import load_versioned_json
 from grayom_agent_guidance.state import StateStore
 from grayom_agent_guidance.runtime import OperationLock
 
@@ -138,6 +139,8 @@ def _run_setup(probe_mcp: bool = True, offline: bool = False, dry_run: bool = Fa
             raise typer.Exit(code=ExitCode.INSTALLATION)
         StateStore().record(multi_plan, result.manifest)
         console.print("\n[bold green]Installation completed.[/bold green]")
+        for warning in result.manifest.shared_warnings:
+            console.print(f"[yellow]! WARNING[/yellow] {warning}")
         for agent, health in result.health.items():
             console.print(f"\n[bold]{agent.value.replace('_', ' ').title()}[/bold]")
             show_health(console, health)
@@ -275,7 +278,7 @@ def rollback(
     try:
         manifest_path = path or _latest_manifest(grayom_home() / "backups")
         target = manifest_path / "manifest.json" if manifest_path.is_dir() else manifest_path
-        raw = json.loads(target.read_text(encoding="utf-8"))
+        raw = load_versioned_json(target)
         agents = raw.get("selected_agents", ["codex"])
         console.print(f"Latest GrayOM Transaction\nDate: {raw.get('created_at', 'unknown')}\nAgents: {', '.join(agents)}")
         if not yes and not inquirer.confirm(message="Rollback this transaction?", default=False).execute():

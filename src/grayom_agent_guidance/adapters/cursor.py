@@ -11,7 +11,7 @@ from grayom_agent_guidance.models import (
 from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
 
 from .base import AgentAdapter
-from .codex import AdapterError, _safe_name
+from .codex import MCP_DIFFERENT_SETTINGS_REASON, AdapterError, _safe_name
 from .json_support import desired_json_mcp, install_git_skills, merge_mcp, read_json_object
 
 
@@ -92,7 +92,7 @@ class CursorAdapter(AgentAdapter):
             ):
                 return True, "compatible GrayOM MCP alias already exists"
             if existing is not None:
-                return True, "MCP has different settings; a safe GrayOM alias will be used"
+                return True, MCP_DIFFERENT_SETTINGS_REASON
         return False, None
 
     def backup(self, destination: Path) -> BackupManifest:

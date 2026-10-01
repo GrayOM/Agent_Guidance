@@ -33,10 +33,15 @@ def run_interview(detected: list[AgentInstallation] | None = None) -> InterviewA
     for agent, label in (
         (AgentType.CODEX, "Codex"), (AgentType.CLAUDE_CODE, "Claude Code"), (AgentType.CURSOR, "Cursor"),
     ):
-        choice = {"name": label, "value": agent, "enabled": bool(detected_map.get(agent, False))}
+        # InquirerPy's checkbox has no 'disabled' option, so an Agent that is not installed is
+        # withheld from the list instead of being offered as an unselectable entry.
         if detected and not detected_map.get(agent, False):
-            choice["disabled"] = f"{label} is not installed"
-        agent_choices.append(choice)
+            continue
+        agent_choices.append(
+            {"name": label, "value": agent, "enabled": bool(detected_map.get(agent, False))}
+        )
+    if not agent_choices:
+        raise RuntimeError("no supported Agent was detected; GrayOM does not install Agents")
     agents = inquirer.checkbox(
         message="Select AI Agents:", choices=agent_choices,
         validate=lambda value: bool(value), invalid_message="Select at least one Agent",

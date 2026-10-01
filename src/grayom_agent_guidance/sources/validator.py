@@ -12,8 +12,15 @@ class ComponentValidator:
         hard_failures: list[str] = []
         evidence = {item.field: item.value for item in component.evidence}
 
-        if self.selected_agents and not self.selected_agents.issubset(component.supported_agents):
-            hard_failures.append("selected Agent support is not evidenced")
+        # A candidate stays eligible when it supports at least one selected Agent; per-Agent
+        # applicability is recomputed later by compatibility evaluation and the install Plan.
+        if self.selected_agents and not (self.selected_agents & component.supported_agents):
+            hard_failures.append("no selected Agent is supported by this component")
+        elif self.selected_agents and not self.selected_agents.issubset(component.supported_agents):
+            unsupported = sorted(
+                agent.value for agent in self.selected_agents - component.supported_agents
+            )
+            warnings.append("not applied to: " + ", ".join(unsupported))
         if not component.capabilities:
             hard_failures.append("no relevant capability could be verified")
         if not evidence.get("readme_present", True):

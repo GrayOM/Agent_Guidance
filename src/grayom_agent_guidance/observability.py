@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,11 +35,9 @@ class EventLogger:
         payload = redact({
             "timestamp": datetime.now(timezone.utc).isoformat(), "event": event, **fields,
         })
-        with self.path.open("a", encoding="utf-8") as stream:
+        # Open with 0o600 so the log is never briefly world-readable between create and chmod.
+        descriptor = os.open(self.path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
+        with os.fdopen(descriptor, "a", encoding="utf-8") as stream:
             stream.write(json.dumps(payload, ensure_ascii=False, default=str) + "\n")
-        try:
-            self.path.chmod(0o600)
-        except OSError:
-            pass
         if self.verbose:
             logging.getLogger("grayom").info("%s %s", event, redact(fields))

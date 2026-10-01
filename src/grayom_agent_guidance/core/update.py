@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from grayom_agent_guidance.adapters import AgentAdapter
 from grayom_agent_guidance.models import AgentType, Component, ComponentType, Ownership
+from grayom_agent_guidance.runtime import PathSecurityError, validate_managed_path
 from grayom_agent_guidance.state import StateStore
 
 
@@ -76,7 +77,12 @@ def _managed_paths(adapter: AgentAdapter, component_id: str) -> list[Path]:
                 pass
     plugins_root = state.get("plugins_root")
     if plugins_root:
-        candidate = Path(plugins_root) / component_id
+        root = Path(str(plugins_root))
+        candidate = root / component_id
+        try:
+            validate_managed_path(candidate, root)
+        except PathSecurityError:
+            return roots
         if (candidate / ".grayom-component.json").exists():
             roots.append(candidate)
     return roots

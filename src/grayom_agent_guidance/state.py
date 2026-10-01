@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from .config import grayom_home
 from .models import AgentType, MultiAgentManifest, MultiAgentPlan, Ownership
+from .runtime import validate_managed_path
 from .schema import load_versioned_json
 
 
@@ -72,6 +73,9 @@ class StateStore:
         root.mkdir(parents=True, exist_ok=True)
         for component_id, component in self.document.components.items():
             target = root / f"{component_id}.json"
+            # The id is validated at the model boundary; containment is re-checked here because
+            # this is the only managed write that derives a filename from component data.
+            validate_managed_path(target, root)
             temporary = target.with_name(f".{target.name}.{uuid4().hex}.tmp")
             try:
                 with temporary.open("w", encoding="utf-8") as stream:

@@ -137,8 +137,13 @@ class AgentRequirement(BaseModel):
     evidence: str | None = None
 
 
+COMPONENT_ID_PATTERN = r"^[a-z0-9][a-z0-9._-]*$"
+
+
 class Component(BaseModel):
-    id: str
+    # The id becomes a filesystem name in state/component manifests and managed asset roots,
+    # so it must never carry a separator or a leading dot.
+    id: str = Field(pattern=COMPONENT_ID_PATTERN, max_length=128)
     name: str
     type: ComponentType
     source: str = "local_registry"

@@ -6,7 +6,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from grayom_agent_guidance.models import Component
-from grayom_agent_guidance.config import load_config
+from grayom_agent_guidance.config import grayom_home, load_config
 from grayom_agent_guidance.schema import load_versioned_json
 
 
@@ -25,8 +25,7 @@ class CacheDocument(BaseModel):
 
 class CandidateCache:
     def __init__(self, path: Path | None = None, ttl: timedelta | None = None) -> None:
-        root = Path(os.environ.get("GRAYOM_HOME", Path.home() / ".grayom"))
-        self.path = path or root / "cache" / "candidates.json"
+        self.path = path or grayom_home() / "cache" / "candidates.json"
         self.ttl = ttl or timedelta(hours=load_config().cache.ttl_hours)
         self.warnings: list[str] = []
         self.document = self._load()
