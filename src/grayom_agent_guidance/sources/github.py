@@ -10,6 +10,7 @@ from grayom_agent_guidance.models import SourceType
 from grayom_agent_guidance.network import create_async_client
 
 from .base import ComponentSource, RawCandidate, SourceResult, SourceUnavailable
+from .budget import DiscoveryBudget
 from .cache import CandidateCache
 from .normalizer import normalize_candidate
 from .validator import ComponentValidator
@@ -22,6 +23,32 @@ INTERESTING_FILES = {
 }
 
 
+def _repository_rank(candidate: RawCandidate) -> tuple[int, str, str]:
+    return (
+        candidate.metadata.get("stargazers_count", 0) or 0,
+        str(candidate.metadata.get("pushed_at") or ""),
+        candidate.repository_full_name,
+    )
+
+
+def _interleave(per_query: list[list[RawCandidate]], limit: int) -> list[RawCandidate]:
+    """Take each query's best candidate before any query's second, up to the budget.
+
+    Every capability the interview inferred therefore reaches the Plan, however few slots
+    the request budget leaves.
+    """
+    if limit <= 0:
+        return []
+    selected: list[RawCandidate] = []
+    for position in range(max((len(matches) for matches in per_query), default=0)):
+        for matches in per_query:
+            if position < len(matches):
+                selected.append(matches[position])
+                if len(selected) >= limit:
+                    return selected
+    return selected
+
+
 class GitHubSource(ComponentSource):
     name = "github"
 
@@ -30,15 +57,21 @@ class GitHubSource(ComponentSource):
         validator: ComponentValidator,
         cache: CandidateCache | None = None,
         client: httpx.AsyncClient | None = None,
-        max_results_per_query: int = 3,
-        max_candidates: int = 5,
+        budget: DiscoveryBudget | None = None,
     ) -> None:
         self.validator = validator
         self.cache = cache
         self.client = client
-        self.max_results_per_query = max_results_per_query
-        self.max_candidates = max_candidates
+        self.budget = budget or DiscoveryBudget.detect()
         self.rate_limit_remaining: int | None = None
+
+    @property
+    def max_results_per_query(self) -> int:
+        return self.budget.results_per_query
+
+    @property
+    def max_candidates(self) -> int:
+        return self.budget.max_candidates
 
     def _headers(self, raw: bool = False) -> dict[str, str]:
         headers = {
@@ -85,32 +118,36 @@ class GitHubSource(ComponentSource):
             self.rate_limit_remaining = remaining
         if remaining == 0:
             raise SourceUnavailable("GitHub search rate limit exhausted")
-        repositories: dict[str, RawCandidate] = {}
         async def search_one(query: str) -> httpx.Response:
             return await self._request(
                 "GET", "/search/repositories",
                 params={"q": query, "sort": "updated", "order": "desc", "per_page": self.max_results_per_query},
             )
         responses = await asyncio.gather(*(search_one(query) for query in queries))
+
+        # Each query targets one capability, so candidates are kept per query. Ranking the
+        # whole pool by stars and truncating it let a few popular general-purpose
+        # repositories crowd out every specialised capability the user actually asked about.
+        seen: set[str] = set()
+        per_query: list[list[RawCandidate]] = []
         for response in responses:
+            matches: list[RawCandidate] = []
             for item in response.json().get("items", []):
                 full_name = item.get("full_name")
                 html_url = item.get("html_url")
                 if not full_name or not html_url or item.get("private"):
                     continue
-                repositories.setdefault(full_name.lower(), RawCandidate(
+                if full_name.lower() in seen:
+                    continue
+                seen.add(full_name.lower())
+                matches.append(RawCandidate(
                     repository_full_name=full_name, repository_url=html_url,
                     source_type=SourceType.GITHUB, metadata=item,
                     source_version=item.get("pushed_at"),
                 ))
-        ranked = sorted(
-            repositories.values(),
-            key=lambda item: (
-                item.metadata.get("stargazers_count", 0), item.metadata.get("pushed_at", "")
-            ),
-            reverse=True,
-        )
-        return ranked[: self.max_candidates]
+            matches.sort(key=_repository_rank, reverse=True)
+            per_query.append(matches)
+        return _interleave(per_query, self.max_candidates)
 
     async def _optional_json(self, url: str) -> dict[str, Any] | None:
         try:
@@ -155,7 +192,7 @@ class GitHubSource(ComponentSource):
         interesting = [
             path for path in candidate.tree_paths
             if PurePosixPath(path).name.lower() in INTERESTING_FILES
-        ][:16]
+        ][: self.budget.files_per_repository]
         contents = await asyncio.gather(*(
             self._optional_text(f"/repos/{repo}/contents/{path}") for path in interesting
         ))

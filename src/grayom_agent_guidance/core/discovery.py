@@ -1,5 +1,4 @@
 import asyncio
-import os
 from pathlib import Path
 
 import httpx
@@ -9,6 +8,7 @@ from grayom_agent_guidance.models import (
     Component, ComponentType, InterviewAnswer, InstallKind, SourceType,
 )
 from grayom_agent_guidance.sources.base import SourceResult, SourceUnavailable
+from grayom_agent_guidance.sources.budget import DiscoveryBudget
 from grayom_agent_guidance.sources.cache import CandidateCache
 from grayom_agent_guidance.sources.github import GitHubSource
 from grayom_agent_guidance.sources.official import OfficialSource
@@ -110,18 +110,20 @@ async def discover_components(
             offline_fallback=True,
         )
 
-    # GitHub allows 10 search requests per minute unauthenticated and 30 authenticated, so the
-    # per-type breadth is chosen to cover inferred capabilities without exhausting the budget.
-    per_type = 5 if os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") else 3
+    # The budget sizes discovery to the credentials this run actually has, so it does not
+    # exhaust a GitHub limit part-way and degrade silently to the local registry.
+    budget = DiscoveryBudget.detect()
     queries: list[str] = []
     for component_type in ComponentType:
-        queries.extend(build_queries(answer.agents, capabilities, component_type, limit=per_type))
+        queries.extend(build_queries(
+            answer.agents, capabilities, component_type, limit=budget.search_queries_per_type,
+        ))
     validator = ComponentValidator(set(answer.agents))
     official = OfficialSource(
-        validator=validator, cache=cache, client=github_client,
+        validator=validator, cache=cache, client=github_client, budget=budget,
         selected_agents=set(answer.agents),
     )
-    github = GitHubSource(validator=validator, cache=cache, client=github_client)
+    github = GitHubSource(validator=validator, cache=cache, client=github_client, budget=budget)
     tasks = [
         asyncio.wait_for(official.discover([]), timeout=25),
         asyncio.wait_for(github.discover(queries), timeout=25),
@@ -129,6 +131,9 @@ async def discover_components(
     live_results = await asyncio.gather(*tasks, return_exceptions=True)
     sources = [registry_result]
     warnings: list[str] = []
+    advisory = budget.advisory()
+    if advisory:
+        warnings.append(advisory)
     live_candidates: list[Component] = []
     failed = 0
     for name, result in zip(("official", "github"), live_results):

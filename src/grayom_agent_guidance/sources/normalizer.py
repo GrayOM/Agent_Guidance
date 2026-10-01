@@ -84,7 +84,19 @@ def _component_type(raw: RawCandidate, text: str) -> ComponentType:
     raise ValueError("repository structure does not identify a Skill, MCP, or Plugin")
 
 
-def _supported_agents(text: str, paths: list[str]) -> set[AgentType]:
+# Codex, Claude Code and Cursor all consume the same SKILL.md format from their own user
+# Skill directory, which docs/agent-compatibility.md records per Agent.
+SKILL_FORMAT_AGENTS = frozenset({AgentType.CODEX, AgentType.CLAUDE_CODE, AgentType.CURSOR})
+
+SKILL_FORMAT_NOTE = (
+    "no Agent is named in the repository, so Skill support is inferred from the shared "
+    "SKILL.md format rather than from an Agent-specific statement"
+)
+
+
+def _supported_agents(
+    text: str, paths: list[str], component_type: ComponentType,
+) -> tuple[set[AgentType], str | None]:
     joined = text + " " + " ".join(paths).lower()
     result = set()
     if "codex" in joined or ".agents/skills" in joined:
@@ -93,7 +105,11 @@ def _supported_agents(text: str, paths: list[str]) -> set[AgentType]:
         result.add(AgentType.CLAUDE_CODE)
     if "cursor" in joined or ".cursor" in joined:
         result.add(AgentType.CURSOR)
-    return result
+    if result or component_type != ComponentType.SKILL:
+        return result, None
+    # A community SKILL.md that never names an Agent is still installable by all three,
+    # and dropping it would discard most third-party Skills.
+    return set(SKILL_FORMAT_AGENTS), SKILL_FORMAT_NOTE
 
 
 def _dependencies(raw: RawCandidate) -> list[DependencyRequirement]:
@@ -145,7 +161,7 @@ def normalize_candidate(raw: RawCandidate) -> Component:
         capability for capability, keywords in CAPABILITY_KEYWORDS.items()
         if any(keyword in text for keyword in keywords)
     }
-    agents = _supported_agents(text, raw.tree_paths)
+    agents, agent_inference_note = _supported_agents(text, raw.tree_paths, component_type)
     security = scan_repository({"README.md": readme, **raw.files})
     maintenance = _maintenance(raw.metadata)
     official = raw.official_hint
@@ -158,7 +174,11 @@ def normalize_candidate(raw: RawCandidate) -> Component:
     evidence.extend([
         EvidenceItem(field="readme_present", value=bool(readme.strip()), source="GitHub contents"),
         EvidenceItem(field="component_type", value=component_type.value, source="repository_structure"),
-        EvidenceItem(field="supported_agents", value=sorted(agent.value for agent in agents), source="README/repository_structure"),
+        EvidenceItem(
+            field="supported_agents", value=sorted(agent.value for agent in agents),
+            source="SKILL.md format" if agent_inference_note else "README/repository_structure",
+            location=agent_inference_note,
+        ),
         EvidenceItem(field="maintenance", value=maintenance.status.value, source="GitHub metadata"),
     ])
     stars = maintenance.stars or 0
@@ -189,6 +209,9 @@ def normalize_candidate(raw: RawCandidate) -> Component:
         install_method=install_method, security_metadata=security.metadata,
         maintenance_metadata=maintenance, trust=trust, evidence=evidence,
         dependencies=dependencies, candidate_state=CandidateState.DISCOVERED,
-        validation_warnings=security.warnings,
+        validation_warnings=(
+            security.warnings + [agent_inference_note] if agent_inference_note
+            else security.warnings
+        ),
         install_complexity=min(5, 1 + len(dependencies)),
     )
