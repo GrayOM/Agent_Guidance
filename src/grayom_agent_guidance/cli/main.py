@@ -21,8 +21,9 @@ from grayom_agent_guidance.core import (
 from grayom_agent_guidance.errors import GrayOMError
 from grayom_agent_guidance.models import (
     AgentInstallation, AgentType, Component, HealthCheckResult, InstallationManifest,
-    MultiAgentManifest,
+    MultiAgentManifest, Ownership,
 )
+from grayom_agent_guidance.sources.upstream import resolve_upstream_refs
 from grayom_agent_guidance.observability import EventLogger, redact
 from grayom_agent_guidance.registry import load_registry
 from grayom_agent_guidance.schema import load_versioned_json
@@ -320,17 +321,39 @@ def rollback(
 @app.command()
 def update(
     yes: bool = typer.Option(False, "--yes", help="Approve all managed updates"),
+    offline: bool = typer.Option(
+        False, "--offline", help="Compare against the Local Registry without checking upstream"
+    ),
 ) -> None:
-    """Update only GrayOM-managed components whose verified source ref changed."""
+    """Update GrayOM-managed components whose upstream reference changed."""
     state = StateStore()
     for warning in state.warnings:
         console.print(f"[yellow]! WARNING[/yellow] {warning}")
-    plan = build_update_plan(state, load_registry())
+    managed = [
+        item for item in state.document.components.values()
+        if item.ownership != Ownership.EXISTING
+    ]
+    upstream = {}
+    if managed and not offline:
+        with console.status("Checking upstream references..."):
+            upstream = resolve_upstream_refs(managed)
+        unchecked = [item for item in upstream.values() if not item.checked]
+        if not upstream:
+            console.print(
+                "[yellow]! WARNING[/yellow] Upstream could not be reached; "
+                "comparing against the Local Registry instead."
+            )
+        for item in unchecked:
+            console.print(f"[yellow]! WARNING[/yellow] {item.component_id}: {item.reason}")
+    plan = build_update_plan(state, load_registry(), upstream=upstream)
     if not plan.items:
         console.print("[green]All GrayOM-managed components are up to date.[/green]")
         return
     for item in plan.items:
-        console.print(f"[yellow]UPDATE[/yellow] {item.component.name}: {item.current_ref} -> {item.target_ref}")
+        console.print(
+            f"[yellow]UPDATE[/yellow] {item.component.name}: {item.current_ref} -> "
+            f"{item.target_ref} ({item.reason})"
+        )
         for warning in item.warnings:
             console.print(f"  [yellow]! WARNING[/yellow] {warning}")
         for finding in analyze_security([item.component]):
