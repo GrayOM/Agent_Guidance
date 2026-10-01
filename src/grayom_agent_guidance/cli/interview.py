@@ -6,15 +6,55 @@ from grayom_agent_guidance.models import AgentInstallation, AgentType, Interview
 
 
 DOMAIN_LABELS = {domain.value.replace("_", " ").title(): domain for domain in WorkDomain}
-TASKS = {
-    WorkDomain.WEB_DEVELOPMENT: ["frontend", "backend", "full_stack", "api_development", "testing", "code_review", "performance_optimization", "security_review"],
-    WorkDomain.SECURITY_TOOL_DEVELOPMENT: ["source_code_analysis", "security_report_automation"],
-    WorkDomain.VULNERABILITY_RESEARCH: ["oss_vulnerability_research", "cve_analysis", "patch_analysis", "supply_chain_security", "ai_llm_security"],
-    WorkDomain.OSINT: ["osint_recon"],
-    WorkDomain.AI_AGENT_DEVELOPMENT: ["coding_agent", "research_agent", "security_agent", "browser_agent", "data_agent", "multi_agent", "mcp_based_agent", "rag_agent"],
-}
 
-TASKS[WorkDomain.VULNERABILITY_RESEARCH].append("ai_vulnerability_analysis")
+# Every domain needs detailed tasks: the domain alone only says what is true of everyone in
+# it, so the selected tasks are what makes a recommendation specific to this person. A domain
+# with no tasks asks one broad question and can only answer it as broadly.
+# tests/test_capability_wiring.py keeps every domain populated and every task mapped.
+TASKS: dict[WorkDomain, list[str]] = {
+    WorkDomain.GENERAL_DEVELOPMENT: [
+        "feature_implementation", "bug_investigation", "refactoring", "code_review",
+        "test_automation", "dependency_upgrade", "api_integration", "documentation",
+        "project_planning",
+    ],
+    WorkDomain.WEB_DEVELOPMENT: [
+        "frontend", "backend", "full_stack", "api_development", "testing", "code_review",
+        "performance_optimization", "security_review",
+    ],
+    WorkDomain.MOBILE_DEVELOPMENT: [
+        "ios_app", "android_app", "cross_platform_app", "mobile_testing", "app_release",
+        "mobile_backend_integration",
+    ],
+    WorkDomain.AI_AGENT_DEVELOPMENT: [
+        "coding_agent", "research_agent", "security_agent", "browser_agent", "data_agent",
+        "multi_agent", "mcp_based_agent", "rag_agent",
+    ],
+    WorkDomain.SECURITY_TOOL_DEVELOPMENT: [
+        "source_code_analysis", "scanner_development", "exploit_tooling",
+        "security_ci_integration", "security_report_automation",
+    ],
+    WorkDomain.VULNERABILITY_RESEARCH: [
+        "oss_vulnerability_research", "cve_analysis", "patch_analysis", "supply_chain_security",
+        "ai_llm_security", "ai_vulnerability_analysis",
+    ],
+    WorkDomain.OSINT: [
+        "osint_recon", "asset_discovery", "social_media_research", "breach_data_analysis",
+        "osint_reporting",
+    ],
+    WorkDomain.DEVOPS: [
+        "ci_cd_pipeline", "container_build", "kubernetes_operations", "infrastructure_as_code",
+        "monitoring_observability", "cloud_resource_management", "secrets_and_config",
+        "release_automation",
+    ],
+    WorkDomain.DATA_ANALYSIS: [
+        "data_exploration", "sql_and_database", "data_pipeline", "data_visualization",
+        "reporting_automation", "notebook_workflow",
+    ],
+    WorkDomain.RESEARCH_WRITING: [
+        "web_research", "source_collection", "document_drafting", "technical_documentation",
+        "knowledge_base",
+    ],
+}
 
 
 def build_answer(

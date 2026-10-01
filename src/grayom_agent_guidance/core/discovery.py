@@ -15,7 +15,7 @@ from grayom_agent_guidance.sources.official import OfficialSource
 from grayom_agent_guidance.sources.registry import RegistrySource
 from grayom_agent_guidance.sources.validator import ComponentValidator
 
-from .capability_inference import infer_capabilities
+from .capability_inference import infer_capabilities, infer_task_capabilities
 from .query_builder import build_queries
 
 
@@ -113,10 +113,12 @@ async def discover_components(
     # The budget sizes discovery to the credentials this run actually has, so it does not
     # exhaust a GitHub limit part-way and degrade silently to the local registry.
     budget = DiscoveryBudget.detect()
+    selected_capabilities = infer_task_capabilities(answer)
     queries: list[str] = []
     for component_type in ComponentType:
         queries.extend(build_queries(
             answer.agents, capabilities, component_type, limit=budget.search_queries_per_type,
+            preferred=selected_capabilities,
         ))
     validator = ComponentValidator(set(answer.agents))
     official = OfficialSource(

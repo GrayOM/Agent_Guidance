@@ -17,18 +17,63 @@ from .repository_security import scan_repository
 CAPABILITY_KEYWORDS: dict[Capability, tuple[str, ...]] = {
     Capability.SECURITY_ANALYSIS: ("security analysis", "security review", "sast", "audit"),
     Capability.SOURCE_ANALYSIS: ("source code analysis", "code analysis", "static analysis"),
-    Capability.VULNERABILITY_RESEARCH: ("vulnerability", "cve", "exploit research"),
-    Capability.REPOSITORY_ACCESS: ("repository", "github", "pull request", "issues"),
+    Capability.VULNERABILITY_RESEARCH: (
+        "vulnerability", "vulnerabilities", "cve", "exploit research",
+    ),
+    Capability.AI_VULNERABILITY_ANALYSIS: ("llm security", "ai security", "prompt injection"),
+    Capability.REPOSITORY_ACCESS: (
+        "repository", "repositories", "github", "pull request", "issues",
+    ),
     Capability.TESTING: ("testing", "test automation", "pytest"),
+    Capability.TEST_EXECUTION: ("test runner", "run tests", "jest", "vitest"),
     Capability.CODE_EDITING: ("code editing", "coding agent", "implementation"),
     Capability.CODE_REVIEW: ("code review", "pull request review"),
-    Capability.BROWSER_AUTOMATION: ("browser automation", "playwright", "browser agent"),
+    Capability.REFACTORING: ("refactor",),
+    Capability.DEBUGGING: ("debugging", "debugger", "stack trace", "breakpoint"),
+    Capability.PLANNING: ("planning", "task breakdown", "roadmap", "task decomposition"),
+    Capability.DEVELOPMENT_WORKFLOW: ("development workflow", "developer workflow", "git workflow"),
+    Capability.DEPENDENCY_MANAGEMENT: (
+        "dependency", "dependencies", "package manager", "lockfile", "sbom",
+    ),
+    Capability.API_INTEGRATION: ("api client", "rest api", "openapi", "graphql"),
+    Capability.CI_CD: ("ci/cd", "continuous integration", "continuous delivery", "github actions"),
+    Capability.CONTAINERIZATION: ("docker", "containeriz", "container image", "podman"),
+    Capability.ORCHESTRATION: ("kubernetes", "k8s", "helm", "kubectl"),
+    Capability.INFRASTRUCTURE_AS_CODE: (
+        "terraform", "infrastructure as code", "pulumi", "cloudformation", "ansible",
+    ),
+    Capability.OBSERVABILITY: (
+        "observability", "monitoring", "prometheus", "grafana", "opentelemetry", "tracing",
+    ),
+    Capability.CLOUD_PLATFORM: ("aws", "azure", "google cloud", "gcp", "cloudflare"),
+    Capability.MOBILE_IOS: ("ios", "swiftui", "swift package", "xcode"),
+    Capability.MOBILE_ANDROID: ("android", "jetpack compose", "kotlin", "gradle"),
+    Capability.CROSS_PLATFORM: ("react native", "flutter", "expo", "capacitor"),
     Capability.DATA_ANALYSIS: ("data analysis", "analytics"),
+    Capability.DATABASE_ACCESS: ("database", "postgres", "mysql", "sqlite", "sql query"),
+    Capability.DATA_PIPELINE: ("etl", "data pipeline", "airflow", "dbt"),
+    Capability.DATA_VISUALIZATION: ("data visualization", "chart", "dashboard", "plotting"),
+    Capability.BROWSER_AUTOMATION: ("browser automation", "playwright", "browser agent"),
+    Capability.NETWORK_ACCESS: ("osint", "reconnaissance", "network access"),
+    Capability.WEB_RESEARCH: ("web search", "web research", "scraping", "crawler"),
+    Capability.DOCUMENT_AUTHORING: ("document generation", "markdown", "docx", "technical writing"),
+    Capability.KNOWLEDGE_MANAGEMENT: ("knowledge base", "notion", "obsidian", "note-taking"),
     Capability.REPORTING: ("reporting", "report generation", "documentation"),
     Capability.AGENT_DEVELOPMENT: ("agent development", "multi-agent", "rag agent"),
-    Capability.AI_VULNERABILITY_ANALYSIS: ("llm security", "ai security", "prompt injection"),
-    Capability.NETWORK_ACCESS: ("osint", "reconnaissance", "network access"),
 }
+
+
+def _mentions(text: str, keywords: tuple[str, ...]) -> bool:
+    """Match a keyword at a word start.
+
+    Anchoring only the start still matches a grown suffix, so "audit" covers "auditing",
+    while a short token can no longer match inside an unrelated word: a plain substring test
+    tagged every repository mentioning "studios" or "radios" as iOS.
+
+    It does not cover a spelling change, so a keyword ending in -y lists its -ies plural
+    explicitly rather than relying on the anchor.
+    """
+    return any(re.search(rf"\b{re.escape(keyword)}", text) for keyword in keywords)
 
 
 def _maintenance(metadata: dict) -> MaintenanceMetadata:
@@ -169,7 +214,7 @@ def normalize_candidate(raw: RawCandidate) -> Component:
     component_type = _component_type(raw, text)
     capabilities = {
         capability for capability, keywords in CAPABILITY_KEYWORDS.items()
-        if any(keyword in text for keyword in keywords)
+        if _mentions(text, keywords)
     }
     agents, agent_inference_note = _supported_agents(text, raw.tree_paths, component_type)
     security = scan_repository({"README.md": readme, **raw.files})

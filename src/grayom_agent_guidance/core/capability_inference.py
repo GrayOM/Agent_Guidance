@@ -1,10 +1,15 @@
 from grayom_agent_guidance.models import Capability, InterviewAnswer, WorkDomain
 
 
+# A domain contributes only what is true of everyone working in it. Anything that depends on
+# how the person works belongs in a detailed task below, so the selected tasks are what makes
+# one profile differ from another. Before this, DevOps and mobile development produced an
+# identical capability set and therefore an identical recommendation.
 DOMAIN_CAPABILITIES: dict[WorkDomain, set[Capability]] = {
     WorkDomain.GENERAL_DEVELOPMENT: {
         Capability.PLANNING, Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW,
         Capability.REPOSITORY_ACCESS, Capability.TESTING, Capability.CODE_REVIEW,
+        Capability.DEBUGGING, Capability.REFACTORING,
     },
     WorkDomain.WEB_DEVELOPMENT: {
         Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
@@ -12,7 +17,7 @@ DOMAIN_CAPABILITIES: dict[WorkDomain, set[Capability]] = {
     },
     WorkDomain.MOBILE_DEVELOPMENT: {
         Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
-        Capability.TESTING,
+        Capability.TESTING, Capability.CI_CD,
     },
     WorkDomain.AI_AGENT_DEVELOPMENT: {
         Capability.AGENT_DEVELOPMENT, Capability.CODE_EDITING, Capability.REPOSITORY_ACCESS,
@@ -29,13 +34,19 @@ DOMAIN_CAPABILITIES: dict[WorkDomain, set[Capability]] = {
     },
     WorkDomain.OSINT: {
         Capability.NETWORK_ACCESS, Capability.BROWSER_AUTOMATION, Capability.REPORTING,
+        Capability.WEB_RESEARCH,
     },
     WorkDomain.DEVOPS: {
         Capability.CODE_EDITING, Capability.DEVELOPMENT_WORKFLOW, Capability.REPOSITORY_ACCESS,
-        Capability.TESTING,
+        Capability.TESTING, Capability.CI_CD, Capability.OBSERVABILITY,
     },
-    WorkDomain.DATA_ANALYSIS: {Capability.DATA_ANALYSIS, Capability.REPORTING},
-    WorkDomain.RESEARCH_WRITING: {Capability.NETWORK_ACCESS, Capability.REPORTING},
+    WorkDomain.DATA_ANALYSIS: {
+        Capability.DATA_ANALYSIS, Capability.REPORTING, Capability.DATABASE_ACCESS,
+    },
+    WorkDomain.RESEARCH_WRITING: {
+        Capability.NETWORK_ACCESS, Capability.REPORTING, Capability.WEB_RESEARCH,
+        Capability.DOCUMENT_AUTHORING,
+    },
 }
 
 TASK_CAPABILITIES: dict[str, set[Capability]] = {
@@ -67,6 +78,55 @@ TASK_CAPABILITIES: dict[str, set[Capability]] = {
         Capability.AI_VULNERABILITY_ANALYSIS, Capability.SECURITY_ANALYSIS,
         Capability.VULNERABILITY_RESEARCH,
     },
+    # General development
+    "feature_implementation": {Capability.CODE_EDITING, Capability.PLANNING},
+    # SOURCE_ANALYSIS is GrayOM's static-analysis vocabulary, so it would surface SAST
+    # tooling here rather than a debugger or a way to read the failing code.
+    "bug_investigation": {Capability.DEBUGGING, Capability.REPOSITORY_ACCESS},
+    "refactoring": {Capability.REFACTORING, Capability.CODE_EDITING},
+    "dependency_upgrade": {Capability.DEPENDENCY_MANAGEMENT, Capability.REPOSITORY_ACCESS},
+    "api_integration": {Capability.API_INTEGRATION, Capability.CODE_EDITING},
+    "documentation": {Capability.DOCUMENT_AUTHORING, Capability.REPORTING},
+    "project_planning": {Capability.PLANNING, Capability.DEVELOPMENT_WORKFLOW},
+    "test_automation": {Capability.TESTING, Capability.TEST_EXECUTION},
+    # Mobile development
+    "ios_app": {Capability.MOBILE_IOS, Capability.CODE_EDITING},
+    "android_app": {Capability.MOBILE_ANDROID, Capability.CODE_EDITING},
+    "cross_platform_app": {Capability.CROSS_PLATFORM, Capability.CODE_EDITING},
+    "mobile_testing": {Capability.TESTING, Capability.TEST_EXECUTION},
+    "app_release": {Capability.CI_CD, Capability.DEVELOPMENT_WORKFLOW},
+    "mobile_backend_integration": {Capability.API_INTEGRATION, Capability.CLOUD_PLATFORM},
+    # DevOps
+    "ci_cd_pipeline": {Capability.CI_CD, Capability.DEVELOPMENT_WORKFLOW},
+    "container_build": {Capability.CONTAINERIZATION, Capability.CI_CD},
+    "kubernetes_operations": {Capability.ORCHESTRATION, Capability.CONTAINERIZATION},
+    "infrastructure_as_code": {Capability.INFRASTRUCTURE_AS_CODE, Capability.CLOUD_PLATFORM},
+    "monitoring_observability": {Capability.OBSERVABILITY, Capability.REPORTING},
+    "cloud_resource_management": {Capability.CLOUD_PLATFORM, Capability.INFRASTRUCTURE_AS_CODE},
+    "secrets_and_config": {Capability.CLOUD_PLATFORM, Capability.INFRASTRUCTURE_AS_CODE},
+    "release_automation": {Capability.CI_CD, Capability.REPOSITORY_ACCESS},
+    # Data analysis
+    "data_exploration": {Capability.DATA_ANALYSIS, Capability.DATABASE_ACCESS},
+    "sql_and_database": {Capability.DATABASE_ACCESS, Capability.DATA_ANALYSIS},
+    "data_pipeline": {Capability.DATA_PIPELINE, Capability.DATABASE_ACCESS},
+    "data_visualization": {Capability.DATA_VISUALIZATION, Capability.REPORTING},
+    "reporting_automation": {Capability.REPORTING, Capability.DOCUMENT_AUTHORING},
+    "notebook_workflow": {Capability.DATA_ANALYSIS, Capability.CODE_EDITING},
+    # Research and writing
+    "web_research": {Capability.WEB_RESEARCH, Capability.NETWORK_ACCESS},
+    "document_drafting": {Capability.DOCUMENT_AUTHORING, Capability.REPORTING},
+    "technical_documentation": {Capability.DOCUMENT_AUTHORING, Capability.REPOSITORY_ACCESS},
+    "knowledge_base": {Capability.KNOWLEDGE_MANAGEMENT, Capability.DOCUMENT_AUTHORING},
+    "source_collection": {Capability.WEB_RESEARCH, Capability.BROWSER_AUTOMATION},
+    # Security tool development
+    "scanner_development": {Capability.SECURITY_ANALYSIS, Capability.CODE_EDITING},
+    "exploit_tooling": {Capability.VULNERABILITY_RESEARCH, Capability.CODE_EDITING},
+    "security_ci_integration": {Capability.CI_CD, Capability.SECURITY_ANALYSIS},
+    # OSINT
+    "asset_discovery": {Capability.NETWORK_ACCESS, Capability.WEB_RESEARCH},
+    "social_media_research": {Capability.WEB_RESEARCH, Capability.BROWSER_AUTOMATION},
+    "breach_data_analysis": {Capability.DATA_ANALYSIS, Capability.NETWORK_ACCESS},
+    "osint_reporting": {Capability.REPORTING, Capability.DOCUMENT_AUTHORING},
 }
 
 
@@ -74,6 +134,20 @@ def infer_capabilities(answer: InterviewAnswer) -> set[Capability]:
     result: set[Capability] = set()
     for domain in answer.domains:
         result.update(DOMAIN_CAPABILITIES.get(domain, set()))
+    for task in answer.tasks:
+        result.update(TASK_CAPABILITIES.get(task, set()))
+    return result
+
+
+def infer_task_capabilities(answer: InterviewAnswer) -> set[Capability]:
+    """Only what the detailed task answers asked for.
+
+    A domain contributes a base that is true of everyone in it, so when the request budget
+    forces a choice, the capabilities the person selected explicitly come first: a mobile
+    developer who picked iOS and cross-platform should be searched for those before the
+    CI/CD every mobile domain implies.
+    """
+    result: set[Capability] = set()
     for task in answer.tasks:
         result.update(TASK_CAPABILITIES.get(task, set()))
     return result
