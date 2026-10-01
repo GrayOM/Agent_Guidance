@@ -4,7 +4,8 @@ from pathlib import Path
 
 from grayom_agent_guidance.adapters import AgentAdapter
 from grayom_agent_guidance.models import (
-    AgentType, ComponentType, InstallationManifest, MultiAgentInstallationResult,
+    AgentType, ComponentType, InstallationManifest, InstalledComponent,
+    MultiAgentInstallationResult,
     MultiAgentManifest, MultiAgentPlan, TransactionState,
 )
 
@@ -80,6 +81,14 @@ class MultiAgentInstallationTransaction:
                         change = adapter.install_plugin(component)
                     agent_manifest.record(change)
                     agent_manifest.save()
+                    manifest.outcomes.append(InstalledComponent(
+                        agent=agent, component_id=component.id, name=component.name,
+                        type=component.type, skills_available=change.skills_available,
+                        skills_selected=list(change.skills_selected),
+                        skills_skipped=dict(change.skills_skipped),
+                        configured_mcp=list(change.configured_mcp),
+                        changed=change.changed,
+                    ))
 
             manifest.state = TransactionState.VERIFYING
             manifest.save()

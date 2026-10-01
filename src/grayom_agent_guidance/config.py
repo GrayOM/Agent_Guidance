@@ -21,10 +21,17 @@ class UIConfig(BaseModel):
     verbose: bool = False
 
 
+class SkillsConfig(BaseModel):
+    # None keeps the per-mode default: an Agent loads every installed Skill's description,
+    # so the cap is what stops a large repository from spending the user's context.
+    max_per_component: int | None = Field(default=None, ge=1, le=100)
+
+
 class GrayOMConfig(BaseModel):
     discovery: DiscoveryConfig = Field(default_factory=DiscoveryConfig)
     cache: CacheConfig = Field(default_factory=CacheConfig)
     ui: UIConfig = Field(default_factory=UIConfig)
+    skills: SkillsConfig = Field(default_factory=SkillsConfig)
 
 
 def load_config(path: Path | None = None) -> GrayOMConfig:

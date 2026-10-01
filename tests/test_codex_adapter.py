@@ -71,7 +71,11 @@ def test_skill_install_discovers_valid_skill_and_preserves_existing(tmp_path, mo
         "---\nname: Demo\ndescription: Test skill\n---\nDo the work.\n", encoding="utf-8",
     )
     adapter = CodexAdapter(home=home)
-    monkeypatch.setattr(adapter, "_clone_pinned", lambda component, destination: source)
+    # Cloning is now the one shared implementation both Agents install through.
+    monkeypatch.setattr(
+        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        lambda component, destination: source,
+    )
 
     first = adapter.install_skill(skill_component())
     target = home / ".agents" / "skills" / "demo-pack--demo"

@@ -7,7 +7,7 @@ import os
 from pydantic import BaseModel, Field
 
 from .agent import AgentType
-from .component import Component
+from .component import Component, ComponentType
 from .installation import HealthCheckResult, InstallationManifest, RollbackResult
 from .reconciliation import ReconciliationStatus
 from grayom_agent_guidance.schema import load_versioned_json
@@ -86,6 +86,38 @@ class MultiAgentPlan(BaseModel):
     shared_components: list[SharedComponentRecord] = Field(default_factory=list)
 
 
+class InstalledComponent(BaseModel):
+    """What actually landed for one Agent, so it can be summarised in a single line."""
+
+    agent: AgentType
+    component_id: str
+    name: str
+    type: ComponentType
+    changed: bool = False
+    skills_available: int = 0
+    skills_selected: list[str] = Field(default_factory=list)
+    skills_skipped: dict[str, int] = Field(default_factory=dict)
+    configured_mcp: list[str] = Field(default_factory=list)
+
+    def summary(self) -> str:
+        if self.type == ComponentType.SKILL:
+            if not self.skills_selected:
+                return f"no Skill matched (of {self.skills_available} in the repository)"
+            shown = ", ".join(self.skills_selected[:3])
+            if len(self.skills_selected) > 3:
+                shown += f", +{len(self.skills_selected) - 3} more"
+            scope = (
+                f"{len(self.skills_selected)} of {self.skills_available} Skills"
+                if self.skills_available > len(self.skills_selected)
+                else f"{len(self.skills_selected)} Skills"
+            )
+            return f"{scope}: {shown}"
+        if self.type == ComponentType.MCP:
+            registered = ", ".join(self.configured_mcp) or self.component_id
+            return f"MCP registered as {registered}" if self.changed else "MCP already registered"
+        return "installed"
+
+
 class MultiAgentManifest(BaseModel):
     schema_version: int = 1
     transaction_id: str = Field(default_factory=lambda: uuid4().hex)
@@ -102,6 +134,7 @@ class MultiAgentManifest(BaseModel):
     original_hashes: dict[str, str | None] = Field(default_factory=dict)
     post_install_hashes: dict[str, str | None] = Field(default_factory=dict)
     shared_warnings: list[str] = Field(default_factory=list)
+    outcomes: list[InstalledComponent] = Field(default_factory=list)
 
     @property
     def path(self) -> Path:

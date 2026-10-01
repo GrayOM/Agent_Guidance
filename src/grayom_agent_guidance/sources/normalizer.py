@@ -63,7 +63,7 @@ CAPABILITY_KEYWORDS: dict[Capability, tuple[str, ...]] = {
 }
 
 
-def _mentions(text: str, keywords: tuple[str, ...]) -> bool:
+def mentions(text: str, keywords: tuple[str, ...]) -> bool:
     """Match a keyword at a word start.
 
     Anchoring only the start still matches a grown suffix, so "audit" covers "auditing",
@@ -212,7 +212,7 @@ def normalize_candidate(raw: RawCandidate) -> Component:
     component_type = _component_type(raw, text)
     capabilities = {
         capability for capability, keywords in CAPABILITY_KEYWORDS.items()
-        if _mentions(text, keywords)
+        if mentions(text, keywords)
     }
     agents, agent_inference_note = _supported_agents(text, raw.tree_paths, component_type)
     security = scan_repository({"README.md": readme, **raw.files})

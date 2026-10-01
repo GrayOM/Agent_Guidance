@@ -3,7 +3,7 @@ from .capability import Capability
 from .component import (
     AgentRequirement, CandidateState, Compatibility, Component, ComponentType, DependencyRequirement,
     EvidenceItem, InstallKind, InstallMethod, MaintenanceMetadata, MaintenanceStatus,
-    Permission, SecurityMetadata, SourceType, TrustMetadata,
+    Permission, SecurityMetadata, SkillSelectionPolicy, SourceType, TrustMetadata,
 )
 from .installation import (
     BackupEntry, BackupManifest, CheckResult, ComponentInstallResult, HealthCheckResult,
@@ -12,7 +12,7 @@ from .installation import (
 )
 from .interview import InterviewAnswer, SetupMode, WorkDomain
 from .multi_agent import (
-    AgentComponentAction, AgentPlan, CompatibilityResult, CompatibilityStatus,
+    AgentComponentAction, AgentPlan, CompatibilityResult, CompatibilityStatus, InstalledComponent,
     MultiAgentInstallationResult, MultiAgentManifest, MultiAgentPlan, Ownership,
     SharedComponentRecord, TransactionState,
 )
@@ -25,11 +25,11 @@ __all__ = [
     "BackupEntry", "BackupManifest", "Capability", "CheckResult",
     "CandidateState", "Compatibility", "Component", "ComponentInstallResult", "ComponentType",
     "CompatibilityResult", "CompatibilityStatus", "ConflictFinding", "DependencyRequirement", "EvidenceItem",
-    "HealthCheckResult", "HealthLevel", "HealthStatus", "InstallationManifest", "InstallationResult", "InstallKind", "InstallMethod",
+    "HealthCheckResult", "HealthLevel", "HealthStatus", "InstallationManifest", "InstallationResult", "InstalledComponent", "InstallKind", "InstallMethod",
     "InterviewAnswer", "MaintenanceMetadata", "MaintenanceStatus", "MultiAgentInstallationResult",
     "MultiAgentManifest", "MultiAgentPlan", "Ownership", "Permission",
     "RecommendationItem", "RecommendationPlan", "ReconciliationItem", "ReconciliationStatus",
     "SourceType", "TrustMetadata",
     "RiskLevel", "RollbackResult", "SecurityFinding", "SetupMode", "SharedComponentRecord", "WorkDomain",
-    "SecurityMetadata", "TransactionState",
+    "SecurityMetadata", "SkillSelectionPolicy", "TransactionState",
 ]
