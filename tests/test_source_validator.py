@@ -35,9 +35,15 @@ def test_unsupported_agent_is_sent_to_review() -> None:
     assert component.candidate_state == CandidateState.REVIEW
 
 
-def test_malformed_readme_is_handled() -> None:
+def test_missing_readme_is_warned_not_silently_blocked() -> None:
+    """A missing README is evidence quality, which the validator records as a warning.
+
+    The candidate stays recommendable because its SKILL.md, capability and install method
+    are all present; both thin-evidence notes travel with it to the Plan as limitations.
+    """
     component = ComponentValidator({AgentType.CODEX}).validate(
         normalize_candidate(raw_candidate(readme=""))
     )
-    assert not component.recommendable
+    assert component.recommendable
     assert any("README" in warning for warning in component.validation_warnings)
+    assert any("SKILL.md format" in warning for warning in component.validation_warnings)
