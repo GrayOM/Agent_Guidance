@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter, CursorAdapter
+from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
 from grayom_agent_guidance.errors import ConfigurationError
 from grayom_agent_guidance.models import AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod
 from grayom_agent_guidance.runtime import (
@@ -34,11 +34,10 @@ def mcp(agent: AgentType) -> Component:
     [
         (AgentType.CODEX, CodexAdapter, Path(".codex/config.toml"), "custom-model"),
         (AgentType.CLAUDE_CODE, ClaudeCodeAdapter, Path(".claude.json"), "projects"),
-        (AgentType.CURSOR, CursorAdapter, Path(".cursor/mcp.json"), "unknownFutureKey"),
     ],
 )
 def test_complex_fixture_preserves_unrelated_settings(tmp_path, agent, adapter_type, relative, unknown_key) -> None:
-    source_name = "config.toml" if agent == AgentType.CODEX else (".claude.json" if agent == AgentType.CLAUDE_CODE else "mcp.json")
+    source_name = "config.toml" if agent == AgentType.CODEX else ".claude.json"
     source = FIXTURES / agent.value / "complex" / source_name
     target = tmp_path / relative
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -98,4 +97,3 @@ def test_adapter_capabilities_are_explicit(tmp_path) -> None:
         "config_merge": True, "health_probe": True,
     }
     assert not ClaudeCodeAdapter(tmp_path).capabilities.plugins
-    assert not CursorAdapter(tmp_path).capabilities.plugins

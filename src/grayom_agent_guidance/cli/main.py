@@ -10,7 +10,7 @@ from rich.console import Console
 
 from grayom_agent_guidance import __version__
 from grayom_agent_guidance.adapters import (
-    AgentAdapter, ClaudeCodeAdapter, CodexAdapter, CursorAdapter, detect_agents,
+    AgentAdapter, ClaudeCodeAdapter, CodexAdapter, detect_agents,
 )
 from grayom_agent_guidance.config import grayom_home, load_config
 from grayom_agent_guidance.core import (
@@ -52,7 +52,6 @@ def _adapter_map(home: Path | None = None) -> dict[AgentType, AgentAdapter]:
     return {
         AgentType.CODEX: CodexAdapter(home),
         AgentType.CLAUDE_CODE: ClaudeCodeAdapter(home),
-        AgentType.CURSOR: CursorAdapter(home),
     }
 
 

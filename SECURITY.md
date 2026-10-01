@@ -6,7 +6,6 @@ GrayOM Agent Guidance는 사용자가 최종 Plan을 승인한 뒤 다음 AI Age
 
 - Codex: `CODEX_HOME/config.toml` 또는 `~/.codex/config.toml`, `~/.agents/skills/`
 - Claude Code: `~/.claude.json`, `~/.claude/settings.json`, `~/.claude/skills/`
-- Cursor: `~/.cursor/mcp.json`, `~/.cursor/skills/`, `~/.cursor/plugins/local/`
 - GrayOM 자체 데이터: `~/.grayom/` 또는 `GRAYOM_HOME`
 
 GrayOM은 일반 IDE 설정, 개발 runtime, Docker, Git, Agent 애플리케이션을 설치하거나 수정하지 않습니다.

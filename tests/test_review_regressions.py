@@ -46,7 +46,7 @@ def test_candidate_supporting_one_selected_agent_stays_recommendable() -> None:
 
 
 def test_candidate_supporting_no_selected_agent_is_rejected() -> None:
-    component = _skill(agents={AgentType.CURSOR})
+    component = _skill(agents={AgentType.CLAUDE_CODE})
     validated = ComponentValidator({AgentType.CODEX}).validate(component)
 
     assert not validated.recommendable

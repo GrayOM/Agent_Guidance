@@ -6,7 +6,7 @@ GrayOM Agent Guidance는 이미 설치된 AI Agent를 감지하고 사용자의 
 추론해 Skill, MCP, Plugin을 추천·설치·검증하는 CLI다. Agent, IDE, Node.js, Python, Docker, Git 등
 일반 개발환경은 설치하지 않으며 최종 일괄 승인 전에는 Agent 설정이나 backup을 만들지 않는다.
 
-지원 Agent는 Codex, Claude Code, Cursor다. 하나의 업무 Profile로 전체 후보를 추천한 뒤 실제 적용은
+지원 Agent는 Codex와 Claude Code다. 하나의 업무 Profile로 전체 후보를 추천한 뒤 실제 적용은
 Component × Agent compatibility를 다시 계산해 지원되는 Agent에만 수행한다.
 
 ## 2. 계층
@@ -41,7 +41,6 @@ Agent별 사용자 범위는 공식 문서에 근거한다.
 |---|---|---|---|
 | Codex | `~/.agents/skills` | `CODEX_HOME/config.toml` 또는 `~/.codex/config.toml` | 자동 설치 제외 |
 | Claude Code | `~/.claude/skills` | `~/.claude.json`의 `mcpServers` | marketplace ID 없으면 `PARTIAL` |
-| Cursor | `~/.cursor/skills` | `~/.cursor/mcp.json` | 공식 Marketplace/API 방식 미확정으로 자동 설치 제외 |
 
 설정은 read → parse → merge → validate → fsync → atomic replace 순으로 쓴다. 같은 MCP 이름에 다른
 구현이 있으면 사용자 설정을 보존하고 가능한 경우 `-grayom` 별칭을 사용한다.
@@ -117,7 +116,7 @@ Mutating command는 `~/.grayom/grayom.lock`을 원자적으로 획득한다. 다
 탐지해 새 변경 전에 rollback을 우선하며, live PID lock은 거부하고 stale lock만 회수한다.
 
 Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적 HTTP initialize/tools/list를
-검사한다. Claude Code/Cursor는 JSON parse, marker discovery, MCP endpoint/command를 검사한다. 수행할
+검사한다. Claude Code는 JSON parse, marker discovery, MCP endpoint/command를 검사한다. 수행할
 수 없는 검사는 성공으로 추측하지 않는다.
 
 ## 9. CLI와 운영 데이터

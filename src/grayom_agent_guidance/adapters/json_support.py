@@ -50,21 +50,17 @@ def atomic_write_json(path: Path, value: dict[str, Any]) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def desired_json_mcp(component: Component, *, cursor: bool = False) -> dict[str, Any]:
+def desired_json_mcp(component: Component) -> dict[str, Any]:
+    """The MCP registration Claude Code's documented `mcpServers` object expects."""
     method = component.install_method
     if method.kind == InstallKind.MCP_HTTP:
-        desired: dict[str, Any] = {"url": str(method.url)}
-        if not cursor:
-            desired["type"] = "http"
+        desired: dict[str, Any] = {"url": str(method.url), "type": "http"}
         if method.bearer_token_env_var:
-            token = method.bearer_token_env_var
-            desired["headers"] = {"Authorization": f"Bearer ${{env:{token}}}"} if cursor else {
-                "Authorization": f"Bearer ${{{token}}}"
+            desired["headers"] = {
+                "Authorization": f"Bearer ${{{method.bearer_token_env_var}}}"
             }
     elif method.kind == InstallKind.MCP_STDIO:
-        desired = {"command": method.command}
-        if not cursor:
-            desired["type"] = "stdio"
+        desired = {"command": method.command, "type": "stdio"}
         if method.args:
             desired["args"] = list(method.args)
         if method.env:
@@ -74,12 +70,12 @@ def desired_json_mcp(component: Component, *, cursor: bool = False) -> dict[str,
     return desired
 
 
-def merge_mcp(path: Path, component: Component, *, cursor: bool = False) -> ComponentInstallResult:
+def merge_mcp(path: Path, component: Component) -> ComponentInstallResult:
     document = read_json_object(path)
     servers = document.setdefault("mcpServers", {})
     if not isinstance(servers, dict):
         raise AdapterError(f"mcpServers must be an object in {path}")
-    desired = desired_json_mcp(component, cursor=cursor)
+    desired = desired_json_mcp(component)
     result = ComponentInstallResult(component_id=component.id)
     name = component.id
     if name in servers:

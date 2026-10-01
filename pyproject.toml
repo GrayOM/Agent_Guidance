@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "GrayOM" }]
-keywords = ["ai-agent", "mcp", "codex", "claude-code", "cursor", "cli"]
+keywords = ["ai-agent", "mcp", "codex", "claude-code", "cli"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",

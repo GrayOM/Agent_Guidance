@@ -30,7 +30,7 @@ def test_archived_and_stale_candidates_are_warned_not_silently_blocked() -> None
 
 
 def test_unsupported_agent_is_sent_to_review() -> None:
-    component = ComponentValidator({AgentType.CURSOR}).validate(normalize_candidate(raw_candidate()))
+    component = ComponentValidator({AgentType.CLAUDE_CODE}).validate(normalize_candidate(raw_candidate()))
     assert not component.recommendable
     assert component.candidate_state == CandidateState.REVIEW
 

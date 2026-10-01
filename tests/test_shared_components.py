@@ -8,12 +8,12 @@ def test_shared_mcp_is_prepared_only_once() -> None:
     component = Component(
         id="shared", name="Shared", type=ComponentType.MCP,
         github_url="https://github.com/example/shared",
-        supported_agents={AgentType.CODEX, AgentType.CLAUDE_CODE, AgentType.CURSOR},
+        supported_agents={AgentType.CODEX, AgentType.CLAUDE_CODE},
         capabilities={Capability.REPOSITORY_ACCESS},
     )
     record = SharedComponentRecord(
         component_id="shared", ownership=Ownership.SHARED, shared=True,
-        used_by=[AgentType.CODEX, AgentType.CLAUDE_CODE, AgentType.CURSOR],
+        used_by=[AgentType.CODEX, AgentType.CLAUDE_CODE],
     )
     manager = SharedComponentManager()
     manager.prepare(component, record)

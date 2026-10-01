@@ -4,7 +4,7 @@
 
 ### Added
 
-- Codex, Claude Code, and Cursor adapters with multi-Agent planning.
+- Codex and Claude Code adapters with multi-Agent planning.
 - Deterministic interview, recommendation, conflict, security, reconciliation, and update flows.
 - Explicit Adapter capabilities, transaction states, crash recovery, process lock, schema versions,
   component manifests, file hashes, and three-level Health Check data model.
@@ -23,7 +23,7 @@
 
 ### Known limitations
 
-- Claude Code and Cursor do not yet have a functional MCP protocol probe.
+- Claude Code does not yet have a functional MCP protocol probe.
 - Update compares verified Registry refs rather than live upstream releases.
-- WSL does not modify Windows-hosted Cursor configuration.
+- WSL does not modify a Windows-hosted Agent's configuration.
 - Automated uninstall is not exposed.

@@ -16,7 +16,7 @@ def main() -> int:
         "CLI import": callable(importlib.import_module("grayom_agent_guidance.cli.main").app),
         "adapter imports": all(
             hasattr(importlib.import_module("grayom_agent_guidance.adapters"), name)
-            for name in ("CodexAdapter", "ClaudeCodeAdapter", "CursorAdapter")
+            for name in ("CodexAdapter", "ClaudeCodeAdapter")
         ),
         "registry parse": bool(importlib.import_module("grayom_agent_guidance.registry").load_registry()),
         "state schema": importlib.import_module("grayom_agent_guidance.state").StateDocument().schema_version == 1,
