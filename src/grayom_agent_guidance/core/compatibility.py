@@ -2,7 +2,7 @@ import re
 
 from grayom_agent_guidance.models import (
     AgentInstallation, AgentType, CompatibilityResult, CompatibilityStatus, Component,
-    ComponentType, InstallKind,
+    ComponentType,
 )
 
 
@@ -42,11 +42,6 @@ def evaluate_compatibility(
                 agent=agent, component_id=component.id, status=CompatibilityStatus.PARTIAL,
                 reason="Claude Code requires a verified marketplace identifier for persistent Plugin installation",
                 evidence=evidence,
-            )
-        if agent == AgentType.CURSOR and component.install_method.kind != InstallKind.PLUGIN_GIT:
-            return CompatibilityResult(
-                agent=agent, component_id=component.id, status=CompatibilityStatus.PARTIAL,
-                reason="Cursor Plugin requires a validated Git plugin manifest", evidence=evidence,
             )
     requirement = component.agent_requirements.get(agent)
     if requirement and requirement.min_version:

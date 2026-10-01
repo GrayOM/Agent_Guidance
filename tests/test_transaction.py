@@ -65,9 +65,9 @@ def _plan() -> MultiAgentPlan:
     return MultiAgentPlan(agents=agents)
 
 
-def test_third_agent_failure_rolls_back_every_agent(tmp_path) -> None:
+def test_a_later_agent_failure_rolls_back_every_agent(tmp_path) -> None:
     adapters = {
-        agent: FakeAdapter(agent, tmp_path / agent.value, fail=agent == AgentType.CURSOR)
+        agent: FakeAdapter(agent, tmp_path / agent.value, fail=agent == AgentType.CLAUDE_CODE)
         for agent in AgentType
     }
     result = MultiAgentInstallationTransaction(adapters, tmp_path / "backups").execute(_plan())

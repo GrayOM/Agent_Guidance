@@ -13,7 +13,6 @@ def test_dry_run_creates_no_backup_or_state(monkeypatch, tmp_path) -> None:
     monkeypatch.setattr("grayom_agent_guidance.cli.main.detect_agents", lambda: [
         AgentInstallation(agent=AgentType.CODEX, detected=True),
         AgentInstallation(agent=AgentType.CLAUDE_CODE, detected=False),
-        AgentInstallation(agent=AgentType.CURSOR, detected=False),
     ])
     monkeypatch.setattr("grayom_agent_guidance.cli.main.run_interview", lambda detected: InterviewAnswer(
         agents=[AgentType.CODEX], domains=[WorkDomain.GENERAL_DEVELOPMENT], mode=SetupMode.MINIMAL,

@@ -12,7 +12,7 @@
     <text x="30" y="416" fill="#f9f1a5">(.venv) PS ...&gt;</text><text x="272" y="416" fill="#f0f6fc"> grayom --version</text>
     <text x="30" y="465" fill="#3bdbff">GrayOM Agent Guidance 0.1.0rc1</text>
     <text x="30" y="530" fill="#f9f1a5">(.venv) PS ...&gt;</text><text x="272" y="530" fill="#f0f6fc"> grayom</text>
-    <text x="30" y="579" fill="#b5cea8">Detected Agents:  ✓ Codex   ✗ Claude Code   ✗ Cursor</text>
+    <text x="30" y="579" fill="#b5cea8">Detected Agents:  ✓ Codex   ✗ Claude Code</text>
     <text x="30" y="622" fill="#dcdcaa">Select “Setup Agent Environment” to continue.</text>
   </g>
 </svg>

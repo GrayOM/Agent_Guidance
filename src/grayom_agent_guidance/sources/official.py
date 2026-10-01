@@ -10,7 +10,7 @@ OFFICIAL_CATALOG = [
         "id": "github",
         "url": "https://github.com/github/github-mcp-server",
         "type": ComponentType.MCP,
-        "agents": {AgentType.CODEX, AgentType.CLAUDE_CODE, AgentType.CURSOR},
+        "agents": {AgentType.CODEX, AgentType.CLAUDE_CODE},
         "reason": "Repository owned by GitHub and documented as the official GitHub MCP Server",
     },
     {

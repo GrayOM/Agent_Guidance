@@ -71,7 +71,7 @@ def run_interview(detected: list[AgentInstallation] | None = None) -> InterviewA
     detected_map = {item.agent: item.detected for item in detected or []}
     agent_choices = []
     for agent, label in (
-        (AgentType.CODEX, "Codex"), (AgentType.CLAUDE_CODE, "Claude Code"), (AgentType.CURSOR, "Cursor"),
+        (AgentType.CODEX, "Codex"), (AgentType.CLAUDE_CODE, "Claude Code"),
     ):
         # InquirerPy's checkbox has no 'disabled' option, so an Agent that is not installed is
         # withheld from the list instead of being offered as an unselectable entry.

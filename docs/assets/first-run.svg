@@ -20,7 +20,6 @@
     <text x="34" y="438" fill="#f0f6fc">Detected Agents:</text>
     <text x="34" y="476" fill="#7ee787">✓ Codex</text>
     <text x="34" y="514" fill="#f85149">✗ Claude Code</text>
-    <text x="34" y="552" fill="#f85149">✗ Cursor</text>
     <text x="34" y="614" fill="#f0f6fc">? What would you like to do?</text>
     <rect x="28" y="635" width="480" height="42" rx="6" fill="#1f6feb"/>
     <text x="43" y="664" fill="#ffffff">❯ Setup Agent Environment</text>

@@ -25,6 +25,6 @@ def test_component_can_be_supported_for_one_agent_and_unsupported_for_another() 
         capabilities={Capability.TESTING},
     )
     codex = evaluate_compatibility(component, AgentInstallation(agent=AgentType.CODEX, detected=True))
-    cursor = evaluate_compatibility(component, AgentInstallation(agent=AgentType.CURSOR, detected=True))
+    claude = evaluate_compatibility(component, AgentInstallation(agent=AgentType.CLAUDE_CODE, detected=True))
     assert codex.status == CompatibilityStatus.SUPPORTED
-    assert cursor.status == CompatibilityStatus.UNSUPPORTED
+    assert claude.status == CompatibilityStatus.UNSUPPORTED

@@ -46,7 +46,7 @@ def detect_platform(home: Path | None = None) -> PlatformInfo:
     warnings = []
     if is_wsl:
         warnings.append(
-            "WSL detected; Windows-hosted Cursor configuration is not modified automatically"
+            "WSL detected; a Windows-hosted Agent's configuration is not modified automatically"
         )
     if os_type == OperatingSystem.UNKNOWN:
         warnings.append("unsupported platform; only explicit user-home paths are considered")

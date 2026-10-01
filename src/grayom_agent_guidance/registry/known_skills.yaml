@@ -30,7 +30,7 @@
   source: local_registry
   github_url: https://github.com/obra/superpowers
   official: false
-  supported_agents: [codex, claude_code, cursor]
+  supported_agents: [codex, claude_code]
   capabilities: [planning, code_editing, development_workflow, testing, code_review]
   permissions: [filesystem_read, filesystem_write, shell, external_download]
   context_cost: 4
@@ -56,7 +56,7 @@
   source: local_registry
   github_url: https://github.com/addyosmani/agent-skills
   official: false
-  supported_agents: [codex, claude_code, cursor]
+  supported_agents: [codex, claude_code]
   capabilities: [planning, code_editing, testing, code_review]
   permissions: [filesystem_read, filesystem_write, shell, external_download]
   context_cost: 4

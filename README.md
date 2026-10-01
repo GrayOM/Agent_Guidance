@@ -9,7 +9,7 @@
 Agent Guidance은 사용자가 Skill, MCP, Plugin을 직접 공부하거나 고르게 하지 않습니다. 사용하는 Agent와
 업무를 선택하면 호환성, 기능 중복, 충돌, 보안 위험을 분석하고 설치 전 전체 Plan을 보여줍니다.
 
-> GrayOM은 Codex, Claude Code, Cursor 자체를 설치하지 않습니다. 이미 설치된 Agent의 확장 환경만
+> GrayOM은 Codex, Claude Code 자체를 설치하지 않습니다. 이미 설치된 Agent의 확장 환경만
 > 안전하게 설정합니다.
 
 ## 빠른 시작
@@ -19,7 +19,7 @@ Agent Guidance은 사용자가 Skill, MCP, Plugin을 직접 공부하거나 고�
 - Python 3.11 이상
 - Git
 - [pipx](https://pipx.pypa.io/stable/installation/)
-- Codex, Claude Code, Cursor 중 하나 이상
+- Codex, Claude Code 중 하나 이상
 
 ### 2. 설치
 
@@ -55,7 +55,7 @@ grayom
 
 ## 사용자가 선택하는 항목
 
-- Agent: Codex, Claude Code, Cursor
+- Agent: Codex, Claude Code
 - 업무 분야: 일반 개발, 웹 개발, AI Agent 개발, 보안 도구 개발, 취약점 연구, OSINT 등
 - 세부 작업: 소스코드 분석, 테스트, 보안 검토, CVE 분석, 보고서 자동화 등
 - 구성 모드
@@ -159,10 +159,9 @@ Windows PowerShell의 활성화 경로는 `.venv\Scripts\Activate.ps1`, macOS/Li
 |---|---:|---:|---:|---:|---:|
 | Codex | 지원 | 지원 | 지원 | 지원 | 지원 |
 | Claude Code | 지원 | 지원 | 지원 | 제한적 | 지원 |
-| Cursor | 지원 | 지원 | 지원 | 제한적 | 지원 |
 
-Claude Code와 Cursor는 현재 MCP 설정 및 discovery metadata 중심으로 확인합니다. Cursor Plugin은
-공식적인 transaction-safe 설치 방식이 확인될 때까지 자동 설치하지 않습니다.
+Claude Code는 현재 MCP 설정 및 discovery metadata 중심으로 확인합니다. Plugin은 공식적인
+transaction-safe 설치 방식이 확인될 때까지 자동 설치하지 않습니다.
 
 ## 데이터 저장 위치
 

@@ -129,9 +129,9 @@ def _component_type(raw: RawCandidate, text: str) -> ComponentType:
     raise ValueError("repository structure does not identify a Skill, MCP, or Plugin")
 
 
-# Codex, Claude Code and Cursor all consume the same SKILL.md format from their own user
+# Codex and Claude Code both consume the same SKILL.md format from their own user
 # Skill directory, which docs/agent-compatibility.md records per Agent.
-SKILL_FORMAT_AGENTS = frozenset({AgentType.CODEX, AgentType.CLAUDE_CODE, AgentType.CURSOR})
+SKILL_FORMAT_AGENTS = frozenset({AgentType.CODEX, AgentType.CLAUDE_CODE})
 
 SKILL_FORMAT_NOTE = (
     "no Agent is named in the repository, so Skill support is inferred from the shared "
@@ -148,8 +148,6 @@ def _supported_agents(
         result.add(AgentType.CODEX)
     if "claude code" in joined or ".claude" in joined:
         result.add(AgentType.CLAUDE_CODE)
-    if "cursor" in joined or ".cursor" in joined:
-        result.add(AgentType.CURSOR)
     if result or component_type != ComponentType.SKILL:
         return result, None
     # A community SKILL.md that never names an Agent is still installable by all three,

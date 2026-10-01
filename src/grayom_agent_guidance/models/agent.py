@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 class AgentType(StrEnum):
     CODEX = "codex"
     CLAUDE_CODE = "claude_code"
-    CURSOR = "cursor"
 
 
 class AdapterCapabilities(BaseModel):

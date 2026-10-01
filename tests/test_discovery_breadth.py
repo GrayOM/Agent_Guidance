@@ -122,7 +122,7 @@ def test_a_skill_that_names_no_agent_is_still_installable_everywhere() -> None:
     agents, note = _supported_agents("a collection of useful skills", ["skills/x/SKILL.md"],
                                      ComponentType.SKILL)
 
-    assert agents == {AgentType.CODEX, AgentType.CLAUDE_CODE, AgentType.CURSOR}
+    assert agents == {AgentType.CODEX, AgentType.CLAUDE_CODE}
     assert note == SKILL_FORMAT_NOTE
 
 
