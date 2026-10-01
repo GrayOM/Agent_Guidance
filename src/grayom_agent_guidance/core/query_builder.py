@@ -1,6 +1,9 @@
 from grayom_agent_guidance.models import AgentType, Capability, ComponentType
 
 
+# Declaration order is the search priority: when the request budget forces truncation, the
+# specialised capabilities are searched before the generic development ones. Alphabetical order
+# would drop exactly the terms a specialised profile is asking about.
 CAPABILITY_TERMS: dict[Capability, str] = {
     Capability.SECURITY_ANALYSIS: "security analysis",
     Capability.SOURCE_ANALYSIS: "source code analysis",
@@ -32,7 +35,9 @@ def build_queries(
     limit: int = 6,
 ) -> list[str]:
     agent_terms = " OR ".join(sorted(agent.value.replace("_", " ") for agent in agents))
-    capability_terms = [CAPABILITY_TERMS[item] for item in sorted(capabilities, key=lambda item: item.value) if item in CAPABILITY_TERMS]
+    capability_terms = [
+        term for capability, term in CAPABILITY_TERMS.items() if capability in capabilities
+    ]
     queries: list[str] = []
     for term in capability_terms[: max(1, limit - 1)]:
         queries.append(f'"{term}" "{TYPE_TERMS[component_type]}" {agent_terms}')

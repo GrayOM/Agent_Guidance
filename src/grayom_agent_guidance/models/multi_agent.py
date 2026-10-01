@@ -10,6 +10,7 @@ from .agent import AgentType
 from .component import Component
 from .installation import HealthCheckResult, InstallationManifest, RollbackResult
 from .reconciliation import ReconciliationStatus
+from grayom_agent_guidance.schema import load_versioned_json
 
 
 class CompatibilityStatus(StrEnum):
@@ -100,6 +101,7 @@ class MultiAgentManifest(BaseModel):
     rollback_errors: list[str] = Field(default_factory=list)
     original_hashes: dict[str, str | None] = Field(default_factory=dict)
     post_install_hashes: dict[str, str | None] = Field(default_factory=dict)
+    shared_warnings: list[str] = Field(default_factory=list)
 
     @property
     def path(self) -> Path:
@@ -121,7 +123,8 @@ class MultiAgentManifest(BaseModel):
     @classmethod
     def load(cls, path: Path) -> "MultiAgentManifest":
         target = path / "manifest.json" if path.is_dir() else path
-        return cls.model_validate_json(target.read_text(encoding="utf-8"))
+        # Refuse a manifest written by a newer GrayOM instead of restoring it with fields dropped.
+        return cls.model_validate(load_versioned_json(target))
 
 
 class MultiAgentInstallationResult(BaseModel):

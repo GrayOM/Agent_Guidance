@@ -6,6 +6,8 @@ import os
 from pydantic import BaseModel, Field
 from enum import IntEnum, StrEnum
 
+from grayom_agent_guidance.schema import load_versioned_json
+
 
 class HealthLevel(IntEnum):
     STATIC = 1
@@ -104,7 +106,8 @@ class InstallationManifest(BaseModel):
     @classmethod
     def load(cls, path: Path) -> "InstallationManifest":
         target = path / "manifest.json" if path.is_dir() else path
-        return cls.model_validate_json(target.read_text(encoding="utf-8"))
+        # Refuse a manifest written by a newer GrayOM instead of restoring it with fields dropped.
+        return cls.model_validate(load_versioned_json(target))
 
 
 class InstallationResult(BaseModel):

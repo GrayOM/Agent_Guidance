@@ -11,18 +11,18 @@ from grayom_agent_guidance.models import (
 from grayom_agent_guidance.runtime import ProcessRunner
 
 from .base import AgentAdapter
-from .codex import AdapterError
+from .codex import MCP_DIFFERENT_SETTINGS_REASON, AdapterError, _safe_name
 from .json_support import desired_json_mcp, install_git_skills, merge_mcp, read_json_object
 from grayom_agent_guidance.runtime import validate_managed_path
 
 
 class ClaudeCodeAdapter(AgentAdapter):
+    """User-scope Claude Code adapter based on the documented ~/.claude paths."""
+
     @property
     def capabilities(self) -> AdapterCapabilities:
         # Plugin installation is intentionally disabled until a marketplace identifier is verified.
         return AdapterCapabilities(skills=True, mcp=True, plugins=False, health_probe=False)
-
-    """User-scope Claude Code adapter based on the documented ~/.claude paths."""
 
     def __init__(self, home: Path | None = None) -> None:
         self.home = (home or Path.home()).resolve()
@@ -74,7 +74,8 @@ class ClaudeCodeAdapter(AgentAdapter):
 
     def existing_component_status(self, component: Component) -> tuple[bool, str | None]:
         if component.type == ComponentType.SKILL:
-            prefix = f"{component.id}--"
+            # install_git_skills names directories with _safe_name, so the lookup must match it.
+            prefix = f"{_safe_name(component.id)}--"
             exists = any(name.startswith(prefix) for name in self.list_existing_skills())
             return exists, "existing Claude Code Skill preserved" if exists else None
         if component.type == ComponentType.MCP:
@@ -89,7 +90,7 @@ class ClaudeCodeAdapter(AgentAdapter):
             ):
                 return True, "compatible GrayOM MCP alias already exists"
             if existing is not None:
-                return True, "MCP has different settings; a safe GrayOM alias will be used"
+                return True, MCP_DIFFERENT_SETTINGS_REASON
         return False, None
 
     def backup(self, destination: Path) -> BackupManifest:

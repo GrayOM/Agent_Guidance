@@ -57,14 +57,28 @@ def _maintenance(metadata: dict) -> MaintenanceMetadata:
     )
 
 
+def _component_id(raw: RawCandidate) -> str:
+    if raw.component_id:
+        return raw.component_id
+    slug = re.sub(r"[^a-z0-9._-]+", "-", raw.repository_full_name.lower().replace("/", "-"))
+    slug = slug.strip("-.")[:128]
+    if not slug or not re.match(r"^[a-z0-9]", slug):
+        raise ValueError(f"repository name cannot form a safe component id: {raw.repository_full_name}")
+    return slug
+
+
 def _component_type(raw: RawCandidate, text: str) -> ComponentType:
     if raw.expected_type:
         return raw.expected_type
     lowered_paths = [path.lower() for path in raw.tree_paths]
-    if any(path.endswith(".codex-plugin/plugin.json") or path.endswith("plugin.json") for path in lowered_paths):
+    # A plugin manifest only outranks SKILL.md when it sits at a documented plugin location;
+    # an incidental plugin.json must not reclassify a Skill repository.
+    if any(path.endswith(".codex-plugin/plugin.json") for path in lowered_paths):
         return ComponentType.PLUGIN
     if any(path.endswith("skill.md") for path in lowered_paths):
         return ComponentType.SKILL
+    if any(path.endswith("plugin.json") for path in lowered_paths):
+        return ComponentType.PLUGIN
     if any("mcp" in PurePosixPath(path).name.lower() for path in lowered_paths) or "mcp server" in text or "model context protocol" in text:
         return ComponentType.MCP
     raise ValueError("repository structure does not identify a Skill, MCP, or Plugin")
@@ -167,7 +181,7 @@ def normalize_candidate(raw: RawCandidate) -> Component:
         source="README/repository_structure",
     ))
     return Component(
-        id=raw.component_id or re.sub(r"[^a-z0-9._-]+", "-", raw.repository_full_name.lower().replace("/", "-")),
+        id=_component_id(raw),
         name=raw.metadata.get("name") or raw.repository_full_name.split("/")[-1],
         type=component_type, source=raw.source_type.value, repository_url=raw.repository_url,
         official=official, supported_agents=agents, capabilities=capabilities,

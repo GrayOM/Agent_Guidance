@@ -61,7 +61,10 @@ class MultiAgentInstallationTransaction:
                 for agent_plan in plan.agents.values() for action in agent_plan.actions
             }
             for record in manifest.shared_components:
-                self.shared.prepare(component_by_id[record.component_id], record)
+                # Missing STDIO runtimes are reported, never installed by GrayOM.
+                manifest.shared_warnings.extend(
+                    self.shared.prepare(component_by_id[record.component_id], record)
+                )
             manifest.save()
 
             for agent, agent_plan in plan.agents.items():

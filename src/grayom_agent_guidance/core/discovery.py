@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 
 import httpx
@@ -55,7 +56,12 @@ def _merge_candidates(candidates: list[Component]) -> list[Component]:
         if current is None:
             merged[key] = candidate.model_copy(deep=True)
             continue
-        preferred, secondary = (candidate, current) if _rank(candidate) > _rank(current) else (current, candidate)
+        # The id tie-break keeps the merge independent of the order sources happen to return in.
+        preferred, secondary = (
+            (candidate, current)
+            if (_rank(candidate), candidate.id) > (_rank(current), current.id)
+            else (current, candidate)
+        )
         combined = preferred.model_copy(deep=True)
         combined.capabilities |= secondary.capabilities
         combined.supported_agents |= secondary.supported_agents
@@ -77,7 +83,7 @@ def _merge_candidates(candidates: list[Component]) -> list[Component]:
             # Stable curated ids keep existing installation/config compatibility.
             combined.id = secondary.id
         merged[key] = combined
-    return list(merged.values())
+    return sorted(merged.values(), key=lambda item: item.id)
 
 
 async def discover_components(
@@ -104,9 +110,12 @@ async def discover_components(
             offline_fallback=True,
         )
 
+    # GitHub allows 10 search requests per minute unauthenticated and 30 authenticated, so the
+    # per-type breadth is chosen to cover inferred capabilities without exhausting the budget.
+    per_type = 5 if os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") else 3
     queries: list[str] = []
     for component_type in ComponentType:
-        queries.extend(build_queries(answer.agents, capabilities, component_type, limit=1))
+        queries.extend(build_queries(answer.agents, capabilities, component_type, limit=per_type))
     validator = ComponentValidator(set(answer.agents))
     official = OfficialSource(
         validator=validator, cache=cache, client=github_client,
