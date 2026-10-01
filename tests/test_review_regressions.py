@@ -2,6 +2,7 @@
 
 import json
 import stat
+import sys
 
 import pytest
 from pydantic import ValidationError
@@ -174,12 +175,23 @@ def test_incidental_plugin_manifest_does_not_reclassify_a_skill_repository() -> 
     assert _component_type(raw, "") == ComponentType.SKILL
 
 
-def test_event_log_is_never_world_readable(tmp_path) -> None:
+def test_event_log_does_not_expose_a_secret_it_was_given(tmp_path) -> None:
+    log = tmp_path / "logs" / "grayom.jsonl"
+    EventLogger(path=log).write("setup_complete", token="ghp_secret")
+
+    assert "ghp_secret" not in log.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows reports 0o666 for any writable file; it uses ACLs, not POSIX mode bits",
+)
+def test_event_log_is_created_without_group_or_world_access(tmp_path) -> None:
+    """The log was created under the default umask and chmoded only afterwards."""
     log = tmp_path / "logs" / "grayom.jsonl"
     EventLogger(path=log).write("setup_complete", token="ghp_secret")
 
     assert stat.S_IMODE(log.stat().st_mode) & 0o077 == 0
-    assert "ghp_secret" not in log.read_text(encoding="utf-8")
 
 
 def test_shared_runtime_warnings_reach_the_transaction_manifest(tmp_path) -> None:
