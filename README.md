@@ -2,7 +2,7 @@
   <img src="docs/assets/grayom-eye.svg" width="220" alt="GrayOM eye logo">
 </p>
 
-<h1 align="center">GrayOM Agent Guidance</h1>
+<h1 align="center">Agent Guidance</h1>
 
 <p align="center"><strong>업무만 선택하면 필요한 AI Agent 확장 구성을 찾아서 설치·검증해 주는 CLI 도구</strong></p>
 
