@@ -64,6 +64,11 @@ class ComponentInstallResult(BaseModel):
     preserved_paths: list[Path] = Field(default_factory=list)
     configured_mcp: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
+    # What a Skill repository offered and what was taken from it, so the user can be told
+    # in one line what landed instead of discovering it in their Agent's context.
+    skills_available: int = 0
+    skills_selected: list[str] = Field(default_factory=list)
+    skills_skipped: dict[str, int] = Field(default_factory=dict)
 
 
 class InstallationManifest(BaseModel):

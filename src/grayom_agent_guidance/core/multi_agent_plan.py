@@ -1,18 +1,39 @@
 from grayom_agent_guidance.adapters import AgentAdapter
 from grayom_agent_guidance.models import (
     AgentComponentAction, AgentInstallation, AgentPlan, AgentType, CompatibilityStatus,
-    ComponentType, MultiAgentPlan, Ownership, RecommendationPlan, SharedComponentRecord,
+    Component, ComponentType, MultiAgentPlan, Ownership, RecommendationPlan,
+    SharedComponentRecord, SkillSelectionPolicy,
 )
 
 from .compatibility import evaluate_compatibility
 from .reconcile import reconcile_component
+from .skill_selection import limit_for
+
+
+def _with_skill_policy(
+    component: Component, recommendation: RecommendationPlan, limit: int,
+) -> Component:
+    """Tell the adapter which Skills of a repository this run asked for.
+
+    Discovery describes a repository; only the Plan knows what the person selected, so the
+    policy is attached here rather than carried by the candidate.
+    """
+    if component.type != ComponentType.SKILL:
+        return component
+    scoped = component.model_copy(deep=True)
+    scoped.skill_selection = SkillSelectionPolicy(
+        capabilities=set(recommendation.capabilities), limit=limit,
+    )
+    return scoped
 
 
 def build_multi_agent_plan(
     recommendation: RecommendationPlan,
     installations: dict[AgentType, AgentInstallation],
     adapters: dict[AgentType, AgentAdapter],
+    skill_limit: int | None = None,
 ) -> MultiAgentPlan:
+    limit = limit_for(recommendation.interview.mode, skill_limit)
     plans: dict[AgentType, AgentPlan] = {}
     for agent in recommendation.interview.agents:
         installation = installations[agent]
@@ -21,7 +42,7 @@ def build_multi_agent_plan(
         for item in recommendation.items:
             if not item.selected:
                 continue
-            component = item.component
+            component = _with_skill_policy(item.component, recommendation, limit)
             compatibility = evaluate_compatibility(component, installation)
             type_supported = {
                 ComponentType.SKILL: adapter.capabilities.skills,

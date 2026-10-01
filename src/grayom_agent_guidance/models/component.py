@@ -100,6 +100,19 @@ class InstallMethod(BaseModel):
         return self
 
 
+class SkillSelectionPolicy(BaseModel):
+    """Which Skills of a repository to install, and how many.
+
+    A Skill repository can hold dozens of Skills, and an Agent loads every installed
+    Skill's name and description into its context, so installing all of them spends the
+    user's context on work they did not ask for. core decides the policy from the
+    interview; the adapter applies it once the repository is on disk.
+    """
+
+    capabilities: set[Capability] = Field(default_factory=set)
+    limit: int = Field(default=6, ge=1, le=100)
+
+
 class SecurityMetadata(BaseModel):
     shell_execution: bool = False
     subprocess: bool = False
@@ -168,6 +181,8 @@ class Component(BaseModel):
     install_paths: set[str] = Field(default_factory=set)
     config_keys: set[str] = Field(default_factory=set)
     install_method: InstallMethod = Field(default_factory=InstallMethod)
+    # Set by the install Plan, not by discovery: it depends on what this run asked for.
+    skill_selection: SkillSelectionPolicy | None = None
     security_metadata: SecurityMetadata = Field(default_factory=SecurityMetadata)
     maintenance_metadata: MaintenanceMetadata = Field(default_factory=MaintenanceMetadata)
     trust: TrustMetadata = Field(default_factory=TrustMetadata)

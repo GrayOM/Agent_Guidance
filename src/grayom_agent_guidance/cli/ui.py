@@ -6,7 +6,7 @@ from rich.text import Text
 
 from grayom_agent_guidance.core.discovery import DiscoveryResult
 from grayom_agent_guidance.models import (
-    AgentInstallation, ComponentType, HealthCheckResult, MultiAgentPlan, RecommendationPlan,
+    AgentInstallation, ComponentType, HealthCheckResult, MultiAgentManifest, MultiAgentPlan, RecommendationPlan,
 )
 from grayom_agent_guidance.core.explainer import PlanExplanation
 from grayom_agent_guidance import __version__
@@ -166,6 +166,35 @@ def show_discovery(console: Console, result: DiscoveryResult) -> None:
     for warning in result.warnings:
         console.print(f"[yellow]Warning:[/yellow] {warning}")
     console.print(f"[green]✓[/green] {result.validated} unique candidates available\n")
+
+
+def show_installed(console: Console, manifest: MultiAgentManifest) -> None:
+    """One line per component, then what was deliberately left out.
+
+    A Skill repository can hold dozens of Skills, so the user has to be told what landed
+    without reading their Agent's context to find out. Lines are grouped by component
+    rather than by Agent: the same component installed for two Agents is one thing that
+    happened, and counting its Skills once per Agent would double every number.
+    """
+    if not manifest.outcomes:
+        return
+    grouped: dict[str, list] = {}
+    for outcome in manifest.outcomes:
+        grouped.setdefault(outcome.component_id, []).append(outcome)
+
+    console.print("\n[bold]Installed[/bold]")
+    skipped: dict[str, int] = {}
+    for outcomes in grouped.values():
+        first = outcomes[0]
+        agents = ", ".join(item.agent.value.replace("_", " ").title() for item in outcomes)
+        console.print(f"  [green]+[/green] {first.name} — {first.summary()} [dim]({agents})[/dim]")
+        for reason, count in first.skills_skipped.items():
+            skipped[reason] = skipped.get(reason, 0) + count
+    if skipped:
+        detail = ", ".join(
+            f"{count} {reason}" for reason, count in sorted(skipped.items(), key=lambda x: -x[1])
+        )
+        console.print(f"  [dim]Skills left out: {detail}[/dim]")
 
 
 def show_health(console: Console, result: HealthCheckResult) -> None:

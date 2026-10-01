@@ -2,7 +2,6 @@ import json
 import os
 import re
 import shutil
-import tempfile
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -183,45 +182,11 @@ class CodexAdapter(AgentAdapter):
             raise AdapterError(f"symlinks are not installed from external Skills: {root}")
 
     def install_skill(self, component: Component) -> ComponentInstallResult:
-        if component.install_method.kind != InstallKind.GIT_SKILLS:
-            raise AdapterError(f"unsupported Skill install method: {component.install_method.kind}")
-        result = ComponentInstallResult(component_id=component.id)
-        self.skills_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(prefix="grayom-skill-") as temp_name:
-            repository = self._clone_pinned(component, Path(temp_name))
-            if component.install_method.subpaths:
-                skill_files = [repository / subpath / "SKILL.md" for subpath in component.install_method.subpaths]
-            else:
-                skill_files = sorted(repository.rglob("SKILL.md"))
-            skill_files = [path for path in skill_files if ".git" not in path.parts]
-            if not skill_files or any(not path.is_file() for path in skill_files):
-                raise AdapterError(f"no installable SKILL.md found for {component.id}")
-            for skill_file in skill_files:
-                metadata = self._skill_metadata(skill_file)
-                source_dir = skill_file.parent
-                self._reject_symlinks(source_dir)
-                suffix = _safe_name(str(metadata["name"]))
-                target = self.skills_root / f"{_safe_name(component.id)}--{suffix}"
-                validate_managed_path(target, self.skills_root)
-                if target.exists():
-                    result.preserved_paths.append(target)
-                    result.notes.append(f"preserved existing Skill: {target.name}")
-                    continue
-                staging = self.skills_root / f".grayom-{uuid4().hex}"
-                shutil.copytree(source_dir, staging, ignore=shutil.ignore_patterns(".git", "__pycache__"))
-                marker = {
-                    "component_id": component.id,
-                    "source": str(component.github_url),
-                    "ref": component.install_method.ref,
-                    "skill_name": metadata["name"],
-                }
-                (staging / ".grayom-component.json").write_text(
-                    json.dumps(marker, indent=2), encoding="utf-8",
-                )
-                os.replace(staging, target)
-                result.created_paths.append(target)
-                result.changed = True
-        return result
+        # Shared with Claude Code: a repository holding dozens of Skills has to be narrowed
+        # the same way whichever Agent it is being installed for.
+        from .json_support import install_git_skills
+
+        return install_git_skills(component, self.skills_root)
 
     def _desired_mcp(self, component: Component) -> dict[str, Any]:
         method = component.install_method

@@ -20,7 +20,7 @@ from grayom_agent_guidance.core.capability_inference import (
 )
 from grayom_agent_guidance.core.query_builder import CAPABILITY_TERMS, build_queries
 from grayom_agent_guidance.models import AgentType, Capability, ComponentType, SetupMode, WorkDomain
-from grayom_agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, _mentions
+from grayom_agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
 
 
 def _asked_capabilities() -> set[Capability]:
@@ -153,25 +153,25 @@ def test_task_capabilities_are_a_subset_of_the_whole_profile() -> None:
 
 
 def test_a_keyword_matches_a_word_start_and_its_grown_suffix() -> None:
-    assert _mentions("audits the code", ("audit",))
-    assert _mentions("auditing tool", ("audit",))
-    assert _mentions("terraform modules", ("terraform",))
+    assert mentions("audits the code", ("audit",))
+    assert mentions("auditing tool", ("audit",))
+    assert mentions("terraform modules", ("terraform",))
 
 
 def test_an_ies_plural_is_listed_because_the_anchor_cannot_reach_it() -> None:
     """-y to -ies is a spelling change, so prefix anchoring never covered it."""
-    assert not _mentions("fixes vulnerabilities", ("vulnerability",))
+    assert not mentions("fixes vulnerabilities", ("vulnerability",))
 
     for text, capability in (
         ("fixes vulnerabilities", Capability.VULNERABILITY_RESEARCH),
         ("updates dependencies", Capability.DEPENDENCY_MANAGEMENT),
         ("scans repositories", Capability.REPOSITORY_ACCESS),
     ):
-        assert _mentions(text, CAPABILITY_KEYWORDS[capability]), text
+        assert mentions(text, CAPABILITY_KEYWORDS[capability]), text
 
 
 def test_a_short_keyword_does_not_match_inside_an_unrelated_word() -> None:
     """A plain substring test tagged every repository mentioning "studios" as iOS."""
-    assert not _mentions("built by acme studios for radios", ("ios",))
-    assert _mentions("an ios app helper", ("ios",))
-    assert not _mentions("various scenarios", ("ios",))
+    assert not mentions("built by acme studios for radios", ("ios",))
+    assert mentions("an ios app helper", ("ios",))
+    assert not mentions("various scenarios", ("ios",))

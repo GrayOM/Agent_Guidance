@@ -31,7 +31,9 @@ from grayom_agent_guidance.state import StateStore
 from grayom_agent_guidance.runtime import OperationLock
 
 from .interview import run_interview
-from .ui import show_detected_agents, show_discovery, show_header, show_health, show_plan
+from .ui import (
+    show_detected_agents, show_discovery, show_header, show_health, show_installed, show_plan,
+)
 
 app = typer.Typer(no_args_is_help=False, help="GrayOM AI Agent Environment Manager")
 console = Console()
@@ -79,7 +81,10 @@ def _build_plan(
     plan.conflicts = analyze_conflicts(plan.selected)
     plan.security_findings = analyze_security(plan.selected)
     installation_map = {item.agent: item for item in detected}
-    multi_plan = build_multi_agent_plan(plan, installation_map, adapters)
+    multi_plan = build_multi_agent_plan(
+        plan, installation_map, adapters,
+        skill_limit=load_config().skills.max_per_component,
+    )
     return plan, multi_plan, explain_plan(plan)
 
 
@@ -139,6 +144,7 @@ def _run_setup(probe_mcp: bool = True, offline: bool = False, dry_run: bool = Fa
             raise typer.Exit(code=ExitCode.INSTALLATION)
         StateStore().record(multi_plan, result.manifest)
         console.print("\n[bold green]Installation completed.[/bold green]")
+        show_installed(console, result.manifest)
         for warning in result.manifest.shared_warnings:
             console.print(f"[yellow]! WARNING[/yellow] {warning}")
         for agent, health in result.health.items():
