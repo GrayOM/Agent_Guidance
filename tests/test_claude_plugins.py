@@ -6,7 +6,9 @@ against an installed Claude Code in an isolated HOME, not inferred from document
 
 import json
 import os
+import shlex
 import stat
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -155,10 +157,15 @@ def test_manifests_are_read_before_the_per_repository_file_budget_runs_out() -> 
 def fake_claude(
     tmp_path: Path, stdout: str = "", *, noise: str = "", stderr: str = "", exit_code: int = 0,
 ) -> ClaudePluginCli:
-    """A stand-in `claude` that records its arguments, so command shape is tested for real."""
-    path = tmp_path / "claude"
-    path.write_text(
-        "#!/usr/bin/env python3\nimport sys\n"
+    """A stand-in `claude` that records its arguments, so command shape is tested for real.
+
+    The stub is a Python file behind a platform-appropriate launcher. A `#!` script is not
+    executable on Windows, and the launcher embeds this interpreter's own path rather than
+    trusting whatever `python` resolves to on the runner.
+    """
+    stub = tmp_path / "claude_stub.py"
+    stub.write_text(
+        "import sys\n"
         f"open({str(tmp_path / 'calls.txt')!r}, 'a').write(' '.join(sys.argv[1:]) + chr(10))\n"
         f"sys.stdout.write({noise!r})\n"
         f"sys.stdout.write({stdout!r})\n"
@@ -166,8 +173,19 @@ def fake_claude(
         f"sys.exit({exit_code})\n",
         encoding="utf-8",
     )
-    path.chmod(path.stat().st_mode | stat.S_IXUSR)
-    return ClaudePluginCli(executable=str(path))
+    if sys.platform == "win32":
+        launcher = tmp_path / "claude.cmd"
+        launcher.write_text(
+            f'@echo off\r\n"{sys.executable}" "{stub}" %*\r\n', encoding="utf-8",
+        )
+    else:
+        launcher = tmp_path / "claude"
+        launcher.write_text(
+            f'#!/bin/sh\nexec {shlex.quote(sys.executable)} {shlex.quote(str(stub))} "$@"\n',
+            encoding="utf-8",
+        )
+        launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
+    return ClaudePluginCli(executable=str(launcher))
 
 
 def recorded_calls(tmp_path: Path) -> list[str]:
