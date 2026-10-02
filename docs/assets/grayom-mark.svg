@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240" role="img" aria-label="GrayOM Agent Guidance">
+  <title>GrayOM Agent Guidance</title>
+  <!-- A terminal window with a prompt and the lines being written into it, which is what this
+       program is: a CLI that writes an Agent's configuration for you.
+
+       Two earlier marks were withdrawn for resembling something else. An eye with a gradient
+       iris reads as nmap's; a bold blue letter G reads as Google's. This one carries no
+       likeness to either.
+
+       Deliberately plain SVG: no defs, no gradients, no clipPath, and no <use>. GitHub serves
+       a README image under `default-src 'none'; sandbox`, and the mark before this one drew
+       its outline through an internal <use href="#..."> reference, so a renderer that dropped
+       the reference would have had nothing to show. Served under those exact headers it did
+       in fact render, so that was not the cause of anything -- but a file made of flat shapes
+       with literal fills cannot fail that way at all, and nothing here needs the indirection.
+
+       Every colour holds up on a light and a dark page, so there is no background rectangle. -->
+  <rect x="26" y="40" width="188" height="160" rx="26" fill="none" stroke="#1689e8" stroke-width="14"/>
+  <path d="M 62 92 L 86 112 L 62 132" fill="none" stroke="#1689e8" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="104" y="103" width="72" height="18" rx="9" fill="#2bc8e8"/>
+  <rect x="62" y="152" width="52" height="16" rx="8" fill="#7557f5"/>
+  <rect x="126" y="152" width="50" height="16" rx="8" fill="#1689e8"/>
+</svg>

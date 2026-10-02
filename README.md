@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/assets/grayom-eye.svg" width="180" alt="GrayOM eye logo">
+  <img src="docs/assets/grayom-mark.svg" width="140" alt="GrayOM Agent Guidance">
 </p>
 
-<h1 align="center">Agent Guidance</h1>
+<h1 align="center">GrayOM Agent Guidance</h1>
 
 <p align="center">
   <strong>Codex와 Claude Code를 설치한 다음, 뭘 깔아야 할지 대신 정해주는 CLI</strong>

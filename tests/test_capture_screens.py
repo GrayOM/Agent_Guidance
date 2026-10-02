@@ -65,8 +65,8 @@ def test_no_screenshot_is_left_in_the_assets_directory_unused(capture):
         for screen in capture.SCREENS
         for image in (screen.get("images") or [screen])
     }
-    # The logo is drawn by hand on purpose; everything else is captured.
-    on_disk = {path.name for path in ASSETS.glob("*.svg")} - {"grayom-eye.svg"}
+    # The mark is drawn by hand on purpose; everything else is captured.
+    on_disk = {path.name for path in ASSETS.glob("*.svg")} - {"grayom-mark.svg"}
     assert on_disk == produced
 
 
