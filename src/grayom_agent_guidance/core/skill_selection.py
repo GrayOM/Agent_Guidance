@@ -38,6 +38,21 @@ SKIP_UNRELATED = "unrelated to the selected work"
 SKIP_NAME_CLASH = "another Skill already uses this name"
 SKIP_REDUNDANT = "same job as a Skill already selected"
 SKIP_OVER_LIMIT = "over the Skill limit for this mode"
+SKIP_GROUP_FULL = "this part of the repository already contributed its share"
+
+
+def group_quota(limit: int) -> int:
+    """How many Skills one sub-project of a repository may contribute.
+
+    Measured on `trailofbits/skills`: a request for CVE analysis and OSS vulnerability
+    research matched 47 of its 85 Skills across 27 plugin groups, but
+    `building-secure-contracts` held 10 of the 47 and took 3 of the 6 Minimal slots with
+    per-platform smart-contract scanners. Those six scanners are one job described six
+    times, which the redundancy rule misses because each description names a different
+    platform. The repository's own grouping already says they belong together, so a share
+    of the budget per group catches what word overlap cannot.
+    """
+    return max(1, limit // 3)
 
 
 def limit_for(mode: SetupMode, configured: int | None = None) -> int:
@@ -50,6 +65,10 @@ class SkillCandidate(BaseModel):
     name: str
     description: str = ""
     directory: str
+    # The repository's own sub-project this Skill belongs to, empty when it publishes a flat
+    # list. Only a named group is rationed: capping an ungrouped repository would cap it as
+    # a whole and install two Skills out of fifty.
+    group: str = ""
 
     @property
     def text(self) -> str:
@@ -123,8 +142,9 @@ def select_skills(
 ) -> SkillSelection:
     """Pick the Skills worth installing, and record why each of the others was not.
 
-    Ranking is by how many requested capabilities a Skill speaks to, then by name, so the
-    same repository and the same request always produce the same selection.
+    Ranking is by how many requested capabilities a Skill speaks to, then by how much of the
+    requested vocabulary it uses, then by name, so the same repository and the same request
+    always produce the same selection.
     """
     taken = {name.lower() for name in (existing_names or set())}
     scored = [
@@ -137,6 +157,8 @@ def select_skills(
 
     selection = SkillSelection()
     kept: list[tuple[SkillCandidate, set[Capability], set[str]]] = []
+    quota = group_quota(policy.limit)
+    taken_per_group: dict[str, int] = {}
     for candidate, matched in scored:
         covered = sorted(item.value for item in matched)
         if not matched:
@@ -160,11 +182,18 @@ def select_skills(
                 reason=SKIP_REDUNDANT, capabilities=covered,
             ))
             continue
+        if candidate.group and taken_per_group.get(candidate.group, 0) >= quota:
+            selection.decisions.append(SkillDecision(
+                name=candidate.name, selected=False, reason=SKIP_GROUP_FULL, capabilities=covered,
+            ))
+            continue
         if len(selection.selected) >= policy.limit:
             selection.decisions.append(SkillDecision(
                 name=candidate.name, selected=False, reason=SKIP_OVER_LIMIT, capabilities=covered,
             ))
             continue
+        if candidate.group:
+            taken_per_group[candidate.group] = taken_per_group.get(candidate.group, 0) + 1
         selection.selected.append(candidate)
         selection.decisions.append(SkillDecision(
             name=candidate.name, selected=True,

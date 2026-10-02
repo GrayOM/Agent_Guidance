@@ -163,6 +163,28 @@ def foreign_skill_names(skills_root: Path, component_id: str) -> set[str]:
     return names
 
 
+# A SKILL.md under any of these is not a Skill the repository publishes. `trailofbits/skills`
+# keeps two of them as test fixtures under `plugins/code-improver/tests/fixtures/`, and one
+# ranked 19th of 85 for a security request: without this they are installable Skills whose
+# own repository never meant them to be used.
+NON_PUBLISHED_DIRECTORIES = frozenset({
+    ".git", "node_modules", "__pycache__", "test", "tests", "fixtures", "fixture",
+})
+
+
+def skill_group(directory: Path) -> str:
+    """The repository sub-project a Skill belongs to, or "" when the layout is flat.
+
+    `plugins/<group>/skills/<skill>` is the published Claude Code plugin layout and
+    `skills/<skill>` the flat one, so the group is whatever names the collection this Skill
+    sits in rather than the Skill itself.
+    """
+    parts = list(directory.parts[:-1])
+    if parts and parts[-1] == "skills":
+        parts.pop()
+    return parts[-1] if parts else ""
+
+
 def install_git_skills(component: Component, skills_root: Path) -> ComponentInstallResult:
     """Install the Skills of a pinned repository that this run actually asked for.
 
@@ -178,14 +200,17 @@ def install_git_skills(component: Component, skills_root: Path) -> ComponentInst
         repo = clone_pinned(component, Path(temp_name))
         files = ([repo / subpath / "SKILL.md" for subpath in method.subpaths]
                  if method.subpaths else sorted(repo.rglob("SKILL.md")))
-        files = [item for item in files if ".git" not in item.parts]
+        files = [
+            item for item in files
+            if not NON_PUBLISHED_DIRECTORIES.intersection(item.parts)
+        ]
         if not files or any(not item.is_file() for item in files):
             raise AdapterError(f"no installable SKILL.md found for {component.id}")
 
         metadata_by_file = {item: skill_frontmatter(item) for item in files}
         chosen = _chosen_files(
             component, metadata_by_file, result,
-            foreign_skill_names(skills_root, component.id),
+            foreign_skill_names(skills_root, component.id), repo,
         )
 
         for skill_file in chosen:
@@ -216,6 +241,7 @@ def _chosen_files(
     metadata_by_file: dict[Path, dict[str, Any]],
     result: ComponentInstallResult,
     existing_names: set[str] | None,
+    repo: Path,
 ) -> list[Path]:
     """Apply the Plan's Skill selection policy, or install everything without one."""
     result.skills_available = len(metadata_by_file)
@@ -229,9 +255,10 @@ def _chosen_files(
     by_name = {}
     candidates = []
     for skill_file, metadata in metadata_by_file.items():
+        relative = skill_file.parent.relative_to(repo)
         candidate = SkillCandidate(
             name=str(metadata["name"]), description=str(metadata["description"]),
-            directory=str(skill_file.parent.name),
+            directory=str(relative), group=skill_group(relative),
         )
         candidates.append(candidate)
         by_name.setdefault(candidate.name, skill_file)

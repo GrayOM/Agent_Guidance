@@ -500,3 +500,33 @@ def test_the_install_summary_names_the_plugin_and_the_marketplace() -> None:
         type=ComponentType.PLUGIN,
     )
     assert preserved.summary() == "Plugin already installed"
+
+
+# --- the curated registry ------------------------------------------------------------
+
+
+def test_every_curated_plugin_is_installable_and_claude_code_only() -> None:
+    """A curated plugin that cannot be installed is worse than none at all.
+
+    The marketplace name is not the repository name — adding
+    `https://github.com/anthropics/claude-code` registers `claude-code-plugins` — so an
+    entry written from the repository name would ship an install command that never
+    resolves. Codex cannot load Claude Code plugins at all.
+    """
+    from grayom_agent_guidance.registry.loader import load_registry
+
+    plugins = [item for item in load_registry() if item.type == ComponentType.PLUGIN]
+    assert plugins, "the curated plugin registry is empty"
+
+    installed = AgentInstallation(agent=AgentType.CLAUDE_CODE, detected=True)
+    for component in plugins:
+        method = component.install_method
+        assert method.kind == InstallKind.PLUGIN_MARKETPLACE, component.id
+        assert method.plugin_id and "@" in method.plugin_id, component.id
+        assert method.plugin_id.endswith(f"@{method.marketplace}"), component.id
+        assert method.marketplace_source, component.id
+        assert component.supported_agents == {AgentType.CLAUDE_CODE}, component.id
+
+        validated = ComponentValidator({AgentType.CLAUDE_CODE}).validate(component)
+        assert validated.recommendable, (component.id, validated.validation_warnings)
+        assert evaluate_compatibility(validated, installed).status == CompatibilityStatus.SUPPORTED
