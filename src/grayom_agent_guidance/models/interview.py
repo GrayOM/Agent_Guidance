@@ -17,6 +17,7 @@ class WorkDomain(StrEnum):
     AI_AGENT_DEVELOPMENT = "ai_agent_development"
     SECURITY_TOOL_DEVELOPMENT = "security_tool_development"
     VULNERABILITY_RESEARCH = "vulnerability_research"
+    PENETRATION_TESTING = "penetration_testing"
     OSINT = "osint"
     DEVOPS = "devops"
     DATA_ANALYSIS = "data_analysis"

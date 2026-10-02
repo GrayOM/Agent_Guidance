@@ -4,6 +4,12 @@
 
 ### Added
 
+- A `penetration_testing` work domain for assessing a target someone else built and
+  deployed, with ten engagement-phase questions (web application, authentication,
+  authorisation, injection, API, mobile, infrastructure, reproduction, reporting, retest).
+  It carries a new `web_security_testing` capability because `security_analysis` and
+  `source_analysis` both surface SAST tooling, which is the wrong tool class for a deployed
+  application the user did not write. All eleven domains still produce distinct profiles.
 - Claude Code Plugin installation, delegated to `claude plugin` and wrapped in a GrayOM
   transaction. Each step has an inverse (`marketplace add`/`remove`, `install`/`uninstall`), the
   manifest records only what the run added, and rollback removes plugins before marketplaces.

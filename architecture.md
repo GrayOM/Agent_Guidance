@@ -86,7 +86,17 @@ Cache는 영구 catalog가 아니다. live search는 계속 수행하며 source 
 
 ## 5. 추천과 설명
 
-`domain + detailed task` 규칙이 capability를 생성한다. 추천은 다음 순서로 결정한다.
+`domain + detailed task` 규칙이 capability를 생성한다. 대분류는 그 분야 모두에게 참인 것만
+기여하고, 한 사람의 profile을 다른 사람과 다르게 만드는 것은 소분류 선택이다.
+
+보안 업무는 셋으로 나뉜다. 도구를 만드는 쪽(`security_tool_development`), 대상의 소스와 advisory를
+읽는 쪽(`vulnerability_research`), 그리고 남이 만들어 배포한 대상을 실행 상태로 점검하는 쪽
+(`penetration_testing`)이다. 앞의 둘은 SAST 계열 도구를 찾아내지만, 배포된 애플리케이션을 진단하는
+사람에게는 그것이 맞는 도구 계열이 아니다. 그래서 `web_security_testing` capability를 따로 두고
+검색어도 동적 점검 도구 이름으로 잡는다. 재현·PoC 소분류는 `vulnerability_research`와 `reporting`에
+매핑한다. 진단 보고서가 서는 근거가 재현 절차이므로, 공격 도구가 아니라 검증과 기록을 찾는다.
+
+추천은 다음 순서로 결정한다.
 
 1. required capability coverage
 2. selected Agent compatibility

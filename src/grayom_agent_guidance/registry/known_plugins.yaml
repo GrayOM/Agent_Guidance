@@ -157,7 +157,7 @@
   github_url: https://github.com/anthropics/claude-code
   official: true
   supported_agents: [claude_code]
-  capabilities: [agent_development, code_editing, api_integration]
+  capabilities: [agent_development, code_editing]
   permissions: [filesystem_read, filesystem_write, shell]
   context_cost: 3
   quality_score: 87
