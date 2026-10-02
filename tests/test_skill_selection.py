@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from grayom_agent_guidance.adapters.codex import AdapterError
 from grayom_agent_guidance.adapters.json_support import (
     NON_PUBLISHED_DIRECTORIES, foreign_skill_names, skill_group,
 )
@@ -21,7 +22,8 @@ from grayom_agent_guidance.core.skill_selection import (
 )
 from grayom_agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstalledComponent, InterviewAnswer,
-    RecommendationPlan, SetupMode, SkillSelectionPolicy, WorkDomain,
+    InstallKind, InstallMethod, RecommendationPlan, SetupMode, SkillSelectionPolicy,
+    WorkDomain,
 )
 from grayom_agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
 
@@ -514,3 +516,132 @@ def test_every_skill_is_still_accounted_for_once_after_two_passes() -> None:
     assert selection.available == len(candidates)
     assert len(selection.decisions) == len(candidates)
     assert len({decision.name for decision in selection.decisions}) == len(candidates)
+
+
+# --- curated Skill paths -------------------------------------------------------------
+
+
+REGISTRY_CLONES = {
+    "trailofbits-skills": "https://github.com/trailofbits/skills",
+    "superpowers": "https://github.com/obra/superpowers",
+    "addy-agent-skills": "https://github.com/addyosmani/agent-skills",
+}
+
+
+def _curated_entries():
+    from grayom_agent_guidance.registry.loader import load_registry
+
+    return [item for item in load_registry() if item.install_method.subpaths]
+
+
+def test_a_curated_path_cannot_reach_outside_the_repository_it_pinned() -> None:
+    """A Registry entry names paths inside its own pinned clone and nowhere else."""
+    entries = _curated_entries()
+    assert entries, "no Registry entry curates its Skills"
+
+    for component in entries:
+        subpaths = component.install_method.subpaths
+        assert len(set(subpaths)) == len(subpaths), f"{component.id} repeats a path"
+        for subpath in subpaths:
+            assert not subpath.startswith("/"), (component.id, subpath)
+            assert ".." not in Path(subpath).parts, (component.id, subpath)
+            assert Path(subpath).parts, (component.id, subpath)
+
+
+def test_a_curated_path_is_resolved_inside_the_clone_only(tmp_path) -> None:
+    from grayom_agent_guidance.adapters.json_support import _curated_files
+
+    repo = tmp_path / "repo"
+    (repo / "skills" / "wanted").mkdir(parents=True)
+    (repo / "skills" / "wanted" / "SKILL.md").write_text("---\nname: wanted\n---\n", encoding="utf-8")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "SKILL.md").write_text("---\nname: outside\n---\n", encoding="utf-8")
+
+    files, missing = _curated_files(repo, ["skills/wanted", "../outside", "skills/gone"])
+
+    assert [item.parent.name for item in files] == ["wanted"]
+    assert missing == ["../outside", "skills/gone"]
+
+
+def test_a_curated_path_upstream_removed_is_reported_and_skipped(tmp_path, monkeypatch) -> None:
+    """`update` reinstalls at a newer ref with the same curated paths.
+
+    Upstream can rename or drop one between refs. Failing the whole install would make a
+    single upstream rename break every update of the component, so the path is reported and
+    the rest still install.
+    """
+    from grayom_agent_guidance.adapters.json_support import install_git_skills
+
+    source = tmp_path / "clone"
+    for name in ("kept", "also-kept"):
+        directory = source / "skills" / name
+        directory.mkdir(parents=True)
+        (directory / "SKILL.md").write_text(
+            f"---\nname: {name}\ndescription: Finds a vulnerability class in source code.\n---\n",
+            encoding="utf-8",
+        )
+    monkeypatch.setattr(
+        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        lambda component, destination: source,
+    )
+    component = Component(
+        id="curated-pack", name="Curated Pack", type=ComponentType.SKILL,
+        github_url="https://github.com/example/pack",
+        supported_agents={AgentType.CLAUDE_CODE}, capabilities={Capability.VULNERABILITY_RESEARCH},
+        install_method=InstallMethod(
+            kind=InstallKind.GIT_SKILLS, repository="https://github.com/example/pack",
+            ref="deadbee",
+            subpaths=["skills/kept", "skills/renamed-upstream", "skills/also-kept"],
+        ),
+    )
+
+    result = install_git_skills(component, tmp_path / "skills-root")
+
+    assert result.changed
+    assert sorted(path.name for path in result.created_paths) == [
+        "curated-pack--also-kept", "curated-pack--kept",
+    ]
+    assert any("skills/renamed-upstream" in note for note in result.notes)
+
+
+def test_a_component_whose_every_curated_path_is_gone_fails_loudly(tmp_path, monkeypatch) -> None:
+    from grayom_agent_guidance.adapters.json_support import install_git_skills
+
+    source = tmp_path / "clone"
+    source.mkdir()
+    monkeypatch.setattr(
+        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        lambda component, destination: source,
+    )
+    component = Component(
+        id="curated-pack", name="Curated Pack", type=ComponentType.SKILL,
+        github_url="https://github.com/example/pack",
+        supported_agents={AgentType.CLAUDE_CODE}, capabilities={Capability.VULNERABILITY_RESEARCH},
+        install_method=InstallMethod(
+            kind=InstallKind.GIT_SKILLS, repository="https://github.com/example/pack",
+            ref="deadbee", subpaths=["skills/gone"],
+        ),
+    )
+
+    with pytest.raises(AdapterError, match="no installable SKILL.md"):
+        install_git_skills(component, tmp_path / "skills-root")
+
+
+def test_curation_does_not_claim_a_capability_the_curated_set_cannot_cover() -> None:
+    """Narrowing the pool must not leave a declared capability with no Skill behind it.
+
+    `configuration_audit` was declared on `trailofbits-skills` on the strength of
+    `firebase-apk-scanner`; scanning an APK for Firebase misconfigurations is not the
+    baseline review of servers and databases the question asks about, so the claim was
+    withdrawn rather than curated around.
+    """
+    from grayom_agent_guidance.registry.loader import load_registry
+
+    entry = next(item for item in load_registry() if item.id == "trailofbits-skills")
+
+    assert Capability.CONFIGURATION_AUDIT not in entry.capabilities
+    assert Capability.WEB_SECURITY_TESTING in entry.capabilities
+    assert any(
+        "burpsuite" in subpath for subpath in entry.install_method.subpaths
+    ), "web_security_testing is declared, so the Skill providing it must be curated in"

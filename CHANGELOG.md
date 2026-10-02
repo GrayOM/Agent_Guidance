@@ -14,6 +14,14 @@
   neither of those vocabularies. All eleven domains still produce distinct profiles.
 - Skill selection gives every requested capability the repository can cover a slot before
   filling the rest by rank, scarcest capability first.
+- Curated Skill paths on the three Registry Skill entries, read one by one at their pinned
+  refs: 17 of 83 for `trailofbits-skills`, 12 of 15 for `superpowers`, 24 of 25 for
+  `addy-agent-skills`. Measured on the assessment and CVE profiles: platform-specific
+  scanners and tool-dependent Skills went from 5 of 12 Performance slots to none, with
+  capability coverage unchanged at 7/7 and 5/5.
+- A curated path upstream has moved or dropped is reported and skipped instead of failing
+  the install, because `update` reinstalls at a newer ref carrying the same paths. Curated
+  paths are resolved inside the clone only.
 - Claude Code Plugin installation, delegated to `claude plugin` and wrapped in a GrayOM
   transaction. Each step has an inverse (`marketplace add`/`remove`, `install`/`uninstall`), the
   manifest records only what the run added, and rollback removes plugins before marketplaces.
@@ -53,8 +61,12 @@
   reported `web_security_testing` covered — correctly, the repository carries
   `burpsuite-project-parser` — and then installed six other Skills, because that one ranked
   below the limit. The assessment profile now covers 8 of 8 reachable capabilities.
-- `trailofbits-skills` declares `web_security_testing` and `configuration_audit`, both
-  verified against the pinned commit rather than the default branch.
+- `trailofbits-skills` declares `web_security_testing`, verified against the pinned commit
+  rather than the default branch. The `configuration_audit` claim added alongside it is
+  withdrawn: it rested on `firebase-apk-scanner`, and scanning an APK for Firebase
+  misconfigurations is not the baseline review of servers, network gear and databases the
+  question asks about — the same over-reach the coverage fix was meant to end. Nothing in
+  that repository covers it, and it now reads as uncovered.
 - Two plugins published by one marketplace repository are two candidates again. Candidate
   merging keyed on the repository, so the six curated plugins from
   `github.com/anthropics/claude-code` collapsed into a single candidate carrying one
