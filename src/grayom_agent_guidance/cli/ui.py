@@ -12,12 +12,14 @@ from grayom_agent_guidance.core.explainer import PlanExplanation
 from grayom_agent_guidance import __version__
 
 
+# One line, because several rows of box-drawing characters cannot carry an almond. The
+# previous art was a five-row outline with arrowheads on its corners, which read as a media
+# control; redrawing it as a tapered lid made it read as a chip or a hexagon instead. Rendered
+# at the width a 96-column terminal actually occupies, every multi-row attempt came out as
+# scattered brackets, so the eye proper lives in docs/assets/grayom-eye.svg, where curves are
+# available, and the header carries a mark that survives any size.
 LOGO = """
-       ╭──────────╮
-    ╭──╯   ╭──╮   ╰──╮
- ◀──╯      │◉ │      ╰──▶
-    ╰──╮   ╰──╯   ╭──╯
-       ╰──────────╯
+   ( ◉ )
 """
 
 
@@ -38,7 +40,6 @@ def _brand() -> Group:
 
 def _eye_logo() -> Text:
     eye = Text(LOGO, style="bold bright_blue")
-    eye.highlight_regex(r"╭──╮|│◉ │|╰──╯", style="bold bright_cyan")
     eye.highlight_regex("◉", style="bold bright_magenta")
     return eye
 

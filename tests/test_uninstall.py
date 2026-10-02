@@ -199,7 +199,11 @@ def test_a_file_the_user_edited_after_install_is_kept_and_reported(tmp_path) -> 
     result = apply_uninstall(plan_uninstall(state), {AgentType.CODEX: adapter}, state)
 
     assert kept.exists() and not removed.exists()
-    assert any("changed since install" in note for note in result.removals[0].preserved)
+    note = " ".join(result.removals[0].preserved)
+    assert "was edited after install" in note
+    # The message has to point at the directory, because this is the one case where uninstall
+    # finishes and still leaves files on disk, and only the user can decide what to do.
+    assert str(kept) in note and "by hand" in note
     assert "demo-pack" in StateStore(state.path).document.components, (
         "a component with files still on disk has to stay recorded, or the next run "
         "installs a second copy beside it"
