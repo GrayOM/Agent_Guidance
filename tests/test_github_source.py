@@ -71,9 +71,11 @@ def test_github_rate_limit_is_reported() -> None:
 
     client = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://api.github.com")
     source = GitHubSource(validator=ComponentValidator(), client=client)
-    with pytest.raises(SourceUnavailable, match="rate limited"):
+    with pytest.raises(SourceUnavailable, match="rate limit reached") as error:
         asyncio.run(source.search(["query"]))
     asyncio.run(client.aclose())
+    assert "remaining=0" in str(error.value)
+    assert "denied access" not in str(error.value), "an exhausted limit is not an access decision"
 
 
 def test_github_token_is_not_exposed_in_errors_or_logs(monkeypatch, caplog) -> None:

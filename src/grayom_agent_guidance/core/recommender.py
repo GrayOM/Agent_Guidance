@@ -126,8 +126,11 @@ def recommend(answer: InterviewAnswer, candidates: list[Component]) -> Recommend
         if choose:
             selected.append(candidate)
             covered.update(candidate_pairs)
+            # Capabilities only, not one entry per Agent: the same capability repeated for
+            # every Agent made the reason unreadable, and which Agents it applies to is
+            # already the per-Agent table's job.
             reasons = ["covers: " + ", ".join(sorted(
-                f"{agent.value}/{capability.value}" for agent, capability in new_coverage or overlap
+                {capability.value for _, capability in new_coverage or overlap}
             ))]
             if candidate.trust.official:
                 reasons.append("official implementation preferred")

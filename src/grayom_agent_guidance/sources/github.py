@@ -23,6 +23,47 @@ INTERESTING_FILES = {
 }
 
 
+def describe_refusal(response: httpx.Response) -> str:
+    """Say which of GitHub's three refusals this is, because the remedies differ.
+
+    Reporting every 403 as a rate limit sends a user with an expired or narrowly scoped
+    token away to wait an hour for something that will never change on its own. GitHub only
+    signals a real rate limit through an exhausted remaining count, a Retry-After, or the
+    phrase in its own message; a 403 with none of those is an access decision.
+    """
+    status = response.status_code
+    remaining = response.headers.get("x-ratelimit-remaining")
+    retry_after = response.headers.get("retry-after")
+    try:
+        detail = str(response.json().get("message") or "").strip()
+    except ValueError:
+        detail = ""
+    suffix = f" GitHub said: {detail}" if detail else ""
+
+    if status == 401:
+        return (
+            "GitHub rejected the credentials. Check GITHUB_TOKEN or GH_TOKEN, or unset it to "
+            f"search anonymously.{suffix}"
+        )
+    rate_limited = (
+        status == 429
+        or remaining == "0"
+        or bool(retry_after)
+        or "rate limit" in detail.lower()
+    )
+    if rate_limited:
+        window = f", retry after {retry_after}s" if retry_after else ""
+        return (
+            f"GitHub rate limit reached (remaining={remaining or 'unknown'}{window}). "
+            f"Set GITHUB_TOKEN for a higher limit, or retry later.{suffix}"
+        )
+    return (
+        "GitHub denied access rather than rate limiting: the token is missing a scope, the "
+        "repository is not available to it, or the organisation requires SSO authorisation. "
+        f"Waiting will not change this.{suffix}"
+    )
+
+
 def _repository_rank(candidate: RawCandidate) -> tuple[int, str, str]:
     return (
         candidate.metadata.get("stargazers_count", 0) or 0,
@@ -99,10 +140,8 @@ class GitHubSource(ComponentSource):
             remaining = response.headers.get("x-ratelimit-remaining")
             if remaining and remaining.isdigit():
                 self.rate_limit_remaining = int(remaining)
-            if response.status_code in {403, 429}:
-                raise SourceUnavailable(
-                    f"GitHub API unavailable or rate limited (remaining={remaining or 'unknown'})"
-                )
+            if response.status_code in {401, 403, 429}:
+                raise SourceUnavailable(describe_refusal(response))
             response.raise_for_status()
             return response
 
@@ -224,6 +263,7 @@ class GitHubSource(ComponentSource):
                 return self.validate(self.normalize(fetched)), raw.source_version, None
 
         processed = await asyncio.gather(*(process(raw) for raw in raw_candidates), return_exceptions=True)
+        failures: dict[str, list[str]] = {}
         for raw, outcome in zip(raw_candidates, processed):
             try:
                 if isinstance(outcome, BaseException):
@@ -235,7 +275,13 @@ class GitHubSource(ComponentSource):
                 if component.recommendable:
                     result.validated += 1
             except Exception as exc:
-                result.warnings.append(f"{raw.repository_full_name}: {exc}")
+                failures.setdefault(str(exc), []).append(raw.repository_full_name)
+        # One refusal that stopped every repository is one problem, not one per repository.
+        for message, repositories in failures.items():
+            if len(repositories) == 1:
+                result.warnings.append(f"{repositories[0]}: {message}")
+            else:
+                result.warnings.append(f"{len(repositories)} repositories could not be read: {message}")
         result.rate_limit_remaining = self.rate_limit_remaining
         if self.cache:
             self.cache.save()
