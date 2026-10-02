@@ -48,10 +48,25 @@ def _rank(component: Component) -> tuple[int, int, int]:
     )
 
 
+def _identity(component: Component) -> tuple[str, str, str]:
+    """What makes two candidates the same thing rather than two things in one repository.
+
+    The repository is not always the unit. A marketplace repository publishes many separate
+    plugins — `anthropics/claude-code` offers thirteen — so keying on the repository alone
+    collapsed them into one candidate carrying one plugin's name, another's id and the union
+    of everyone's capabilities, which put a component on the Plan that does not exist. For
+    those, the install id is the identity.
+    """
+    repository = str(component.github_url).rstrip("/").lower()
+    if component.install_method.kind == InstallKind.PLUGIN_MARKETPLACE:
+        return (repository, component.type.value, str(component.install_method.plugin_id))
+    return (repository, component.type.value, "")
+
+
 def _merge_candidates(candidates: list[Component]) -> list[Component]:
-    merged: dict[tuple[str, str], Component] = {}
+    merged: dict[tuple[str, str, str], Component] = {}
     for candidate in candidates:
-        key = (str(candidate.github_url).rstrip("/").lower(), candidate.type.value)
+        key = _identity(candidate)
         current = merged.get(key)
         if current is None:
             merged[key] = candidate.model_copy(deep=True)

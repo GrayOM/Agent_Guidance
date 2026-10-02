@@ -38,6 +38,12 @@
 
 ### Fixed
 
+- Two plugins published by one marketplace repository are two candidates again. Candidate
+  merging keyed on the repository, so the six curated plugins from
+  `github.com/anthropics/claude-code` collapsed into a single candidate carrying one
+  plugin's name, another's id, a third's install method and the union of everyone's
+  capabilities — a component that does not exist, recommended with a reason listing
+  capabilities it does not have. A marketplace plugin is now identified by its install id.
 - One part of a Skill repository can no longer take the whole Skill budget. Measured on
   `trailofbits/skills`: `building-secure-contracts` held 7 of 12 Performance slots with six
   per-platform scanners that are one job described six times; it now holds 4, and the
