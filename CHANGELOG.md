@@ -20,6 +20,11 @@
 - Skill auto-selection with a per-mode limit, name-collision and redundancy rules, and a one-line
   summary of what was installed.
 - Live upstream comparison on `update`, with unchecked reported separately from unchanged.
+- A curated set of six first-party Claude Code plugins from Anthropic's own
+  `claude-code-plugins` marketplace, each read from the live manifest. Verified against
+  Claude Code 2.1.287: adding `anthropics/claude-code` registers the marketplace under the
+  name `claude-code-plugins`, which is why the install id cannot be derived from the
+  repository name.
 
 ### Changed
 
@@ -33,6 +38,14 @@
 
 ### Fixed
 
+- One part of a Skill repository can no longer take the whole Skill budget. Measured on
+  `trailofbits/skills`: `building-secure-contracts` held 7 of 12 Performance slots with six
+  per-platform scanners that are one job described six times; it now holds 4, and the
+  repository groups represented go from 6 to 8.
+- A repository's own test fixtures are no longer installable Skills. Two of the 85 SKILL.md
+  files in `trailofbits/skills` live under `tests/fixtures/`, and one ranked 19th for a
+  security request.
+- The first-run screenshot no longer carries the empty row left by removing Cursor.
 - A second `setup` run no longer installs a different set of Skills: a component's own Skills are
   no longer counted as a foreign name collision.
 - `SKILL.md`-only repositories are recognised, so community Skills are no longer discarded.

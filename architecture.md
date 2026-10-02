@@ -99,6 +99,23 @@ Cache는 영구 catalog가 아니다. live search는 계속 수행하며 source 
 낮은 중복을, Performance는 전문 coverage를 우선한다. 각 추천은 입력 업무, 담당 capability, 선택 이유,
 적용 Agent, 제한사항과 evidence confidence를 갖는다. 충족되지 않은 capability는 Plan에 명시한다.
 
+Skill 저장소는 Skill 하나가 아니다. 저장소 안에서 설치할 Skill은 네 규칙으로 좁힌다.
+
+1. 이번 실행이 요청한 capability를 말하는 Skill만 남긴다
+2. 이미 선택한 Skill과 이름이나 목적이 겹치면 버린다
+3. 저장소의 한 하위 프로젝트가 예산의 1/3을 넘게 가져가지 못한다
+4. mode 한도까지, 일치도가 높은 순으로 멈춘다
+
+3번은 2번이 놓치는 것을 잡는다. `trailofbits/skills`에서 CVE 분석과 OSS 취약점 연구를 선택하면
+`building-secure-contracts`가 Performance 12칸 중 7칸을 플랫폼별 smart contract 스캐너로 채웠다.
+여섯 스캐너는 같은 일을 여섯 번 설명한 것이지만 설명마다 다른 플랫폼 이름을 쓰기 때문에 단어 겹침으로는
+같다고 판정되지 않는다. 저장소 자신의 디렉터리 그룹이 이미 그 묶음을 선언하고 있으므로 그것을 쓴다.
+그룹이 없는 평평한 저장소는 전체가 한 그룹으로 묶여 두 개만 설치되는 일이 없도록 배분하지 않는다.
+
+저장소가 발행하지 않은 `SKILL.md`는 후보가 아니다. `tests`, `fixtures`, `node_modules` 같은 경로
+아래의 `SKILL.md`는 저장소의 테스트 데이터이며, 실제로 `trailofbits/skills`의 85개 중 2개가 여기에
+해당해 그중 하나가 보안 요청에서 19위로 올라왔다.
+
 ## 6. Compatibility와 reconciliation
 
 Compatibility 상태는 `SUPPORTED`, `PARTIAL`, `UNSUPPORTED`, `UNKNOWN`이다. Adapter capability가

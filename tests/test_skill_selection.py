@@ -7,14 +7,17 @@ rules that narrow it, the conflict handling, and the one-line report of what lan
 """
 
 import json
+from pathlib import Path
 
 import pytest
 
-from grayom_agent_guidance.adapters.json_support import foreign_skill_names
+from grayom_agent_guidance.adapters.json_support import (
+    NON_PUBLISHED_DIRECTORIES, foreign_skill_names, skill_group,
+)
 from grayom_agent_guidance.core.multi_agent_plan import _with_skill_policy
 from grayom_agent_guidance.core.skill_selection import (
-    LIMIT_BY_MODE, SKIP_NAME_CLASH, SKIP_OVER_LIMIT, SKIP_REDUNDANT, SKIP_UNRELATED,
-    SkillCandidate, limit_for, select_skills,
+    LIMIT_BY_MODE, SKIP_GROUP_FULL, SKIP_NAME_CLASH, SKIP_OVER_LIMIT, SKIP_REDUNDANT,
+    SKIP_UNRELATED, SkillCandidate, group_quota, limit_for, select_skills,
 )
 from grayom_agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstalledComponent, InterviewAnswer,
@@ -289,3 +292,149 @@ def test_an_mcp_reports_the_name_it_was_registered_under() -> None:
 
     assert registered.summary() == "MCP registered as github-grayom"
     assert preserved.summary() == "MCP already registered"
+
+
+# --- rule 4: one sub-project does not take the whole budget --------------------------
+
+
+def _grouped(name: str, description: str, group: str) -> SkillCandidate:
+    return SkillCandidate(
+        name=name, description=description, directory=f"plugins/{group}/skills/{name}",
+        group=group,
+    )
+
+
+def test_one_part_of_a_repository_cannot_take_the_whole_budget() -> None:
+    """Six per-platform scanners are one job described six times.
+
+    Measured on `trailofbits/skills`: a request for CVE analysis and OSS vulnerability
+    research gave `building-secure-contracts` 7 of the 12 Performance slots, because the
+    redundancy rule compares wording and each description names a different platform. The
+    repository's own grouping already says they belong together.
+    """
+    # Worded after the repository's own descriptions: each names its platform's own
+    # vulnerability classes, which is why comparing wording does not recognise them as one
+    # job. The group does.
+    platforms = {
+        "algorand": "rekeying attacks, unchecked transaction fees and missing field "
+                    "validations in TEAL and PyTeal",
+        "cairo": "felt overflow, storage collision and L1 handler authentication gaps "
+                 "in Starknet programs",
+        "cosmos": "non-deterministic begin-block logic, unbounded iteration and gas "
+                  "exhaustion in SDK modules",
+        "solana": "missing signer and owner checks, account confusion and arithmetic "
+                  "truncation in Anchor programs",
+        "substrate": "weight miscalculation, unsigned extrinsic abuse and runtime "
+                     "storage migration faults in pallets",
+        "ton": "message bounce handling, unbounded dictionary growth and replay of "
+               "external messages in FunC",
+    }
+    candidates = [
+        _grouped(
+            f"{platform}-vulnerability-scanner",
+            f"Scans {platform} smart contracts for {classes}. Use when auditing a "
+            f"{platform} project before a security review.",
+            "building-secure-contracts",
+        )
+        for platform, classes in platforms.items()
+    ] + [
+        _grouped(
+            "semgrep",
+            "Runs a Semgrep SAST scan over a codebase: detects languages, selects rule "
+            "packs and reports each vulnerability with its data flow sink.",
+            "static-analysis",
+        ),
+        _grouped(
+            "c-review",
+            "Reviews C for memory safety: use-after-free, off-by-one bounds and integer "
+            "promotion defects that a vulnerability audit has to cover.",
+            "c-review",
+        ),
+    ]
+
+    selection = select_skills(candidates, _policy(limit=6))
+
+    from_contracts = [
+        name for name in selection.selected_names if name.endswith("-vulnerability-scanner")
+    ]
+    assert len(from_contracts) == 2, f"quota is a third of the limit, got {from_contracts}"
+    assert {"semgrep", "c-review"}.issubset(set(selection.selected_names))
+    assert SKIP_GROUP_FULL in selection.skipped_by_reason()
+
+
+def test_the_group_share_scales_with_the_limit() -> None:
+    assert group_quota(6) == 2
+    assert group_quota(12) == 4
+    # A limit smaller than three still has to admit one Skill per group, or a request could
+    # select nothing at all from a grouped repository.
+    assert group_quota(1) == 1
+    assert group_quota(2) == 1
+
+
+def test_a_flat_repository_is_not_rationed_as_one_group() -> None:
+    """Without a grouping there is nothing to spread across, so the limit alone applies."""
+    subjects = [
+        "use-after-free in C allocators", "deserialization of untrusted YAML",
+        "server-side request forgery in webhook handlers", "weak JWT signature verification",
+        "path traversal in archive extraction", "SQL injection through string formatting",
+        "hardcoded credentials in container images", "race conditions in file locking",
+        "XML external entity expansion", "insecure random number seeding",
+    ]
+    candidates = [
+        _candidate(f"scanner-{index}", f"Finds the vulnerability class {subject}.")
+        for index, subject in enumerate(subjects)
+    ]
+
+    selection = select_skills(candidates, _policy(limit=6))
+
+    assert len(selection.selected) == 6
+    assert SKIP_GROUP_FULL not in selection.skipped_by_reason()
+
+
+def test_a_group_with_fewer_skills_than_its_share_is_not_padded() -> None:
+    candidates = [
+        _grouped(
+            "semgrep",
+            "Runs a Semgrep SAST scan and reports each vulnerability with its data flow sink.",
+            "static-analysis",
+        ),
+        _grouped(
+            "c-review",
+            "Reviews C for the memory safety vulnerability classes an audit must cover.",
+            "c-review",
+        ),
+    ]
+
+    selection = select_skills(candidates, _policy(limit=6))
+
+    assert len(selection.selected) == 2
+
+
+@pytest.mark.parametrize(
+    ("directory", "expected"),
+    [
+        ("plugins/building-secure-contracts/skills/audit-prep-assistant", "building-secure-contracts"),
+        ("plugins/static-analysis/skills/codeql", "static-analysis"),
+        # A flat repository has no sub-project, so there is nothing to ration.
+        ("skills/review", ""),
+        ("review", ""),
+    ],
+)
+def test_the_group_comes_from_where_the_skill_sits(directory: str, expected: str) -> None:
+    assert skill_group(Path(directory)) == expected
+
+
+def test_a_repositorys_own_test_fixtures_are_not_installable_skills() -> None:
+    """`trailofbits/skills` keeps two SKILL.md files under `tests/fixtures/`.
+
+    One of them ranked 19th of 85 for a security request, so without this exclusion a
+    repository's test data becomes a Skill its own authors never published.
+    """
+    fixtures = [
+        Path("plugins/code-improver/tests/fixtures/pr-review-toolkit/skills/review-pr/SKILL.md"),
+        Path("plugins/code-improver/tests/fixtures/review-panel/skills/panel-review/SKILL.md"),
+    ]
+    published = Path("plugins/code-improver/skills/code-improver/SKILL.md")
+
+    assert all(NON_PUBLISHED_DIRECTORIES.intersection(item.parts) for item in fixtures)
+    assert not NON_PUBLISHED_DIRECTORIES.intersection(published.parts)
