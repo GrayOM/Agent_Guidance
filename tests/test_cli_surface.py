@@ -6,8 +6,6 @@ help as though a user should have an opinion about them, and `uninstall` existed
 typed command, so the menu could install but not undo.
 """
 
-import re
-
 from typer.testing import CliRunner
 
 from grayom_agent_guidance.cli.main import EVERYDAY, TROUBLE, app
@@ -29,21 +27,38 @@ def _help() -> str:
     return result.stdout
 
 
+def _panels() -> dict[str, str | None]:
+    """Each command's panel, read from the app rather than from its rendered help.
+
+    An earlier version of this file pulled the command names out of the help text with a
+    regex anchored on Rich's box-drawing border. It passed here and found nothing in CI,
+    where Rich draws the same panels with a different character set. What the test is
+    actually about -- that every command is deliberately placed in one of two panels -- is
+    recorded on the app itself, so that is what it reads.
+    """
+    return {
+        command.name or command.callback.__name__.replace("_", "-"): command.rich_help_panel
+        for command in app.registered_commands
+    }
+
+
 def test_every_command_is_in_one_of_the_two_panels():
-    text = _help()
-    everyday, trouble = text.index(EVERYDAY), text.index(TROUBLE)
-    assert everyday < trouble, "the everyday commands belong above the troubleshooting ones"
-    for command in EVERYDAY_COMMANDS:
-        assert everyday < text.index(command) < trouble, f"{command} is not in {EVERYDAY}"
-    for command in TROUBLE_COMMANDS:
-        assert text.index(command) > trouble, f"{command} is not in {TROUBLE}"
+    panels = _panels()
+    assert {name for name, panel in panels.items() if panel == EVERYDAY} == EVERYDAY_COMMANDS
+    assert {name for name, panel in panels.items() if panel == TROUBLE} == TROUBLE_COMMANDS
 
 
-def test_help_lists_no_command_beyond_the_two_panels():
-    """A new command has to be placed deliberately, not appear in an unnamed third panel."""
+def test_no_command_sits_outside_the_two_panels():
+    """A new command has to be placed deliberately, not land in an unnamed third panel."""
+    assert set(_panels()) == EVERYDAY_COMMANDS | TROUBLE_COMMANDS
+    assert all(panel in {EVERYDAY, TROUBLE} for panel in _panels().values())
+
+
+def test_the_help_shows_the_everyday_commands_first():
     text = _help()
-    listed = set(re.findall(r"^│ ([a-z][a-z-]+)\s{2,}", text, flags=re.M))
-    assert listed == EVERYDAY_COMMANDS | TROUBLE_COMMANDS
+    assert text.index(EVERYDAY) < text.index(TROUBLE)
+    for command in EVERYDAY_COMMANDS | TROUBLE_COMMANDS:
+        assert command in text
 
 
 def test_internal_flags_are_not_offered_to_users():
