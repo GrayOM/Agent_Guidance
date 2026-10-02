@@ -1,179 +1,17 @@
 # Changelog
 
-## Unreleased
-
-### Changed
-
-- GrayOM is the author; the project is Agent Guidance. The two had been conflated everywhere:
-  the header put GrayOM where a product name goes, every message said "GrayOM installed", and
-  the command, package, module, state directory and environment variable all carried the
-  author's name. The project now carries its own.
-
-  | | before | after |
-  |---|---|---|
-  | command | `grayom` | `agent-guidance` |
-  | package | `grayom-agent-guidance` | `agent-guidance` |
-  | module | `grayom_agent_guidance` | `agent_guidance` |
-  | state | `~/.grayom/` | `~/.agent-guidance/` |
-  | environment | `GRAYOM_HOME` | `AGENT_GUIDANCE_HOME` |
-  | lock | `grayom.lock` | `agent-guidance.lock` |
-  | marker | `.grayom-component.json` | `.agent-guidance-component.json` |
-  | MCP suffix | `<id>-grayom` | `<id>-agent-guidance` |
-  | ownership | `GRAYOM_INSTALLED` | `AGENT_GUIDANCE_INSTALLED` |
-
-  The author keeps his name where it belongs: the GitHub owner, the `authors` field, and one
-  dim credit line under the project name in the header.
-
-### Added
-
-- A notice naming the old state directory when it is still on disk and the new one is not. It
-  is not moved: that directory records what was installed into the user's Agents, and
-  relocating it on their behalf without asking is not this program's call. Without the notice
-  the first run after an upgrade looks like every installed component has vanished.
-
-## Unreleased
-
-### Changed
-
-- The mark is an eye again, with a scanner reticle for an iris: a broken outer arc, a ring of
-  sixteen ticks, an inner ring and a core. The plain eye before it was withdrawn for reading as
-  nmap's logo, and the reticle is what keeps this one from doing the same; it also says what
-  the program is for. Green, which is the user's choice and the colour of the reference they
-  gave.
-- The terminal header carries `( ◎ )` to match. It still avoids U+276F, because
-  `scripts/capture_screens.py` reads a line starting with that character as a question waiting
-  for an answer.
-
-It sits on a dark rounded card, which was asked for: the mark reads as an app icon rather
-than a line drawing, and the green keeps its glow against it. The trade is that the mark now
-brings its own background to a light page instead of sitting on it.
-
-The file stays deliberately plain: no defs, gradients, clipPath or `use`, so there is no
-internal reference for a renderer to resolve and nothing is fetched. The reticle is sized to
-sit inside the lid rather than clipped to it. Checked with two strict XML parsers, and rendered
-in Chromium under the headers GitHub serves a README image with.
-
-## Unreleased
-
-### Fixed
-
-- `docs/assets/agent-guidance-mark.svg` was not well-formed XML. A comment in it carried a double
-  hyphen, which XML forbids, so GitHub and other strict parsers refused the file and the
-  README showed a broken image. Chromium parses SVG leniently and drew it correctly, which is
-  why rendering it in a browser -- the check meant to be the careful one -- reported nothing.
-
-### Added
-
-- `tests/test_assets.py` parses every SVG in `docs/assets` with a strict XML parser, names the
-  double-hyphen case directly, and checks that none of them carry executable content. A
-  rendered screenshot shows how a file looks; it does not show that the file is well formed,
-  and that distinction is what let a broken asset ship.
-
-## Unreleased
-
-### Changed
-
-- The mark is a terminal window with a prompt and the lines being written into it, which is
-  what this program is. The eye it replaces read as nmap's logo; a bold blue letter G, tried
-  on the way here, read as Google's. The file is `docs/assets/agent-guidance-mark.svg` and is flat
-  shapes with literal fills -- no defs, gradients, clipPath or `<use>` -- so there is nothing
-  in it for a restrictive renderer to drop. Checked in Chromium on a light and a dark page,
-  and again served under the headers GitHub uses for a README image
-  (`default-src 'none'; sandbox`). The eye rendered under those headers too, so nothing here
-  fixes a rendering failure; it was never established that there was one.
-- The terminal header carries `[ >_ ]` to match. It deliberately avoids U+276F, because
-  `scripts/capture_screens.py` reads a line starting with that character as a question waiting
-  for an answer, and a header carrying one would have the capture typing into the banner.
-
-## Unreleased
-
-### Added
-
-- `tests/test_github_real_payload.py` and `tests/fixtures/github_repository.json`, a repository
-  object captured verbatim from `GET /repos/GrayOM/Agent_Guidance` with its volatile counters
-  pinned. The other GitHub tests write their responses by hand, so they prove the code works
-  against the fields those tests chose to include; this one runs search, paging, normalisation,
-  validation and recommendation against all 95 real fields, which leaves the socket call as the
-  only part of live discovery still unexercised. It is not a claim that discovery has been run
-  against api.github.com: this container's GitHub access is bound to one repository and
-  `GET /search/repositories` answers 403 with "sessions are bound to their configured
-  repositories".
-
-### Changed
-
-- The logo is an eye. The old one drew a four-quadrant iris inside an almond on a dark card,
-  which read as a colour wheel and showed a dark panel on GitHub's light theme. The new one has
-  no background, defines its shape once and uses it twice, and gives the lids different curves,
-  because an almond closed by two identical arcs reads as a lens.
-- The terminal header carries `( ◉ )` instead of five rows of box-drawing characters. The art it
-  replaced had arrowheads on its outer corners, which read as a media control; redrawing it as a
-  tapered lid read as a chip instead. Rendered in a browser at the width a 96-column terminal
-  occupies, every multi-row attempt came out as scattered brackets, so the drawing stays in the
-  SVG, where curves are available.
-- `agent-guidance uninstall` now names the directory it left behind and says to delete it by hand. The
-  note read "changed since install", which said what happened without saying where to look.
-
-### Fixed
-
-- `scripts/capture_screens.py` stopped on a timer, so it wrote out whatever was on screen when a
-  fixed wait elapsed. Under load that captured the menu as its header alone. It now stops only
-  for a reason -- the process ended, or a question is waiting with no keystrokes left -- and
-  says so when a capture stalls instead of saving a blank screen. Tightening that exposed the
-  real defect: the prompt detector matched `? <question>:` and the menu asks "What would you
-  like to do?", so it never matched, and the menu was only ever captured by the timer. It now
-  looks for the pointer InquirerPy draws, which is on screen exactly while a question waits.
-
-### Verified
-
-- The captured screenshots were rendered in Chromium, and the columns line up. The local
-  rasteriser used earlier showed gaps because cairosvg ignores the `textLength` Rich puts on
-  every run; a browser honours it, and each panel line measures exactly 96 columns.
-
-## Unreleased
-
-Everything here is about the part of the program a user actually touches: the menu, the
-questions, the help, and the README.
-
-### Added
-
-- Written labels for every work domain and task, in `labels.py`, with a guard test. The
-  interview derived its labels from the identifiers, so the only screen users interact with
-  offered "Osint Recon", "Ci Cd Pipeline", "Ios App" and "Ai Llm Security". Capitalisation
-  rules cannot recover an acronym from a snake_case key, so each of the 11 domains and 78
-  tasks now has a label someone wrote, and a new task fails the suite until it gets one.
-- `scripts/capture_screens.py`, which produces every screenshot in the README by running the
-  real CLI. The images it replaced were drawn by hand and showed a menu that no longer
-  existed. The interview is an InquirerPy prompt, so each screen is driven through a pty with
-  scripted keystrokes and read back from a VT100 emulator; `--check` re-captures and fails if
-  a committed image no longer matches the program.
-- `python -m agent_guidance`, for a source checkout or an unactivated virtualenv where
-  the `agent-guidance` script is not on PATH.
-
-### Changed
-
-- `agent-guidance --help` is now two panels, "Everyday use" and "When something goes wrong", instead
-  of one flat list of seven commands that made all seven look equally necessary. Every
-  description is written for someone who has just installed this: "Reconcile and
-  transactionally apply an Agent environment" is now "Choose your work, review the plan, then
-  install (asks before changing anything)."
-- `--probe-mcp/--no-probe-mcp` and `setup --dry-run` are hidden from help. The first is
-  internal and weakens the health check when turned off; the second duplicates
-  `agent-guidance recommend`, which says what it does in its name. Both still work for scripts and
-  tests.
-- The menu offers every command it should. `uninstall` was reachable only by typing it, so
-  the menu could install but not undo. Each entry now says what choosing it does.
-- The detected-Agents line reads `Codex (0.160.0)` and `Claude Code (2.1.287)`. Both adapters
-  stored the raw `--version` output and printed it inside Agent Guidance's own parentheses, which
-  gave `Codex (codex-cli 0.160.0)` and `Claude Code (2.1.287 (Claude Code))`.
-- The README is a walkthrough with the captured screenshots: one command, what each screen
-  asks, and what the plan tells you before you approve it.
-
 ## 0.1.0 — 2026-10-02
 
-First release with every feature in `architecture.md` implemented and the audit's own gaps
-either closed or named. Two remain named: automated uninstall now exists but a component
-whose files the user has edited is preserved rather than removed, and live GitHub discovery
-has not been exercised on any machine available to the project so far.
+The first release. Every feature in `architecture.md` is implemented, and the audit's own gaps
+are closed or named rather than quietly dropped.
+
+Two are named. A component whose files the user has edited after installation is preserved
+rather than removed, which is deliberate: the program does not delete work it did not write.
+It says which directory it left and where. And live GitHub discovery has never been run
+against `api.github.com` end to end, because the machines available to this project cannot
+reach its search endpoint; everything from the HTTP response through normalisation,
+validation and recommendation is exercised against a repository object captured from the real
+API, which leaves the socket call itself as the only unexercised step.
 
 ### Added
 
@@ -236,6 +74,27 @@ has not been exercised on any machine available to the project so far.
   name `claude-code-plugins`, which is why the install id cannot be derived from the
   repository name.
 
+- Written labels for all 11 work domains and 78 tasks, with a guard test. The interview
+  derived its labels from the identifiers, so the only screen a user interacts with offered
+  "Osint Recon", "Ci Cd Pipeline", "Ios App" and "Ai Llm Security"; no capitalisation rule
+  recovers an acronym from a snake_case key, so each label is now written out and a new task
+  fails the suite until it gets one.
+- `scripts/capture_screens.py`, which produces every screenshot in the README by running the
+  real CLI. The interview is an InquirerPy prompt, so each screen is driven through a pty with
+  scripted keystrokes and read back from a VT100 emulator; `--check` re-captures and fails when
+  a committed image no longer matches the program.
+- `tests/test_assets.py`, which parses every SVG in `docs/assets` with a strict XML parser and
+  names the double-hyphen-in-a-comment case directly. A rendered screenshot shows how a file
+  looks; it does not show that the file is well formed, and only the second kind of check
+  catches a file a browser renders and a strict parser refuses.
+- `tests/test_github_real_payload.py` and `tests/fixtures/github_repository.json`: a repository
+  object captured verbatim from the GitHub API, with its volatile counters pinned. The other
+  GitHub tests write their responses by hand, so they prove the code works against the fields
+  those tests chose to include; this one runs search, paging, normalisation, validation and
+  recommendation against all 95 real fields.
+- `python -m agent_guidance`, for a source checkout or an unactivated virtualenv where the
+  `agent-guidance` script is not on PATH.
+
 ### Changed
 
 - Claude Code's Plugin capability now follows whether its CLI is present, rather than being
@@ -245,6 +104,20 @@ has not been exercised on any machine available to the project so far.
 - GitHub 401, 429 and plain 403 are reported as the different problems they are, and one refusal
   that stopped every repository is reported once.
 - Support is limited to Codex and Claude Code; the Cursor adapter was removed.
+
+- `agent-guidance --help` is two panels, "Everyday use" and "When something goes wrong",
+  instead of one flat list of seven commands that made all seven look equally necessary. Every
+  description is written for someone who has just installed this.
+- `--probe-mcp/--no-probe-mcp` and `setup --dry-run` are hidden from help. The first is
+  internal and weakens the health check when turned off; the second duplicates
+  `agent-guidance recommend`, which says what it does in its name. Both still work for scripts.
+- The menu offers every command it should. `uninstall` was reachable only by typing it, so the
+  menu could install but not undo. Each entry now says what choosing it does.
+- `agent-guidance uninstall` names the directory it leaves behind and says to delete it by
+  hand. The note read "changed since install", which said what happened without saying where
+  to look.
+- The README is a walkthrough built on the captured screenshots: one command, what each screen
+  asks, and what the plan tells you before you approve it.
 
 ### Fixed
 
@@ -291,6 +164,10 @@ has not been exercised on any machine available to the project so far.
   no longer counted as a foreign name collision.
 - `SKILL.md`-only repositories are recognised, so community Skills are no longer discarded.
 - Install refs are a commit or branch, never the `pushed_at` timestamp used as a cache key.
+
+- The detected-Agents line reads `Codex (0.160.0)` and `Claude Code (2.1.287)`. Both adapters
+  stored the raw `--version` output and printed it inside the program's own parentheses, which
+  gave `Codex (codex-cli 0.160.0)` and, worse, `Claude Code (2.1.287 (Claude Code))`.
 
 ## 0.1.0rc1 — 2026-09-30
 
