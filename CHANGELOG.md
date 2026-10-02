@@ -24,7 +24,9 @@ has not been exercised on any machine available to the project so far.
 - `scripts/real_agent_check.py` and a `real-agents` CI job on Linux, Windows and macOS. It
   installs the Agents themselves and drives detect, install, health, uninstall and verify
   against them for real, in a throwaway HOME and with no credentials. The same command runs
-  on a user's own machine.
+  on a user's own machine. Its first run failed on Windows and macOS and found a real
+  cross-platform defect, which closes the audit's longest-standing gap with evidence rather
+  than with a rewording.
 
 - A `penetration_testing` work domain for assessing a target someone else built and
   deployed, with thirteen engagement-phase questions (web application, authentication,

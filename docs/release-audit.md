@@ -29,9 +29,12 @@ executed.
 | Three-level Health Check | PARTIAL | Codex's functional probe was executed on 2026-10-02 against the real CLI and correctly reported L3 `WARN mcp_tool_discovery:github: authentication environment variable is not set`; Claude Code stops at L2 (static and initialization), so no functional probe exists for it |
 | Offline mode and damaged cache recovery | IMPLEMENTED | Registry/verified cache fallback, atomic cache writes, damaged cache warning state |
 | Windows/macOS/Linux CI | IMPLEMENTED | GitHub Actions 3-OS × Python 3.11/3.12 matrix |
-| Real installed-Agent OS test | PARTIAL | Linux verified 2026-10-02 against real Codex 0.160.0 and Claude Code 2.1.287: dual-Agent detection, install for both, health including Codex's L3 probe, state record, and rollback restoring both Agents to their prior state. Windows and macOS remain NOT VERIFIED — CI there uses isolated fixtures and no physical Agent session was available |
+| Real installed-Agent OS test | IMPLEMENTED | Verified 2026-10-02 on Linux, Windows and macOS against real Codex 0.160.0 and Claude Code 2.1.287 installed from npm, by the `real-agents` CI job running `scripts/real_agent_check.py`: detection, install for both Agents, health including Codex's L3 probe, state record, uninstall, and a check that nothing of GrayOM's is left. Its first run failed on Windows and macOS and found a real cross-platform defect, which is the evidence that the job tests something Linux could not |
 | Packaging/clean install | IMPLEMENTED | wheel build, wheel reinstall, entry-point smoke in CI/release checks |
 | Update | IMPLEMENTED | `cli/main.py` resolves upstream live through `resolve_upstream_refs` and reports unchecked components separately from unchanged ones; the Registry is the fallback when upstream cannot be reached. It reinstalls at the new ref rather than migrating state across versions, which is the stated behaviour, not a gap |
+
+The three dashes this audit used to carry for untested platforms are gone, and the row above says so
+because a job executed it rather than because the claim was reworded.
 
 ## Release gate result
 
