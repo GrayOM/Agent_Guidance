@@ -227,3 +227,55 @@ def show_health(console: Console, result: HealthCheckResult) -> None:
         else:
             label = "[yellow]WARN[/yellow]"
         console.print(f"{label} L{check.level.value} {check.name}: {check.message}")
+
+
+def show_uninstall_plan(console: Console, plan) -> None:
+    """What will be taken away, and what will deliberately stay, before anything is touched."""
+    if plan.actions:
+        table = Table(title="Uninstall Plan")
+        table.add_column("Component")
+        table.add_column("Type")
+        table.add_column("Agent")
+        table.add_column("What goes")
+        for action in plan.actions:
+            goes = []
+            if action.paths:
+                goes.append(f"{len(action.paths)} Skill directories")
+            if action.mcp_names:
+                goes.append("MCP " + ", ".join(action.mcp_names))
+            if action.marketplaces:
+                goes.append("marketplace " + ", ".join(action.marketplaces))
+            if action.keeps_files_for:
+                kept = ", ".join(item.value.replace("_", " ").title() for item in action.keeps_files_for)
+                goes.append(f"registration only — files stay for {kept}")
+            table.add_row(
+                action.name, action.component_type.value,
+                action.agent.value.replace("_", " ").title(),
+                "; ".join(goes) or "nothing recorded",
+            )
+        console.print(table)
+    for component_id, reason in plan.skipped.items():
+        console.print(f"  [dim]- {component_id}: {reason}[/dim]")
+
+
+def show_uninstall_result(console: Console, result) -> None:
+    console.print("\n[bold]Removed[/bold]")
+    for removal in result.removals:
+        parts = []
+        if removal.removed_paths:
+            parts.append(f"{len(removal.removed_paths)} Skill directories")
+        if removal.removed_mcp:
+            parts.append("MCP " + ", ".join(removal.removed_mcp))
+        if removal.removed_plugins:
+            parts.append("plugin " + ", ".join(removal.removed_plugins))
+        if removal.removed_marketplaces:
+            parts.append("marketplace " + ", ".join(removal.removed_marketplaces))
+        if parts:
+            console.print(f"  [green]-[/green] {removal.component_id} — {'; '.join(parts)}")
+        for note in removal.preserved:
+            console.print(f"  [yellow]![/yellow] {removal.component_id} kept — {note}")
+        for error in removal.errors:
+            console.print(f"  [red]x[/red] {removal.component_id} — {error}")
+    for component_id, agents in result.retained.items():
+        names = ", ".join(item.value.replace("_", " ").title() for item in agents)
+        console.print(f"  [dim]{component_id} is still installed for {names}[/dim]")

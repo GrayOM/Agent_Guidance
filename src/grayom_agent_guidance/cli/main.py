@@ -23,6 +23,7 @@ from grayom_agent_guidance.models import (
     AgentInstallation, AgentType, Component, HealthCheckResult, InstallationManifest,
     MultiAgentManifest, Ownership,
 )
+from grayom_agent_guidance.core.uninstall import apply_uninstall, plan_uninstall
 from grayom_agent_guidance.sources.upstream import resolve_upstream_refs
 from grayom_agent_guidance.observability import EventLogger, redact
 from grayom_agent_guidance.registry import load_registry
@@ -33,6 +34,7 @@ from grayom_agent_guidance.runtime import OperationLock
 from .interview import run_interview
 from .ui import (
     show_detected_agents, show_discovery, show_header, show_health, show_installed, show_plan,
+    show_uninstall_plan, show_uninstall_result,
 )
 
 app = typer.Typer(no_args_is_help=False, help="GrayOM AI Agent Environment Manager")
@@ -320,6 +322,65 @@ def rollback(
         raise
     except Exception as exc:
         _friendly_error(exc, "rollback")
+        raise typer.Exit(code=1) from exc
+
+
+@app.command()
+def uninstall(
+    components: list[str] = typer.Argument(
+        None, help="Component IDs to remove; omit with --all to remove everything GrayOM installed",
+    ),
+    agent: list[str] = typer.Option(
+        None, "--agent", help="Remove only for these Agents, leaving others as they are",
+    ),
+    remove_all: bool = typer.Option(False, "--all", help="Remove every GrayOM-installed component"),
+    yes: bool = typer.Option(False, "--yes", help="Confirm non-interactively"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show the plan without removing anything"),
+) -> None:
+    """Remove GrayOM-installed components; existing and locally edited files are preserved."""
+    show_header(console)
+    state = StateStore()
+    for warning in state.warnings:
+        console.print(f"[yellow]! WARNING[/yellow] {warning}")
+    if not components and not remove_all:
+        console.print(
+            "Name the components to remove, or pass --all. "
+            "'grayom debug-info' lists what GrayOM installed."
+        )
+        raise typer.Exit(code=ExitCode.CANCELLED)
+    try:
+        agents = [AgentType(value) for value in agent] if agent else None
+    except ValueError as exc:
+        console.print(f"[red]Unknown Agent: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    try:
+        plan = plan_uninstall(state, list(components) if components else None, agents)
+        show_uninstall_plan(console, plan)
+        if plan.empty:
+            console.print("[green]Nothing to remove.[/green]")
+            return
+        if dry_run:
+            console.print("\n[bold yellow]DRY RUN[/bold yellow]\nNothing was removed.")
+            return
+        if not yes and not inquirer.confirm(
+            message="Remove these components?", default=False,
+        ).execute():
+            console.print("Cancelled. Nothing was removed.")
+            raise typer.Exit(code=ExitCode.CANCELLED)
+        logger = EventLogger(verbose=_verbose)
+        with OperationLock(grayom_home() / "grayom.lock", "uninstall"):
+            result = apply_uninstall(plan, _adapter_map(), state)
+        show_uninstall_result(console, result)
+        logger.write(
+            "uninstall_complete", components=plan.component_ids(),
+            result="success" if result.successful else "failed", error="; ".join(result.errors),
+        )
+        if not result.successful:
+            raise typer.Exit(code=ExitCode.INSTALLATION)
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        _friendly_error(exc, "uninstall")
         raise typer.Exit(code=1) from exc
 
 

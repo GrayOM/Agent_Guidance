@@ -5,7 +5,7 @@ from grayom_agent_guidance.adapters import AgentAdapter
 from grayom_agent_guidance.core import MultiAgentInstallationTransaction, find_incomplete_transactions
 from grayom_agent_guidance.models import (
     AdapterCapabilities, AgentComponentAction, AgentInstallation, AgentPlan, AgentType, BackupEntry, BackupManifest,
-    CheckResult, CompatibilityResult, CompatibilityStatus, Component, ComponentInstallResult,
+    CheckResult, CompatibilityResult, CompatibilityStatus, Component, ComponentInstallResult, ComponentRemovalResult,
     ComponentType, HealthCheckResult, InstallationManifest, MultiAgentPlan, RollbackResult,
     TransactionState,
 )
@@ -40,6 +40,9 @@ class FakeAdapter(AgentAdapter):
     def install_plugin(self, component): return self.install_skill(component)
     def health_check(self, expected=None, probe_mcp=True):
         return HealthCheckResult(checks=[CheckResult(name="health", passed=not self.fail, message="test")])
+    def remove_component(self, component, paths, file_hashes, mcp_names, marketplaces):
+        self.config.write_text("original", encoding="utf-8")
+        return ComponentRemovalResult(component_id=component.id, changed=True)
     def rollback(self, manifest: InstallationManifest):
         result = RollbackResult()
         for entry in manifest.backup.entries:

@@ -28,6 +28,34 @@ jobs:
       - run: python -m compileall -q src tests
       - run: python -m pytest -q --cov=grayom_agent_guidance --cov-fail-under=70
 
+  real-agents:
+    # The audit's standing gap: every end-to-end run had happened on Linux, so Windows and
+    # macOS were asserted rather than executed. This installs the Agents themselves and
+    # drives detect, install, health, uninstall and verify against them for real. No
+    # credentials are involved — discovery runs offline and the Skill repositories are
+    # cloned over HTTPS into a throwaway HOME.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: npm install -g @anthropic-ai/claude-code @openai/codex
+      - run: claude --version
+      - run: codex --version
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r requirements-dev.lock
+      - run: python -m pip install -e . --no-deps
+      - run: python scripts/real_agent_check.py --require codex claude_code
+
   quality-and-package:
     runs-on: ubuntu-latest
     steps:

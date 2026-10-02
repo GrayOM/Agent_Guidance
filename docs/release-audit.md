@@ -1,4 +1,4 @@
-# Release Candidate Audit — 0.1.0rc1
+# Release Audit — 0.1.0
 
 Audit date: 2026-09-30, re-verified 2026-10-02. `IMPLEMENTED` means code and an automated test or
 executable verification exist. `PARTIAL` means the safe subset is implemented and the missing
@@ -25,7 +25,7 @@ executed.
 | Structured process execution | IMPLEMENTED | argument-list runner, `shell=False`, timeout, capture, redaction, tests |
 | Immutable repository install | PARTIAL | configured refs are fetched detached; Registry entries without immutable refs remain unverified |
 | Component manifests and hashes | IMPLEMENTED | per-component state manifests, source refs, paths and SHA-256 hashes |
-| Safe uninstall | MISSING | no uninstall command is exposed; rollback removes manifest-owned paths only |
+| Safe uninstall | IMPLEMENTED | `grayom uninstall` works from state, so it reaches a component installed long before the last transaction; it refuses an EXISTING component, a Skill directory whose files no longer hash to what was installed, and any MCP name GrayOM did not record writing; `core/uninstall.py` with 13 tests and an executed run on real Codex and Claude Code |
 | Three-level Health Check | PARTIAL | Codex's functional probe was executed on 2026-10-02 against the real CLI and correctly reported L3 `WARN mcp_tool_discovery:github: authentication environment variable is not set`; Claude Code stops at L2 (static and initialization), so no functional probe exists for it |
 | Offline mode and damaged cache recovery | IMPLEMENTED | Registry/verified cache fallback, atomic cache writes, damaged cache warning state |
 | Windows/macOS/Linux CI | IMPLEMENTED | GitHub Actions 3-OS × Python 3.11/3.12 matrix |
@@ -35,16 +35,18 @@ executed.
 
 ## Release gate result
 
-`0.1.0rc1`: **READY**. GitHub Actions run 36652076601 passed the Ubuntu, Windows, and macOS matrix on
-Python 3.11/3.12 plus quality, dependency-audit, and clean-wheel packaging checks, and the matrix has
-passed on every merge since.
+`0.1.0`: **READY**. The Ubuntu, Windows and macOS matrix passes on Python 3.11/3.12 alongside quality,
+dependency-audit and clean-wheel packaging checks, and a `real-agents` job now installs Codex and
+Claude Code on all three platforms and drives detect, install, health, uninstall and verify against
+them.
 
 This is an RC decision, not a claim that final `0.1.0` is fully field-validated. Two things are still
 outside what has been executed anywhere:
 
-- Real installed-Agent application sessions on **Windows and macOS**. Linux is now covered against
-  both real CLIs; the other two platforms run CI against isolated fixtures only.
 - **Live GitHub discovery.** Every end-to-end run so far was made in a container whose GitHub access
   is restricted to this repository, so the Registry and verified-cache paths are exercised and the
   live search path is not. GrayOM reports that refusal correctly — as an access decision rather than
   a rate limit — but the path itself is unverified.
+- **Uninstalling a component the user has edited.** The directory is preserved on purpose and the
+  component stays recorded, so removing it is still the user's own job. That is the safe behaviour,
+  not a bug, but it does mean `uninstall` is not guaranteed to leave nothing behind.

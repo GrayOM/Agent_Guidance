@@ -11,9 +11,9 @@
     <text x="34" y="309" fill="#7ee787">$</text><text x="64" y="309" fill="#f0f6fc">pipx install .</text>
     <text x="34" y="352" fill="#8b949e">creating virtual environment...</text>
     <text x="34" y="395" fill="#8b949e">installing grayom-agent-guidance from spec '.'...</text>
-    <text x="34" y="438" fill="#7ee787">done! installed package grayom-agent-guidance 0.1.0rc1</text>
+    <text x="34" y="438" fill="#7ee787">done! installed package grayom-agent-guidance 0.1.0</text>
     <text x="34" y="497" fill="#7ee787">$</text><text x="64" y="497" fill="#f0f6fc">grayom --version</text>
-    <text x="34" y="540" fill="#79c0ff">GrayOM Agent Guidance 0.1.0rc1</text>
+    <text x="34" y="540" fill="#79c0ff">GrayOM Agent Guidance 0.1.0</text>
     <text x="34" y="599" fill="#7ee787">$</text><text x="64" y="599" fill="#f0f6fc">grayom setup --dry-run</text>
   </g>
 </svg>

@@ -131,6 +131,31 @@ class InstallationResult(BaseModel):
     error: str | None = None
 
 
+class ComponentRemovalResult(BaseModel):
+    """What an uninstall took away from one Agent, and what it deliberately left.
+
+    `preserved` is as important as `removed`: a component the user already had, a file they
+    changed after install, or a registration GrayOM never wrote is not GrayOM's to delete,
+    and the run has to say so rather than silently doing less than it reported.
+    """
+
+    component_id: str
+    # Recorded paths that belong to this Agent. State keeps one path list per component
+    # across every Agent, so a count of what was removed means nothing without it.
+    owned_paths: int = 0
+    removed_paths: list[Path] = Field(default_factory=list)
+    removed_mcp: list[str] = Field(default_factory=list)
+    removed_plugins: list[str] = Field(default_factory=list)
+    removed_marketplaces: list[str] = Field(default_factory=list)
+    preserved: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    changed: bool = False
+
+    @property
+    def successful(self) -> bool:
+        return not self.errors
+
+
 class RollbackResult(BaseModel):
     restored: list[Path] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)

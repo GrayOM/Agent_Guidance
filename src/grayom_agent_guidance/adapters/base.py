@@ -3,7 +3,7 @@ from pathlib import Path
 
 from grayom_agent_guidance.models import (
     AdapterCapabilities, AgentInstallation, BackupManifest, Component, ComponentInstallResult,
-    HealthCheckResult, InstallationManifest, RollbackResult,
+    ComponentRemovalResult, HealthCheckResult, InstallationManifest, RollbackResult,
 )
 
 
@@ -44,6 +44,22 @@ class AgentAdapter(ABC):
 
     @abstractmethod
     def install_plugin(self, component: Component) -> ComponentInstallResult: ...
+
+    @abstractmethod
+    def remove_component(
+        self,
+        component: Component,
+        paths: list[Path],
+        file_hashes: dict[str, str],
+        mcp_names: list[str],
+        marketplaces: list[str],
+    ) -> ComponentRemovalResult:
+        """Take away exactly what GrayOM put in for this Agent, and nothing else.
+
+        Every argument is what state recorded at install time rather than what the adapter
+        can infer now: an MCP may have landed under an alias, and a Skill directory the user
+        has edited since is no longer GrayOM's to delete.
+        """
 
     @abstractmethod
     def health_check(

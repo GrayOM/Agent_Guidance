@@ -14,8 +14,8 @@ import yaml
 
 from grayom_agent_guidance.models import (
     AdapterCapabilities, AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
-    ComponentInstallResult, ComponentType, HealthCheckResult, HealthLevel, InstallationManifest,
-    InstallKind, RollbackResult,
+    ComponentInstallResult, ComponentRemovalResult, ComponentType, HealthCheckResult, HealthLevel,
+    InstallationManifest, InstallKind, RollbackResult,
 )
 from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
 
@@ -253,6 +253,17 @@ class CodexAdapter(AgentAdapter):
         for key, value in desired.items():
             server.add(key, value)
         servers.add(registration_name, server)
+        self._write_config(document)
+        result.changed = True
+        result.configured_mcp.append(registration_name)
+        return result
+
+    def _write_config(self, document: Any) -> None:
+        """Render, fsync, re-parse and atomically replace the Codex config.
+
+        Shared by the install and the uninstall so both reach the file the same way: a
+        config that fails to parse is never the one left on disk.
+        """
         rendered = tomlkit.dumps(document)
         temporary = self.config_path.with_name(f"config.toml.grayom-{uuid4().hex}.tmp")
         validate_managed_path(self.config_path, self.codex_home)
@@ -266,9 +277,6 @@ class CodexAdapter(AgentAdapter):
             os.replace(temporary, self.config_path)
         finally:
             temporary.unlink(missing_ok=True)
-        result.changed = True
-        result.configured_mcp.append(registration_name)
-        return result
 
     def install_plugin(self, component: Component) -> ComponentInstallResult:
         raise AdapterError("Codex Plugin installation is intentionally outside this MVP")
@@ -361,6 +369,59 @@ class CodexAdapter(AgentAdapter):
                 level=HealthLevel.INITIALIZATION,
             ))
         return checks
+
+    def remove_component(
+        self,
+        component: Component,
+        paths: list[Path],
+        file_hashes: dict[str, str],
+        mcp_names: list[str],
+        marketplaces: list[str],
+    ) -> ComponentRemovalResult:
+        from .json_support import remove_managed_skills
+
+        del marketplaces  # Codex installs no plugins, so it has no marketplace to reverse.
+        result = ComponentRemovalResult(component_id=component.id)
+        if component.type == ComponentType.SKILL:
+            skills = remove_managed_skills(
+                paths, self.skills_root, component.id, file_hashes,
+            )
+            result.owned_paths = skills.owned
+            result.removed_paths.extend(skills.removed)
+            result.preserved.extend(skills.preserved)
+            result.errors.extend(skills.errors)
+        elif component.type == ComponentType.MCP:
+            try:
+                result.removed_mcp.extend(self._remove_toml_mcp(mcp_names, result))
+            except AdapterError as exc:
+                result.errors.append(str(exc))
+        elif component.type == ComponentType.PLUGIN:
+            result.preserved.append("Codex installs no plugins, so none were removed")
+        result.changed = bool(result.removed_paths or result.removed_mcp)
+        return result
+
+    def _remove_toml_mcp(self, names: list[str], result: ComponentRemovalResult) -> list[str]:
+        """Drop the named registrations, preserving the rest of the file as written.
+
+        tomlkit is used for the removal too, so the user's comments, key order and unrelated
+        tables survive an uninstall exactly as they survive an install.
+        """
+        if not names or not self.config_path.exists():
+            return []
+        try:
+            document = tomlkit.parse(self.config_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise AdapterError(f"existing Codex config is invalid TOML: {exc}") from exc
+        servers = document.get("mcp_servers")
+        if servers is None:
+            return []
+        removed = [name for name in names if name in servers]
+        for name in removed:
+            del servers[name]
+        result.preserved.extend(f"{name}: not registered" for name in names if name not in removed)
+        if removed:
+            self._write_config(document)
+        return removed
 
     def health_check(
         self, expected: list[Component] | None = None, probe_mcp: bool = True,

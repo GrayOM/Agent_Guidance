@@ -1,16 +1,17 @@
+import hashlib
 import json
 import os
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 from uuid import uuid4
 
 import yaml
 
 from grayom_agent_guidance.core.skill_selection import SkillCandidate, select_skills
 from grayom_agent_guidance.models import Component, ComponentInstallResult, InstallKind
-from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
+from grayom_agent_guidance.runtime import PathSecurityError, ProcessRunner, validate_managed_path
 
 from .codex import AdapterError, _safe_name
 
@@ -300,3 +301,88 @@ def _chosen_files(
             f"no Skill in this repository matches the selected work ({len(candidates)} available)"
         )
     return [by_name[name] for name in selection.selected_names]
+
+
+class SkillRemoval(NamedTuple):
+    removed: list[Path]
+    preserved: list[str]
+    errors: list[str]
+    owned: int
+
+
+def remove_managed_skills(
+    paths: list[Path], skills_root: Path, component_id: str, hashes: dict[str, str],
+) -> SkillRemoval:
+    """Delete the Skill directories GrayOM created for one component, for this Agent.
+
+    State records one path list per component across every Agent it was installed for, so
+    the list handed in here also holds the other Agent's directories. Those are not errors
+    and not preservations — they are simply not this Agent's, and `owned` counts the ones
+    that are, so the caller can tell "nothing of mine was left" from "I had nothing".
+
+    Three guards then apply, in order, because deleting is the one irreversible step of an
+    uninstall: the path has to resolve inside this Agent's Skill root, carry GrayOM's marker
+    naming this component, and every file has to still hash to what was installed. A file the
+    user edited afterwards is theirs, so the directory is preserved and reported instead.
+    """
+    removed: list[Path] = []
+    preserved: list[str] = []
+    errors: list[str] = []
+    owned = 0
+    allowed = skills_root.resolve()
+    for path in paths:
+        try:
+            resolved = path.resolve()
+            if not resolved.is_relative_to(allowed):
+                continue
+            owned += 1
+            validate_managed_path(path, skills_root, allow_missing=True)
+            if not resolved.exists():
+                preserved.append(f"{path.name}: already gone")
+                continue
+            marker = resolved / ".grayom-component.json"
+            try:
+                marked_for = json.loads(marker.read_text(encoding="utf-8")).get("component_id")
+            except (OSError, ValueError):
+                marked_for = None
+            if marked_for != component_id:
+                preserved.append(f"{path.name}: no GrayOM marker for {component_id}")
+                continue
+            changed = _locally_changed(resolved, hashes)
+            if changed:
+                preserved.append(f"{path.name}: changed since install ({changed})")
+                continue
+            shutil.rmtree(resolved)
+            removed.append(path)
+        except (OSError, AdapterError, PathSecurityError) as exc:
+            errors.append(f"{path}: {exc}")
+    return SkillRemoval(removed, preserved, errors, owned)
+
+
+def _locally_changed(root: Path, hashes: dict[str, str]) -> str | None:
+    """The first file under root whose content no longer matches what was installed."""
+    for file_path in sorted(item for item in root.rglob("*") if item.is_file()):
+        if file_path.name == ".grayom-component.json":
+            continue
+        recorded = hashes.get(str(file_path))
+        if recorded is None:
+            return f"{file_path.name} was added"
+        if hashlib.sha256(file_path.read_bytes()).hexdigest() != recorded:
+            return f"{file_path.name} was edited"
+    return None
+
+
+def remove_json_mcp(path: Path, names: list[str]) -> tuple[list[str], list[str]]:
+    """Drop exactly the registrations GrayOM wrote, leaving every other key untouched."""
+    if not names or not path.exists():
+        return [], []
+    document = read_json_object(path)
+    servers = document.get("mcpServers")
+    if not isinstance(servers, dict):
+        return [], []
+    removed = [name for name in names if name in servers]
+    for name in removed:
+        del servers[name]
+    if removed:
+        atomic_write_json(path, document)
+    return removed, [f"{name}: not registered" for name in names if name not in removed]
