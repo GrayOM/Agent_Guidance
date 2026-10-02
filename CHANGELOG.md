@@ -1,8 +1,30 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 — 2026-10-02
+
+First release with every feature in `architecture.md` implemented and the audit's own gaps
+either closed or named. Two remain named: automated uninstall now exists but a component
+whose files the user has edited is preserved rather than removed, and live GitHub discovery
+has not been exercised on any machine available to the project so far.
 
 ### Added
+
+- `grayom uninstall`, which removes what GrayOM installed and refuses to remove anything
+  else. It works from state rather than from a transaction manifest, so a component can be
+  removed long after the run that installed it — which `rollback` could never do. Three
+  refusals carry the safety, each reported rather than silently narrowing the work: a
+  component that was already there is not GrayOM's, a Skill directory whose files no longer
+  hash to what was installed stays with the user, and an MCP registration GrayOM did not
+  write is never deleted. `--agent` removes for one Agent and leaves the other's install
+  intact; `--dry-run` shows the plan without touching anything.
+- State records the MCP registration names and marketplaces GrayOM actually wrote, per
+  Agent. Without them an uninstall would have to guess, and an MCP can land under `<id>`,
+  `<id>-grayom` or `<id>-grayom-2` depending on what the user already had — so the guess
+  would eventually delete someone's own server.
+- `scripts/real_agent_check.py` and a `real-agents` CI job on Linux, Windows and macOS. It
+  installs the Agents themselves and drives detect, install, health, uninstall and verify
+  against them for real, in a throwaway HOME and with no credentials. The same command runs
+  on a user's own machine.
 
 - A `penetration_testing` work domain for assessing a target someone else built and
   deployed, with thirteen engagement-phase questions (web application, authentication,
@@ -56,6 +78,12 @@
 
 ### Fixed
 
+- Installing a Skill repository no longer fails when the clone root is not its own real
+  path. A Windows short 8.3 TEMP (`RUNNER~1`) and its long form (`runneradmin`) name the
+  same directory without being prefixes of one another, and macOS puts the temporary
+  directory under `/var`, a symlink to `/private/var`; either made `relative_to` raise and
+  the whole install fail. Linux hid it, and the new real-Agent CI job surfaced it on both
+  other platforms on its first run.
 - The interview prompts are covered. `cli/interview.py` went from 30% to 100%: the real
   prompts run against scripted keystrokes, and the interview's own order, per-domain task
   questions and both refusals run against a recorder. Nothing had executed that code —

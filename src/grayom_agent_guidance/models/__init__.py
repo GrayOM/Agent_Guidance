@@ -6,7 +6,8 @@ from .component import (
     Permission, SecurityMetadata, SkillSelectionPolicy, SourceType, TrustMetadata,
 )
 from .installation import (
-    BackupEntry, BackupManifest, CheckResult, ComponentInstallResult, HealthCheckResult,
+    BackupEntry, BackupManifest, CheckResult, ComponentInstallResult, ComponentRemovalResult,
+    HealthCheckResult,
     HealthLevel, HealthStatus,
     InstallationManifest, InstallationResult, RollbackResult,
 )
@@ -23,7 +24,8 @@ from .risk import ConflictFinding, RiskLevel, SecurityFinding
 __all__ = [
     "AdapterCapabilities", "AgentComponentAction", "AgentInstallation", "AgentPlan", "AgentRequirement", "AgentType",
     "BackupEntry", "BackupManifest", "Capability", "CheckResult",
-    "CandidateState", "Compatibility", "Component", "ComponentInstallResult", "ComponentType",
+    "CandidateState", "Compatibility", "Component", "ComponentInstallResult",
+    "ComponentRemovalResult", "ComponentType",
     "CompatibilityResult", "CompatibilityStatus", "ConflictFinding", "DependencyRequirement", "EvidenceItem",
     "HealthCheckResult", "HealthLevel", "HealthStatus", "InstallationManifest", "InstallationResult", "InstalledComponent", "InstallKind", "InstallMethod",
     "InterviewAnswer", "MaintenanceMetadata", "MaintenanceStatus", "MultiAgentInstallationResult",

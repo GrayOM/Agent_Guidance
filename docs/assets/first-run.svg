@@ -9,7 +9,7 @@
   <text x="211" y="215" fill="#d2a8ff" font-family="DejaVu Sans Mono, monospace" font-size="58" font-weight="bold">OM</text>
   <text x="66" y="267" fill="#f0f6fc" font-family="DejaVu Sans Mono, monospace" font-size="29" font-weight="bold">AGENT GUIDANCE</text>
   <text x="66" y="322" fill="#8b949e" font-family="DejaVu Sans Mono, monospace" font-size="22">AI Agent Environment Manager</text>
-  <text x="1368" y="374" text-anchor="end" fill="#79c0ff" font-family="DejaVu Sans Mono, monospace" font-size="18">v0.1.0rc1</text>
+  <text x="1368" y="374" text-anchor="end" fill="#79c0ff" font-family="DejaVu Sans Mono, monospace" font-size="18">v0.1.0</text>
   <path d="M 900 234 Q 1060 82 1220 234 Q 1060 386 900 234 Z" fill="#0d1117" stroke="#2f81f7" stroke-width="16"/>
   <circle cx="1060" cy="234" r="84" fill="#56d4ff"/>
   <path d="M 1060 150 A 84 84 0 0 1 1144 234 L 1060 234 Z" fill="#7c5cff"/>

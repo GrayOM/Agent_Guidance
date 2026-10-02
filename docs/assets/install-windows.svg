@@ -8,9 +8,9 @@
     <text x="30" y="204" fill="#f9f1a5">PS ...&gt;</text><text x="164" y="204" fill="#f0f6fc"> py -3.11 -m venv .venv</text>
     <text x="30" y="253" fill="#f9f1a5">PS ...&gt;</text><text x="164" y="253" fill="#f0f6fc"> .\.venv\Scripts\Activate.ps1</text>
     <text x="30" y="302" fill="#f9f1a5">(.venv) PS ...&gt;</text><text x="272" y="302" fill="#f0f6fc"> python -m pip install .</text>
-    <text x="30" y="351" fill="#b5cea8">Successfully installed grayom-agent-guidance-0.1.0rc1</text>
+    <text x="30" y="351" fill="#b5cea8">Successfully installed grayom-agent-guidance-0.1.0</text>
     <text x="30" y="416" fill="#f9f1a5">(.venv) PS ...&gt;</text><text x="272" y="416" fill="#f0f6fc"> grayom --version</text>
-    <text x="30" y="465" fill="#3bdbff">GrayOM Agent Guidance 0.1.0rc1</text>
+    <text x="30" y="465" fill="#3bdbff">GrayOM Agent Guidance 0.1.0</text>
     <text x="30" y="530" fill="#f9f1a5">(.venv) PS ...&gt;</text><text x="272" y="530" fill="#f0f6fc"> grayom</text>
     <text x="30" y="579" fill="#b5cea8">Detected Agents:  ✓ Codex   ✗ Claude Code</text>
     <text x="30" y="622" fill="#dcdcaa">Select “Setup Agent Environment” to continue.</text>

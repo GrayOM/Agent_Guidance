@@ -164,7 +164,23 @@ false인 component type은 설치 Plan에서 `UNSUPPORTED`로 제외한다. vers
 검사하고 runtime 자체를 설치하지 않는다.
 
 Ownership은 `EXISTING`, `GRAYOM_INSTALLED`, `GRAYOM_MODIFIED`, `SHARED`다. `EXISTING` component는
-update나 rollback 삭제 대상이 아니다. State에는 component ID, source ref, 사용 Agent, ownership,
+update나 rollback 삭제 대상이 아니다.
+
+`uninstall`은 rollback과 다르다. rollback은 마지막 transaction을 되돌리므로 세 번 전 실행에서
+설치한 component에는 닿지 못하고, 입력이 transaction manifest다. `uninstall`은 State를 입력으로
+쓰므로 설치 시점과 무관하게 제거할 수 있다. 거부 규칙은 셋이고 모두 보고한다.
+
+1. `EXISTING` component는 GrayOM이 설치한 것이 아니므로 제거하지 않는다
+2. 설치 시점 hash와 달라진 Skill 디렉터리는 사용자의 것이므로 보존하고, 그 component는 해당
+   Agent에 대해 계속 기록된다(기록을 지우면 다음 실행이 옆에 두 번째 사본을 설치한다)
+3. GrayOM이 쓴 기록이 없는 MCP 등록 이름은 지우지 않는다
+
+3번이 State에 `configured_mcp`와 `added_marketplaces`를 Agent별로 남기는 이유다. MCP는 사용자가
+이미 가진 것에 따라 `<id>`, `<id>-grayom`, `<id>-grayom-2` 중 하나로 등록되므로, 이름을 추론하면
+결국 사용자 자신의 서버를 지운다. 이 필드가 없는 과거 기록은 추측하지 않고 건너뛴다.
+
+여러 Agent가 공유하는 component는 마지막 Agent가 떠날 때까지 파일이 남고, 떠나는 Agent의 등록만
+제거된다. State에는 component ID, source ref, 사용 Agent, ownership,
 transaction 참조, 설치 경로와 SHA-256을 저장하고 업무 Profile과 secret은 저장하지 않는다.
 
 ## 8. Transaction, Health Check, rollback

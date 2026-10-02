@@ -5,15 +5,18 @@ from urllib.parse import urlparse
 
 from grayom_agent_guidance.models import (
     AdapterCapabilities, AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
-    ComponentInstallResult, ComponentType, HealthCheckResult, HealthLevel, InstallationManifest,
-    InstallKind, RollbackResult,
+    ComponentInstallResult, ComponentRemovalResult, ComponentType, HealthCheckResult, HealthLevel,
+    InstallationManifest, InstallKind, RollbackResult,
 )
 from grayom_agent_guidance.runtime import ProcessRunner
 
 from .base import AgentAdapter
 from .claude_plugins import ClaudePluginCli
 from .codex import MCP_DIFFERENT_SETTINGS_REASON, AdapterError, _safe_name
-from .json_support import desired_json_mcp, install_git_skills, merge_mcp, read_json_object
+from .json_support import (
+    desired_json_mcp, install_git_skills, merge_mcp, read_json_object, remove_json_mcp,
+    remove_managed_skills,
+)
 from grayom_agent_guidance.runtime import validate_managed_path
 
 
@@ -166,6 +169,55 @@ class ClaudeCodeAdapter(AgentAdapter):
             )
         result.installed_plugins.append(installed_id)
         result.changed = True
+        return result
+
+    def remove_component(
+        self,
+        component: Component,
+        paths: list[Path],
+        file_hashes: dict[str, str],
+        mcp_names: list[str],
+        marketplaces: list[str],
+    ) -> ComponentRemovalResult:
+        result = ComponentRemovalResult(component_id=component.id)
+        if component.type == ComponentType.SKILL:
+            skills = remove_managed_skills(
+                paths, self.skills_root, component.id, file_hashes,
+            )
+            result.owned_paths = skills.owned
+            result.removed_paths.extend(skills.removed)
+            result.preserved.extend(skills.preserved)
+            result.errors.extend(skills.errors)
+        elif component.type == ComponentType.MCP:
+            try:
+                removed_names, missing = remove_json_mcp(self.config_path, mcp_names)
+                result.removed_mcp.extend(removed_names)
+                result.preserved.extend(missing)
+            except AdapterError as exc:
+                result.errors.append(str(exc))
+        elif component.type == ComponentType.PLUGIN:
+            # Plugins come out before marketplaces, as in rollback: Claude Code will not
+            # remove a marketplace while a plugin installed from it is still there.
+            plugin_id = component.install_method.plugin_id
+            if plugin_id:
+                try:
+                    if plugin_id in self.plugins.installed():
+                        self.plugins.uninstall(plugin_id)
+                        result.removed_plugins.append(plugin_id)
+                    else:
+                        result.preserved.append(f"{plugin_id}: not installed")
+                except AdapterError as exc:
+                    result.errors.append(f"{plugin_id}: {exc}")
+            for marketplace in reversed(marketplaces):
+                try:
+                    self.plugins.remove_marketplace(marketplace)
+                    result.removed_marketplaces.append(marketplace)
+                except AdapterError as exc:
+                    result.errors.append(f"marketplace {marketplace}: {exc}")
+        result.changed = bool(
+            result.removed_paths or result.removed_mcp
+            or result.removed_plugins or result.removed_marketplaces
+        )
         return result
 
     def health_check(self, expected: list[Component] | None = None, probe_mcp: bool = True) -> HealthCheckResult:

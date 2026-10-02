@@ -40,6 +40,13 @@ class ManagedComponent(BaseModel):
     component_name: str | None = None
     component_type: ComponentType | None = None
     install_method: InstallMethod | None = None
+    # What GrayOM actually wrote, per Agent, which is what an uninstall has to reverse and
+    # nothing more. An MCP can land under `<id>`, `<id>-grayom` or `<id>-grayom-2` depending
+    # on what the user already had, so without the recorded name a removal could delete the
+    # user's own registration. Absent in a record an earlier GrayOM wrote, and uninstall
+    # refuses to guess for those rather than removing the wrong thing.
+    configured_mcp: dict[AgentType, list[str]] = Field(default_factory=dict)
+    added_marketplaces: dict[AgentType, list[str]] = Field(default_factory=dict)
 
     def to_component(self) -> Component | None:
         """Rebuild the component as installed, or None when the record predates these fields."""
@@ -154,10 +161,26 @@ class StateStore:
             component = components[component_id]
             paths: list[Path] = []
             hashes: dict[str, str] = {}
+            configured_mcp: dict[AgentType, list[str]] = {}
+            added_marketplaces: dict[AgentType, list[str]] = {}
             for agent in agents:
                 agent_manifest = manifest.agent_manifests.get(agent)
                 if not agent_manifest:
                     continue
+                names = [
+                    name for outcome in manifest.outcomes
+                    if outcome.agent == agent and outcome.component_id == component_id
+                    for name in outcome.configured_mcp
+                ]
+                if names:
+                    configured_mcp[agent] = list(dict.fromkeys(names))
+                marketplaces = [
+                    name for outcome in manifest.outcomes
+                    if outcome.agent == agent and outcome.component_id == component_id
+                    for name in outcome.added_marketplaces
+                ]
+                if marketplaces:
+                    added_marketplaces[agent] = list(dict.fromkeys(marketplaces))
                 for path in agent_manifest.created_paths:
                     marker = path / ".grayom-component.json"
                     try:
@@ -183,6 +206,7 @@ class StateStore:
                 source_commit=(component.install_method.ref if component.install_method.ref and len(component.install_method.ref) == 40 else None),
                 source_tag=(component.install_method.ref if component.install_method.ref and len(component.install_method.ref) != 40 else None),
                 installation_paths=paths, file_hashes=hashes,
+                configured_mcp=configured_mcp, added_marketplaces=added_marketplaces,
                 health_status="PASS" if manifest.completed else "NOT_VERIFIED",
             )
         if str(manifest.path) not in self.document.transactions:

@@ -186,7 +186,7 @@ Profile 전체와 Credential 값은 저장하지 않습니다.
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 
-현재 버전은 `0.1.0rc1` Release Candidate입니다.
+현재 버전은 `0.1.0`입니다.
 
 ## License
 
