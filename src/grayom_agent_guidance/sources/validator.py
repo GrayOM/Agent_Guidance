@@ -34,7 +34,13 @@ class ComponentValidator:
         if component.install_method.kind == InstallKind.NONE:
             hard_failures.append("install method could not be determined")
         if component.type == ComponentType.PLUGIN:
-            hard_failures.append("Codex Plugin installation is not supported in the current MVP")
+            # A plugin is installable only through a marketplace: that is the path that
+            # fetches it, validates its manifest and has an inverse to roll back.
+            if component.install_method.kind != InstallKind.PLUGIN_MARKETPLACE:
+                hard_failures.append(
+                    "Plugin installation requires a marketplace plugin id; a Git URL alone "
+                    "has no manifest to validate and no inverse to roll back"
+                )
         for dependency in component.dependencies:
             if dependency.required and dependency.detected is False:
                 warnings.append(f"{dependency.name} is required but was not detected")

@@ -69,6 +69,10 @@ class ComponentInstallResult(BaseModel):
     skills_available: int = 0
     skills_selected: list[str] = Field(default_factory=list)
     skills_skipped: dict[str, int] = Field(default_factory=dict)
+    # Plugins and marketplaces are undone by an inverse command rather than a file, so what
+    # was added has to be recorded for rollback to be able to reverse exactly that much.
+    installed_plugins: list[str] = Field(default_factory=list)
+    added_marketplaces: list[str] = Field(default_factory=list)
 
 
 class InstallationManifest(BaseModel):
@@ -81,6 +85,8 @@ class InstallationManifest(BaseModel):
     installed_components: list[str] = Field(default_factory=list)
     preexisting_components: list[str] = Field(default_factory=list)
     configured_mcp: list[str] = Field(default_factory=list)
+    installed_plugins: list[str] = Field(default_factory=list)
+    added_marketplaces: list[str] = Field(default_factory=list)
     config_modified: bool = False
     completed: bool = False
 
@@ -88,6 +94,8 @@ class InstallationManifest(BaseModel):
         self.created_paths.extend(result.created_paths)
         self.preserved_paths.extend(result.preserved_paths)
         self.configured_mcp.extend(result.configured_mcp)
+        self.installed_plugins.extend(result.installed_plugins)
+        self.added_marketplaces.extend(result.added_marketplaces)
         target = self.installed_components if result.changed else self.preexisting_components
         if result.component_id not in target:
             target.append(result.component_id)

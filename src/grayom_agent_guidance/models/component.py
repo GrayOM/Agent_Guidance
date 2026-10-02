@@ -32,6 +32,9 @@ class InstallKind(StrEnum):
     MCP_HTTP = "mcp_http"
     MCP_STDIO = "mcp_stdio"
     PLUGIN_GIT = "plugin_git"
+    # A Claude Code plugin is installed from a marketplace, which is the only path that
+    # fetches it, validates its manifest and can be undone by an inverse command.
+    PLUGIN_MARKETPLACE = "plugin_marketplace"
 
 
 class SourceType(StrEnum):
@@ -88,6 +91,11 @@ class InstallMethod(BaseModel):
     env_vars: list[str] = Field(default_factory=list)
     bearer_token_env_var: str | None = None
     startup_timeout_sec: float = Field(default=10, gt=0, le=120)
+    # A plugin is addressed as "<plugin>@<marketplace>"; marketplace_source is where the
+    # marketplace is added from when the Agent does not already know it.
+    plugin_id: str | None = None
+    marketplace: str | None = None
+    marketplace_source: str | None = None
 
     @model_validator(mode="after")
     def validate_transport(self) -> "InstallMethod":
@@ -97,6 +105,11 @@ class InstallMethod(BaseModel):
             raise ValueError("HTTP MCP installation requires url")
         if self.kind == InstallKind.MCP_STDIO and not self.command:
             raise ValueError("stdio MCP installation requires command")
+        if self.kind == InstallKind.PLUGIN_MARKETPLACE:
+            if not self.plugin_id or "@" not in self.plugin_id:
+                raise ValueError("marketplace plugin installation requires plugin@marketplace")
+            if not self.marketplace:
+                self.marketplace = self.plugin_id.split("@", 1)[1]
         return self
 
 

@@ -98,6 +98,8 @@ class InstalledComponent(BaseModel):
     skills_selected: list[str] = Field(default_factory=list)
     skills_skipped: dict[str, int] = Field(default_factory=dict)
     configured_mcp: list[str] = Field(default_factory=list)
+    installed_plugins: list[str] = Field(default_factory=list)
+    added_marketplaces: list[str] = Field(default_factory=list)
 
     def summary(self) -> str:
         if self.type == ComponentType.SKILL:
@@ -115,6 +117,13 @@ class InstalledComponent(BaseModel):
         if self.type == ComponentType.MCP:
             registered = ", ".join(self.configured_mcp) or self.component_id
             return f"MCP registered as {registered}" if self.changed else "MCP already registered"
+        if self.type == ComponentType.PLUGIN:
+            if not self.installed_plugins:
+                return "Plugin already installed"
+            plugin = ", ".join(self.installed_plugins)
+            if self.added_marketplaces:
+                return f"Plugin {plugin} installed, marketplace {', '.join(self.added_marketplaces)} added"
+            return f"Plugin {plugin} installed"
         return "installed"
 
 

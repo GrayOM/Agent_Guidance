@@ -87,6 +87,8 @@ class MultiAgentInstallationTransaction:
                         skills_selected=list(change.skills_selected),
                         skills_skipped=dict(change.skills_skipped),
                         configured_mcp=list(change.configured_mcp),
+                        installed_plugins=list(change.installed_plugins),
+                        added_marketplaces=list(change.added_marketplaces),
                         changed=change.changed,
                     ))
 

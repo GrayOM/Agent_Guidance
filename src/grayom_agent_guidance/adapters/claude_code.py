@@ -6,11 +6,12 @@ from urllib.parse import urlparse
 from grayom_agent_guidance.models import (
     AdapterCapabilities, AgentInstallation, AgentType, BackupEntry, BackupManifest, CheckResult, Component,
     ComponentInstallResult, ComponentType, HealthCheckResult, HealthLevel, InstallationManifest,
-    RollbackResult,
+    InstallKind, RollbackResult,
 )
 from grayom_agent_guidance.runtime import ProcessRunner
 
 from .base import AgentAdapter
+from .claude_plugins import ClaudePluginCli
 from .codex import MCP_DIFFERENT_SETTINGS_REASON, AdapterError, _safe_name
 from .json_support import desired_json_mcp, install_git_skills, merge_mcp, read_json_object
 from grayom_agent_guidance.runtime import validate_managed_path
@@ -21,15 +22,19 @@ class ClaudeCodeAdapter(AgentAdapter):
 
     @property
     def capabilities(self) -> AdapterCapabilities:
-        # Plugin installation is intentionally disabled until a marketplace identifier is verified.
-        return AdapterCapabilities(skills=True, mcp=True, plugins=False, health_probe=False)
+        # Plugins are installed through Claude Code's own marketplace commands, which have
+        # inverses, so the transaction can reverse them.
+        return AdapterCapabilities(
+            skills=True, mcp=True, plugins=self.plugins.available, health_probe=False,
+        )
 
-    def __init__(self, home: Path | None = None) -> None:
+    def __init__(self, home: Path | None = None, plugins: ClaudePluginCli | None = None) -> None:
         self.home = (home or Path.home()).resolve()
         self.claude_home = self.home / ".claude"
         self.config_path = self.home / ".claude.json"
         self.settings_path = self.claude_home / "settings.json"
         self.skills_root = self.claude_home / "skills"
+        self.plugins = plugins or ClaudePluginCli()
 
     def detect(self) -> AgentInstallation:
         executable = shutil.which("claude")
@@ -61,8 +66,17 @@ class ClaudeCodeAdapter(AgentAdapter):
         return sorted((read_json_object(self.config_path).get("mcpServers") or {}).keys())
 
     def list_existing_plugins(self) -> list[str]:
-        plugins = read_json_object(self.settings_path).get("enabledPlugins") or {}
-        return sorted(plugins.keys()) if isinstance(plugins, dict) else []
+        """What Claude Code reports as installed, falling back to its settings.
+
+        `enabledPlugins` records what is switched on, which is not the same as what is
+        installed, so the CLI is asked first and the settings file is only a fallback for
+        when it is unavailable.
+        """
+        try:
+            return sorted(self.plugins.installed())
+        except AdapterError:
+            plugins = read_json_object(self.settings_path).get("enabledPlugins") or {}
+            return sorted(plugins.keys()) if isinstance(plugins, dict) else []
 
     def inspect(self) -> dict[str, object]:
         skill_paths = sorted(path.parent for path in self.skills_root.glob("*/SKILL.md")) if self.skills_root.exists() else []
@@ -113,9 +127,46 @@ class ClaudeCodeAdapter(AgentAdapter):
         return merge_mcp(self.config_path, component)
 
     def install_plugin(self, component: Component) -> ComponentInstallResult:
-        raise AdapterError(
-            "Claude Code Plugin auto-install requires a verified marketplace identifier; Git URL alone is not installed"
-        )
+        """Add the marketplace if needed, install the plugin, and confirm it landed.
+
+        Both steps are recorded so rollback reverses exactly what this run added: a
+        marketplace the user already had is never removed, and a plugin already installed
+        is preserved rather than reinstalled.
+        """
+        method = component.install_method
+        if method.kind != InstallKind.PLUGIN_MARKETPLACE:
+            raise AdapterError(
+                f"Claude Code installs plugins from a marketplace, not {method.kind.value}: "
+                "a Git URL alone has no manifest to validate and no inverse to roll back"
+            )
+        plugin_id = str(method.plugin_id)
+        result = ComponentInstallResult(component_id=component.id)
+
+        if plugin_id in self.plugins.installed():
+            result.notes.append(f"plugin already installed and preserved: {plugin_id}")
+            return result
+
+        marketplace = str(method.marketplace)
+        if marketplace not in self.plugins.marketplaces():
+            if not method.marketplace_source:
+                raise AdapterError(
+                    f"marketplace '{marketplace}' is not known to Claude Code and the "
+                    "component records no source to add it from"
+                )
+            added = self.plugins.add_marketplace(str(method.marketplace_source))
+            result.added_marketplaces.append(added)
+            if added != marketplace:
+                result.notes.append(f"marketplace registered as '{added}'")
+                plugin_id = f"{plugin_id.split('@', 1)[0]}@{added}"
+
+        installed_id = self.plugins.install(plugin_id)
+        if installed_id not in self.plugins.installed():
+            raise AdapterError(
+                f"Claude Code reported installing {installed_id} but does not list it as installed"
+            )
+        result.installed_plugins.append(installed_id)
+        result.changed = True
+        return result
 
     def health_check(self, expected: list[Component] | None = None, probe_mcp: bool = True) -> HealthCheckResult:
         del probe_mcp
@@ -139,6 +190,37 @@ class ClaudeCodeAdapter(AgentAdapter):
                 markers.add(json.loads(marker.read_text(encoding="utf-8"))["component_id"])
             except (OSError, ValueError, KeyError):
                 pass
+        expected_plugins = [item for item in expected if item.type == ComponentType.PLUGIN]
+        if expected_plugins:
+            try:
+                installed = self.plugins.installed()
+            except AdapterError as exc:
+                installed = {}
+                checks.append(CheckResult(
+                    name="claude_plugin_cli", passed=False, fatal=False, message=str(exc),
+                    level=HealthLevel.INITIALIZATION,
+                ))
+            for component in expected_plugins:
+                plugin_id = str(component.install_method.plugin_id or component.id)
+                entry = installed.get(plugin_id)
+                checks.append(CheckResult(
+                    name=f"claude_plugin_installed:{plugin_id}", passed=entry is not None,
+                    message=(
+                        f"plugin installed at {entry['installPath']}" if entry
+                        else "plugin is not listed as installed"
+                    ),
+                ))
+                if entry is not None:
+                    checks.append(CheckResult(
+                        name=f"claude_plugin_enabled:{plugin_id}",
+                        passed=bool(entry.get("enabled")), fatal=False,
+                        message=(
+                            "plugin is enabled" if entry.get("enabled")
+                            else "plugin is installed but switched off"
+                        ),
+                        level=HealthLevel.INITIALIZATION,
+                    ))
+
         for component in expected:
             if component.type == ComponentType.SKILL:
                 checks.append(CheckResult(
@@ -171,6 +253,18 @@ class ClaudeCodeAdapter(AgentAdapter):
 
     def rollback(self, manifest: InstallationManifest) -> RollbackResult:
         result = RollbackResult()
+        # Plugins come out before marketplaces, since a marketplace cannot be removed while
+        # a plugin installed from it is still there. Only what this run added is reversed.
+        for plugin_id in reversed(manifest.installed_plugins):
+            try:
+                self.plugins.uninstall(plugin_id)
+            except AdapterError as exc:
+                result.errors.append(f"{plugin_id}: {exc}")
+        for marketplace in reversed(manifest.added_marketplaces):
+            try:
+                self.plugins.remove_marketplace(marketplace)
+            except AdapterError as exc:
+                result.errors.append(f"marketplace {marketplace}: {exc}")
         allowed = self.skills_root.resolve()
         for path in reversed(manifest.created_paths):
             try:

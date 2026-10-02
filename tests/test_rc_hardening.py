@@ -96,4 +96,13 @@ def test_adapter_capabilities_are_explicit(tmp_path) -> None:
         "skills": True, "mcp": True, "plugins": False,
         "config_merge": True, "health_probe": True,
     }
-    assert not ClaudeCodeAdapter(tmp_path).capabilities.plugins
+    # Plugin support depends on Claude Code's CLI being present, so both states are stated
+    # explicitly rather than inherited from whatever is on this machine's PATH.
+    from grayom_agent_guidance.adapters.claude_plugins import ClaudePluginCli
+
+    present = ClaudeCodeAdapter(tmp_path, plugins=ClaudePluginCli(executable="/usr/bin/claude"))
+    assert present.capabilities.plugins
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr("grayom_agent_guidance.adapters.claude_plugins.shutil.which", lambda _: None)
+        assert not ClaudeCodeAdapter(tmp_path).capabilities.plugins

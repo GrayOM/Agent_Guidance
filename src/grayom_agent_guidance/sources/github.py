@@ -16,11 +16,20 @@ from .normalizer import normalize_candidate
 from .validator import ComponentValidator
 
 
-INTERESTING_FILES = {
-    "package.json", "pyproject.toml", "requirements.txt", "dockerfile",
-    "install.sh", "setup.sh", "update.sh", "upgrade.sh", "skill.md",
-    "plugin.json", "mcp.json", "server.json",
-}
+# A manifest decides what the repository is and how it can be installed, an install script
+# decides whether that is safe, and the rest only refines the picture. The file budget is
+# small on an anonymous run, so the list is read in that order rather than in tree order.
+MANIFEST_FILES = ("marketplace.json", "plugin.json", "skill.md", "mcp.json", "server.json")
+INSTALL_SCRIPT_FILES = ("install.sh", "setup.sh", "update.sh", "upgrade.sh")
+SUPPORTING_FILES = ("package.json", "pyproject.toml", "requirements.txt", "dockerfile")
+INTERESTING_FILES = {*MANIFEST_FILES, *INSTALL_SCRIPT_FILES, *SUPPORTING_FILES}
+
+
+def _file_priority(path: str) -> int:
+    name = PurePosixPath(path).name.lower()
+    if name in MANIFEST_FILES:
+        return 0
+    return 1 if name in INSTALL_SCRIPT_FILES else 2
 
 
 def describe_refusal(response: httpx.Response) -> str:
@@ -228,10 +237,13 @@ class GitHubSource(ComponentSource):
             item["path"] for item in tree.get("tree", [])
             if item.get("type") == "blob" and item.get("path")
         ]
-        interesting = [
-            path for path in candidate.tree_paths
-            if PurePosixPath(path).name.lower() in INTERESTING_FILES
-        ][: self.budget.files_per_repository]
+        interesting = sorted(
+            (
+                path for path in candidate.tree_paths
+                if PurePosixPath(path).name.lower() in INTERESTING_FILES
+            ),
+            key=_file_priority,
+        )[: self.budget.files_per_repository]
         contents = await asyncio.gather(*(
             self._optional_text(f"/repos/{repo}/contents/{path}") for path in interesting
         ))

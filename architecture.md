@@ -40,10 +40,34 @@ Agent별 사용자 범위는 공식 문서에 근거한다.
 | Agent | Skill | MCP | Plugin |
 |---|---|---|---|
 | Codex | `~/.agents/skills` | `CODEX_HOME/config.toml` 또는 `~/.codex/config.toml` | 자동 설치 제외 |
-| Claude Code | `~/.claude/skills` | `~/.claude.json`의 `mcpServers` | marketplace ID 없으면 `PARTIAL` |
+| Claude Code | `~/.claude/skills` | `~/.claude.json`의 `mcpServers` | `claude plugin` CLI 위임 (marketplace ID 없으면 `PARTIAL`) |
 
 설정은 read → parse → merge → validate → fsync → atomic replace 순으로 쓴다. 같은 MCP 이름에 다른
 구현이 있으면 사용자 설정을 보존하고 가능한 경우 `-grayom` 별칭을 사용한다.
+
+Plugin은 설정 키가 아니다. `settings.json`의 `enabledPlugins`는 이미 설치된 Plugin을 켜고 끄는
+스위치일 뿐이고, 실제 설치는 marketplace 등록 → 아카이브 수신 → manifest 검증 → `~/.claude/plugins/cache`
+전개로 이루어지며 marketplace가 선언한 명령을 실행할 수도 있다. 그 신뢰 모델을 재구현하지 않고
+Claude Code의 `claude plugin` 명령에 위임한 뒤 GrayOM 트랜잭션으로 감싼다. 각 단계에 역연산이
+있으므로 되돌릴 수 있다.
+
+| 단계 | 역연산 |
+|---|---|
+| `claude plugin marketplace add` | `claude plugin marketplace remove` |
+| `claude plugin install` | `claude plugin uninstall` |
+
+이 실행에서 추가한 것만 기록하고 되돌린다. 사용자가 이미 가지고 있던 marketplace는 제거하지 않고,
+이미 설치된 Plugin은 보존한다. Rollback은 Plugin을 먼저 제거한다(해당 Plugin이 남아 있으면
+marketplace를 제거할 수 없다). `--yes`, `--accept-command`는 절대 전달하지 않는다. marketplace가
+선언한 명령의 수락은 사용자의 결정이므로, 승인이 필요한 Plugin은 그 사실을 보고하고 건너뛴다. 되돌린 뒤 Claude Code의
+`installed_plugins.json`, `known_marketplaces.json`, `marketplaces/`는 모두 원상태로 돌아간다.
+`plugins/cache/` 아래 디렉터리는 Claude Code가 `.orphaned_at` 표시만 남기고 보관하며, GrayOM
+관리 root 밖이라 직접 삭제하지 않는다.
+
+후보는 저장소의 `.claude-plugin/marketplace.json`에서 marketplace 이름과 Plugin 이름을 읽어
+`<plugin>@<marketplace>` 설치 ID를 만든다. manifest가 없으면 `PLUGIN_GIT`으로 기록하고 이유를
+밝혀 거부한다. `SKILL.md`가 있는 저장소는 marketplace가 있어도 Skill로 취급한다. Plugin으로
+설치하면 번들된 Skill이 전부 적재되어 Skill 선별이 막으려는 context 비용이 그대로 발생한다.
 
 ## 4. 후보 탐색과 검증
 
@@ -108,7 +132,8 @@ Multi-Agent 설치는 `PREPARED → BACKING_UP → APPLYING → VERIFYING → CO
 5. 모두 성공하면 commit
 6. 하나라도 치명적으로 실패하면 전체 Agent 역순 rollback
 
-Manifest에는 원본/사후 hash, backup, 생성 경로, 설치/기존 component, shared ownership을 기록한다.
+Manifest에는 원본/사후 hash, backup, 생성 경로, 설치/기존 component, shared ownership, 그리고 이
+실행이 추가한 Plugin과 marketplace를 기록한다.
 Rollback은 GrayOM marker가 있고 Adapter 관리 root 안에 있는 경로만 제거한다. 일부 rollback 실패는
 숨기지 않고 Agent별 오류를 남긴다.
 
@@ -116,8 +141,10 @@ Mutating command는 `~/.grayom/grayom.lock`을 원자적으로 획득한다. 다
 탐지해 새 변경 전에 rollback을 우선하며, live PID lock은 거부하고 stale lock만 회수한다.
 
 Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적 HTTP initialize/tools/list를
-검사한다. Claude Code는 JSON parse, marker discovery, MCP endpoint/command를 검사한다. 수행할
-수 없는 검사는 성공으로 추측하지 않는다.
+검사한다. Claude Code는 JSON parse, marker discovery, MCP endpoint/command를 검사하고, Plugin은
+`claude plugin list`로 설치 여부(치명적)와 활성화 여부(경고)를 따로 본다. 설치되었지만 꺼져 있는
+상태는 설치 실패와 다르기 때문이다. `claude`를 실행할 수 없으면 그 사실 자체를 경고로 남긴다.
+수행할 수 없는 검사는 성공으로 추측하지 않는다.
 
 ## 9. CLI와 운영 데이터
 
