@@ -213,6 +213,16 @@ Claude Code Plugin은 `claude plugin` 명령에 위임하고 Agent Guidance 트�
   없어도 동작합니다.
 - 네트워크 없이 쓰려면 `agent-guidance setup --offline` — 내장 Registry와 검증된 캐시만 사용합니다.
   위 Plan 스크린샷이 이 모드로 캡처한 것이라, 실제로는 후보가 더 많습니다.
+- **설계대로 도는지 직접 확인하려면** — 아무것도 설치하지 않고, 임시 디렉터리 밖으로 한 글자도
+  쓰지 않습니다:
+
+  ```bash
+  python scripts/design_check.py
+  ```
+
+  여섯 가지를 각각 "무엇을 측정했는지"와 함께 출력합니다. 종료 코드는 `0` 전부 통과,
+  `1` 실패 있음, `2` 확인 가능한 건 전부 통과했지만 이 환경에서 GitHub 탐색만 확인 불가
+  (방화벽이나 네트워크 제약) 입니다. **`2`는 프로그램 결함이 아닙니다.**
 - **이전 버전(`grayom`)을 쓰셨다면**: 제작자 이름(GrayOM)과 프로젝트 이름(Agent Guidance)이 섞여
   있던 걸 정리하면서 명령어가 `grayom` → `agent-guidance`, 상태 폴더가 `~/.grayom/` →
   `~/.agent-guidance/`로 바뀌었습니다. 예전 기록은 지우지 않고 그대로 두니, 이어서 쓰시려면
