@@ -56,6 +56,14 @@
 
 ### Fixed
 
+- The interview prompts are covered. `cli/interview.py` went from 30% to 100%: the real
+  prompts run against scripted keystrokes, and the interview's own order, per-domain task
+  questions and both refusals run against a recorder. Nothing had executed that code —
+  every test and every end-to-end run called `build_answer` with a scripted answer, so the
+  screens a user actually answers had no verification that they render at all.
+- `docs/release-audit.md` matches the code again. Two rows understated it (Update had been
+  implemented and the row never updated; the Linux Agent session had since been verified)
+  and one overstated it (the interview claimed test evidence it did not have).
 - A capability is no longer reported as covered while nothing providing it is installed.
   Measured on `trailofbits/skills` at its pinned ref: a web application assessment profile
   reported `web_security_testing` covered — correctly, the repository carries
