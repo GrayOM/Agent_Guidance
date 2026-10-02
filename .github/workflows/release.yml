@@ -1,0 +1,40 @@
+name: Release
+
+# A pushed tag is not a release on GitHub; the release object has to be created through the
+# API. This does that, so the tag is the only manual step and the notes come from the file in
+# the repository rather than a second copy typed into a web form.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The tag and the package have to agree. A tag that says one thing while the built
+      # artefact says another is worse than no release, because the artefact is what people
+      # install and the tag is what they cite.
+      - name: Check the tag matches the package version
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+          tag="${GITHUB_REF_NAME#v}"
+          built=$(ls dist/*.whl | sed -E 's/.*-([0-9][^-]*)-py3.*/\1/')
+          echo "tag=$tag built=$built"
+          test "$tag" = "$built"
+
+      - name: Take the notes from the changelog
+        run: python scripts/release_notes.py "${GITHUB_REF_NAME#v}" > notes.md
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md
