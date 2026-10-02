@@ -530,3 +530,43 @@ def test_every_curated_plugin_is_installable_and_claude_code_only() -> None:
         validated = ComponentValidator({AgentType.CLAUDE_CODE}).validate(component)
         assert validated.recommendable, (component.id, validated.validation_warnings)
         assert evaluate_compatibility(validated, installed).status == CompatibilityStatus.SUPPORTED
+
+
+def test_two_plugins_from_one_marketplace_repository_stay_two_candidates() -> None:
+    """A marketplace repository is not one component.
+
+    Found by running setup end to end: all six curated plugins share
+    `github.com/anthropics/claude-code`, and merging by repository collapsed them into a
+    single candidate with one plugin's name, another's id, a third's install method and the
+    union of everyone's capabilities — a component that does not exist, recommended with a
+    reason listing capabilities it does not have.
+    """
+    from grayom_agent_guidance.core.discovery import _merge_candidates
+    from grayom_agent_guidance.registry.loader import load_registry
+
+    plugins = [item for item in load_registry() if item.type == ComponentType.PLUGIN]
+    merged = [item for item in _merge_candidates(plugins) if item.type == ComponentType.PLUGIN]
+
+    assert len(merged) == len(plugins)
+    assert len({item.install_method.plugin_id for item in merged}) == len(plugins)
+    for component in merged:
+        # The surviving candidate must still be internally consistent: the install method
+        # has to be the one belonging to the id that names it.
+        original = next(item for item in plugins if item.id == component.id)
+        assert component.name == original.name
+        assert component.install_method.plugin_id == original.install_method.plugin_id
+        assert component.capabilities == original.capabilities
+
+
+def test_one_repository_offering_the_same_plugin_twice_still_merges() -> None:
+    """Keying on the install id must not stop a real duplicate from merging."""
+    from grayom_agent_guidance.core.discovery import _merge_candidates
+
+    first = plugin_component()
+    second = plugin_component()
+    second.capabilities = {Capability.TESTING}
+
+    merged = _merge_candidates([first, second])
+
+    assert len(merged) == 1
+    assert merged[0].capabilities == {Capability.SOURCE_ANALYSIS, Capability.TESTING}

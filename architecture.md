@@ -77,6 +77,8 @@ marketplace를 제거할 수 없다). `--yes`, `--accept-command`는 절대 전�
 4. trust, maintenance, license, install method, dependency와 Agent evidence를 검증한다.
 5. repository 파일 증거로 shell, subprocess, network, credential, write/delete, install/update script를 검사한다.
 6. 동일 repository는 official → Registry → verified community → cache 순으로 결정적으로 병합한다.
+   단 marketplace plugin은 repository가 아니라 설치 ID(`<plugin>@<marketplace>`)로 식별한다.
+   한 marketplace repository가 서로 다른 plugin 여러 개를 발행하기 때문이다.
 7. API/timeout/rate-limit 실패 시 Registry와 verified cache로 계속한다.
 
 Cache는 영구 catalog가 아니다. live search는 계속 수행하며 source version과 TTL이 모두 맞을 때만
