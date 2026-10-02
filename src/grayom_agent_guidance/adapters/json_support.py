@@ -220,7 +220,13 @@ def install_git_skills(component: Component, skills_root: Path) -> ComponentInst
     result = ComponentInstallResult(component_id=component.id)
     skills_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="grayom-skill-") as temp_name:
-        repo = clone_pinned(component, Path(temp_name))
+        # Resolved once, because every path derived from it below is resolved and the two
+        # have to be comparable. On Windows a short 8.3 TEMP ("RUNNER~1") and its long form
+        # ("runneradmin") name the same directory but are not prefixes of one another, and on
+        # macOS /var is a symlink to /private/var; either made `relative_to` raise and the
+        # whole install fail. Linux never showed it, and the real-Agent CI job on the other
+        # two platforms did on its first run.
+        repo = clone_pinned(component, Path(temp_name)).resolve()
         if method.subpaths:
             files, missing = _curated_files(repo, method.subpaths)
             # `update` reinstalls the component at a newer ref carrying the same curated

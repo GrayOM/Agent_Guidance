@@ -7,6 +7,7 @@ rules that narrow it, the conflict handling, and the one-line report of what lan
 """
 
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -645,3 +646,47 @@ def test_curation_does_not_claim_a_capability_the_curated_set_cannot_cover() -> 
     assert any(
         "burpsuite" in subpath for subpath in entry.install_method.subpaths
     ), "web_security_testing is declared, so the Skill providing it must be curated in"
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX symlinks stand in for Windows 8.3 paths")
+def test_a_clone_root_that_is_not_its_own_real_path_still_installs(tmp_path, monkeypatch) -> None:
+    """The clone root and the paths derived from it have to be comparable.
+
+    Found by the real-Agent CI job on its first run, on both platforms Linux had been hiding:
+    a Windows short 8.3 TEMP (`RUNNER~1`) and its long form (`runneradmin`) name the same
+    directory without being prefixes of one another, and macOS puts the temporary directory
+    under `/var`, a symlink to `/private/var`. Either made `relative_to` raise and the whole
+    install fail. A POSIX symlink reproduces the same mismatch here.
+    """
+    from grayom_agent_guidance.adapters.json_support import install_git_skills
+
+    real = tmp_path / "actual-long-name"
+    skill = real / "plugins" / "demo" / "skills" / "demo"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: demo\ndescription: Finds a vulnerability class in source code.\n---\n",
+        encoding="utf-8",
+    )
+    shortened = tmp_path / "SHORT~1"
+    shortened.symlink_to(real)
+    assert shortened.resolve() != shortened, "the stand-in has to differ from its real path"
+
+    monkeypatch.setattr(
+        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        lambda component, destination: shortened,
+    )
+    component = Component(
+        id="demo-pack", name="Demo Pack", type=ComponentType.SKILL,
+        github_url="https://github.com/example/demo-pack",
+        supported_agents={AgentType.CLAUDE_CODE},
+        capabilities={Capability.VULNERABILITY_RESEARCH},
+        install_method=InstallMethod(
+            kind=InstallKind.GIT_SKILLS, repository="https://github.com/example/demo-pack",
+            ref="b" * 40, subpaths=["plugins/demo/skills/demo"],
+        ),
+    )
+
+    result = install_git_skills(component, tmp_path / "skills-root")
+
+    assert result.changed
+    assert [path.name for path in result.created_paths] == ["demo-pack--demo"]

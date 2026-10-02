@@ -35,7 +35,9 @@ def main() -> int:
     )
     arguments = parser.parse_args()
 
-    workspace = Path(tempfile.mkdtemp(prefix="grayom-real-agent-"))
+    # Resolved because GrayOM refuses to manage a path with a symlink in it, and macOS puts
+    # the temporary directory under /var, which is a symlink to /private/var.
+    workspace = Path(tempfile.mkdtemp(prefix="grayom-real-agent-")).resolve()
     home = workspace / "home"
     home.mkdir()
     os.environ["HOME"] = str(home)

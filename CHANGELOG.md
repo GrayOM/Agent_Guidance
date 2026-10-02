@@ -78,6 +78,12 @@ has not been exercised on any machine available to the project so far.
 
 ### Fixed
 
+- Installing a Skill repository no longer fails when the clone root is not its own real
+  path. A Windows short 8.3 TEMP (`RUNNER~1`) and its long form (`runneradmin`) name the
+  same directory without being prefixes of one another, and macOS puts the temporary
+  directory under `/var`, a symlink to `/private/var`; either made `relative_to` raise and
+  the whole install fail. Linux hid it, and the new real-Agent CI job surfaced it on both
+  other platforms on its first run.
 - The interview prompts are covered. `cli/interview.py` went from 30% to 100%: the real
   prompts run against scripted keystrokes, and the interview's own order, per-domain task
   questions and both refusals run against a recorder. Nothing had executed that code —
