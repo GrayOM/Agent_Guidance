@@ -32,6 +32,13 @@ DOMAIN_CAPABILITIES: dict[WorkDomain, set[Capability]] = {
         Capability.VULNERABILITY_RESEARCH, Capability.SECURITY_ANALYSIS,
         Capability.SOURCE_ANALYSIS, Capability.NETWORK_ACCESS, Capability.REPORTING,
     },
+    # Differs from VULNERABILITY_RESEARCH deliberately: that domain reads source and
+    # advisories, this one exercises a running target, so WEB_SECURITY_TESTING replaces
+    # SOURCE_ANALYSIS in the base. Reporting is in both because the deliverable is a report.
+    WorkDomain.PENETRATION_TESTING: {
+        Capability.WEB_SECURITY_TESTING, Capability.SECURITY_ANALYSIS,
+        Capability.VULNERABILITY_RESEARCH, Capability.NETWORK_ACCESS, Capability.REPORTING,
+    },
     WorkDomain.OSINT: {
         Capability.NETWORK_ACCESS, Capability.BROWSER_AUTOMATION, Capability.REPORTING,
         Capability.WEB_RESEARCH,
@@ -122,6 +129,33 @@ TASK_CAPABILITIES: dict[str, set[Capability]] = {
     "scanner_development": {Capability.SECURITY_ANALYSIS, Capability.CODE_EDITING},
     "exploit_tooling": {Capability.VULNERABILITY_RESEARCH, Capability.CODE_EDITING},
     "security_ci_integration": {Capability.CI_CD, Capability.SECURITY_ANALYSIS},
+    # Penetration testing and vulnerability assessment. Each task names the tool class the
+    # phase actually needs: a request forger for authorisation work, a database client to
+    # confirm an injection, a browser driver for session handling.
+    "web_application_assessment": {
+        Capability.WEB_SECURITY_TESTING, Capability.SECURITY_ANALYSIS,
+    },
+    "authentication_testing": {
+        Capability.WEB_SECURITY_TESTING, Capability.BROWSER_AUTOMATION,
+    },
+    # Forging a request to reach another user's object uses the same intercepting proxy as
+    # the rest of the assessment. Adding API_INTEGRATION here matched tooling for *building*
+    # an API client, which recommended an Agent SDK plugin for authorisation testing.
+    "authorization_testing": {Capability.WEB_SECURITY_TESTING},
+    "injection_testing": {Capability.WEB_SECURITY_TESTING, Capability.DATABASE_ACCESS},
+    # API_INTEGRATION earns its place here: an API assessment starts from the spec.
+    "api_security_testing": {Capability.WEB_SECURITY_TESTING, Capability.API_INTEGRATION},
+    "mobile_application_assessment": {
+        Capability.WEB_SECURITY_TESTING, Capability.MOBILE_ANDROID, Capability.MOBILE_IOS,
+    },
+    "infrastructure_testing": {Capability.NETWORK_ACCESS, Capability.SECURITY_ANALYSIS},
+    # Reproduction is the evidence a report stands on, so it asks for the vulnerability
+    # vocabulary and the write-up, not for offensive tooling.
+    "finding_reproduction": {Capability.VULNERABILITY_RESEARCH, Capability.REPORTING},
+    "assessment_reporting": {Capability.REPORTING, Capability.DOCUMENT_AUTHORING},
+    "retest_verification": {
+        Capability.WEB_SECURITY_TESTING, Capability.VULNERABILITY_RESEARCH,
+    },
     # OSINT
     "asset_discovery": {Capability.NETWORK_ACCESS, Capability.WEB_RESEARCH},
     "social_media_research": {Capability.WEB_RESEARCH, Capability.BROWSER_AUTOMATION},

@@ -37,6 +37,15 @@ TASKS: dict[WorkDomain, list[str]] = {
         "oss_vulnerability_research", "cve_analysis", "patch_analysis", "supply_chain_security",
         "ai_llm_security", "ai_vulnerability_analysis",
     ],
+    # Assessing a target someone else built and deployed. This is not the same work as
+    # SECURITY_TOOL_DEVELOPMENT (building the tools) or VULNERABILITY_RESEARCH (studying a
+    # CVE or an upstream project), so it asks about the engagement's own phases.
+    WorkDomain.PENETRATION_TESTING: [
+        "web_application_assessment", "authentication_testing", "authorization_testing",
+        "injection_testing", "api_security_testing", "mobile_application_assessment",
+        "infrastructure_testing", "finding_reproduction", "assessment_reporting",
+        "retest_verification",
+    ],
     WorkDomain.OSINT: [
         "osint_recon", "asset_discovery", "social_media_research", "breach_data_analysis",
         "osint_reporting",

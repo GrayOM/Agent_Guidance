@@ -175,3 +175,84 @@ def test_a_short_keyword_does_not_match_inside_an_unrelated_word() -> None:
     assert not mentions("built by acme studios for radios", ("ios",))
     assert mentions("an ios app helper", ("ios",))
     assert not mentions("various scenarios", ("ios",))
+
+
+# --- the three security domains are three different jobs -----------------------------
+
+
+def _profile(domain: WorkDomain, tasks: list[str] | None = None) -> set[Capability]:
+    return infer_capabilities(build_answer(
+        [AgentType.CLAUDE_CODE], [domain],
+        list(TASKS[domain]) if tasks is None else tasks, SetupMode.MINIMAL,
+    ))
+
+
+def test_assessing_a_deployed_target_is_not_the_same_as_reading_its_source() -> None:
+    """Building tools, studying an upstream project, and testing a running target differ.
+
+    Before this domain existed, someone whose job is assessing a web application someone
+    else deployed had to pick `security_tool_development` or `vulnerability_research`, and
+    both recommend SAST tooling — the wrong tool class for a target whose source you do not
+    have and did not write.
+    """
+    pentest = _profile(WorkDomain.PENETRATION_TESTING)
+    research = _profile(WorkDomain.VULNERABILITY_RESEARCH)
+    tooling = _profile(WorkDomain.SECURITY_TOOL_DEVELOPMENT)
+
+    assert Capability.WEB_SECURITY_TESTING in pentest
+    assert Capability.WEB_SECURITY_TESTING not in research
+    assert Capability.WEB_SECURITY_TESTING not in tooling
+    # Source analysis belongs to the two that read code, not to the one that exercises a
+    # deployed target.
+    assert Capability.SOURCE_ANALYSIS in research and Capability.SOURCE_ANALYSIS in tooling
+    assert Capability.SOURCE_ANALYSIS not in DOMAIN_CAPABILITIES[WorkDomain.PENETRATION_TESTING]
+
+
+def test_an_assessment_profile_searches_for_dynamic_testing_tools() -> None:
+    answer = build_answer(
+        [AgentType.CLAUDE_CODE], [WorkDomain.PENETRATION_TESTING],
+        ["web_application_assessment", "injection_testing", "assessment_reporting"],
+        SetupMode.MINIMAL,
+    )
+    queries = build_queries(
+        [AgentType.CLAUDE_CODE], infer_capabilities(answer), ComponentType.SKILL, limit=5,
+        preferred=infer_task_capabilities(answer),
+    )
+
+    assert any("web application security testing" in query for query in queries)
+
+
+def test_dynamic_testing_is_recognised_from_the_tool_a_repository_names() -> None:
+    """A repository offering this says which scanner it drives, not the category name."""
+    keywords = CAPABILITY_KEYWORDS[Capability.WEB_SECURITY_TESTING]
+    for text in (
+        "drives burp suite from the agent",
+        "runs nuclei templates against a target",
+        "an owasp zap wrapper",
+        "confirms findings with sqlmap",
+        "a penetration testing workflow",
+        "web vulnerability assessment helper",
+    ):
+        assert mentions(text, keywords), text
+    # Reading source for bugs is a different tool class and must not match.
+    assert not mentions("a static analysis ruleset for java", keywords)
+
+
+def test_reproduction_asks_for_verification_and_a_write_up() -> None:
+    """A diagnosis deliverable is a reproducible finding, not an attack tool.
+
+    Mapping this phase to offensive vocabulary would make GrayOM recommend weaponised
+    tooling by default for consulting work whose output is a report.
+    """
+    assert TASK_CAPABILITIES["finding_reproduction"] == {
+        Capability.VULNERABILITY_RESEARCH, Capability.REPORTING,
+    }
+
+
+def test_each_engagement_phase_asks_for_something_the_others_do_not() -> None:
+    """Ten questions that all inferred the same thing would be one question."""
+    phases = TASKS[WorkDomain.PENETRATION_TESTING]
+    assert len(phases) == 10
+    distinct = {frozenset(TASK_CAPABILITIES[task]) for task in phases}
+
+    assert len(distinct) >= 8, f"engagement phases collapse into {len(distinct)} profiles"

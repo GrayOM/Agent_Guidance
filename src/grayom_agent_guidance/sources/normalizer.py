@@ -22,6 +22,12 @@ CAPABILITY_KEYWORDS: dict[Capability, tuple[str, ...]] = {
         "vulnerability", "vulnerabilities", "cve", "exploit research",
     ),
     Capability.AI_VULNERABILITY_ANALYSIS: ("llm security", "ai security", "prompt injection"),
+    # Named tools, because a repository offering dynamic testing says which one it drives far
+    # more often than it says "dynamic application security testing".
+    Capability.WEB_SECURITY_TESTING: (
+        "penetration test", "pentest", "web security", "dast", "burp", "owasp zap",
+        "nuclei", "sqlmap", "web vulnerability", "ffuf",
+    ),
     Capability.REPOSITORY_ACCESS: (
         "repository", "repositories", "github", "pull request", "issues",
     ),

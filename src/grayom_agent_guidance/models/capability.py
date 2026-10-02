@@ -27,6 +27,10 @@ class Capability(StrEnum):
     SOURCE_ANALYSIS = "source_analysis"
     VULNERABILITY_RESEARCH = "vulnerability_research"
     AI_VULNERABILITY_ANALYSIS = "ai_vulnerability_analysis"
+    # Testing a running target rather than reading its source. SECURITY_ANALYSIS and
+    # SOURCE_ANALYSIS both surface SAST tooling, which is the wrong tool class for someone
+    # assessing a deployed application they did not write.
+    WEB_SECURITY_TESTING = "web_security_testing"
 
     # Delivery and operations
     CI_CD = "ci_cd"
