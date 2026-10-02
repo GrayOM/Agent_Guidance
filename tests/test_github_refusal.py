@@ -13,6 +13,7 @@ import pytest
 
 from grayom_agent_guidance.models import AgentType, SourceType
 from grayom_agent_guidance.sources.base import RawCandidate, SourceUnavailable
+from grayom_agent_guidance.sources.budget import DiscoveryBudget
 from grayom_agent_guidance.sources.github import GitHubSource, describe_refusal
 from grayom_agent_guidance.sources.validator import ComponentValidator
 
@@ -95,7 +96,12 @@ def test_an_unauthorised_search_raises_rather_than_returning_nothing() -> None:
 
 
 def test_one_refusal_stopping_every_repository_is_reported_once() -> None:
-    """Three repositories failing for one reason is one problem, not three warnings."""
+    """Three repositories failing for one reason is one problem, not three warnings.
+
+    The budget is pinned rather than detected: how many candidates a run keeps depends on
+    whether a token is present, so leaving it to the environment would make this assert a
+    different number on a machine that has one.
+    """
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/rate_limit":
             return httpx.Response(200, json={"resources": {"search": {"remaining": 100}}})
@@ -112,7 +118,9 @@ def test_one_refusal_stopping_every_repository_is_reported_once() -> None:
     )
     source = GitHubSource(
         validator=ComponentValidator({AgentType.CODEX}), client=client,
+        budget=DiscoveryBudget.detect(authenticated=True),
     )
+    assert source.max_candidates >= 3, "the budget must allow all three to be attempted"
     result = asyncio.run(source.discover(["query"]))
     asyncio.run(client.aclose())
 
