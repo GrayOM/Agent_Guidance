@@ -12,14 +12,16 @@ from grayom_agent_guidance.core.explainer import PlanExplanation
 from grayom_agent_guidance import __version__
 
 
-# One line, because several rows of box-drawing characters cannot carry an almond. The
-# previous art was a five-row outline with arrowheads on its corners, which read as a media
-# control; redrawing it as a tapered lid made it read as a chip or a hexagon instead. Rendered
-# at the width a 96-column terminal actually occupies, every multi-row attempt came out as
-# scattered brackets, so the eye proper lives in docs/assets/grayom-eye.svg, where curves are
-# available, and the header carries a mark that survives any size.
+# A prompt in a frame, echoing docs/assets/grayom-mark.svg. One line, because the marks that
+# came before this were drawings: a five-row eye whose corner arrowheads read as a media
+# control, and a redrawn lid that read as a chip. At the width a 96-column terminal occupies,
+# every multi-row attempt came out as scattered brackets, so the drawing stays in the SVG.
+#
+# The pointer character U+276F must not appear here. scripts/capture_screens.py treats a line
+# starting with it as a question waiting for an answer, so a header carrying one would have the
+# capture typing into the startup banner.
 LOGO = """
-   ( ◉ )
+   [ >_ ]
 """
 
 
@@ -38,10 +40,10 @@ def _brand() -> Group:
     )
 
 
-def _eye_logo() -> Text:
-    eye = Text(LOGO, style="bold bright_blue")
-    eye.highlight_regex("◉", style="bold bright_magenta")
-    return eye
+def _mark() -> Text:
+    mark = Text(LOGO, style="bold bright_blue")
+    mark.highlight_regex(r">_", style="bold bright_magenta")
+    return mark
 
 
 def show_header(console: Console) -> None:
@@ -49,10 +51,10 @@ def show_header(console: Console) -> None:
         layout = Table.grid(expand=True)
         layout.add_column(ratio=3, vertical="middle")
         layout.add_column(ratio=2, justify="center", vertical="middle")
-        layout.add_row(_brand(), Align.center(_eye_logo(), vertical="middle"))
+        layout.add_row(_brand(), Align.center(_mark(), vertical="middle"))
         content = layout
     else:
-        content = Group(_brand(), Text(""), Align.center(_eye_logo()))
+        content = Group(_brand(), Text(""), Align.center(_mark()))
     console.print(
         Panel(
             content,

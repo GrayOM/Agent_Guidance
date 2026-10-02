@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Changed
+
+- The mark is a terminal window with a prompt and the lines being written into it, which is
+  what this program is. The eye it replaces read as nmap's logo; a bold blue letter G, tried
+  on the way here, read as Google's. The file is `docs/assets/grayom-mark.svg` and is flat
+  shapes with literal fills -- no defs, gradients, clipPath or `<use>` -- so there is nothing
+  in it for a restrictive renderer to drop. Checked in Chromium on a light and a dark page,
+  and again served under the headers GitHub uses for a README image
+  (`default-src 'none'; sandbox`). The eye rendered under those headers too, so nothing here
+  fixes a rendering failure; it was never established that there was one.
+- The terminal header carries `[ >_ ]` to match. It deliberately avoids U+276F, because
+  `scripts/capture_screens.py` reads a line starting with that character as a question waiting
+  for an answer, and a header carrying one would have the capture typing into the banner.
+
+## Unreleased
+
 ### Added
 
 - `tests/test_github_real_payload.py` and `tests/fixtures/github_repository.json`, a repository
