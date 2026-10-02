@@ -40,6 +40,11 @@ dev = [
   "pytest-cov>=5,<7",
   "ruff>=0.8,<1",
 ]
+# scripts/capture_screens.py only. It drives the real CLI through a pty and needs a VT100
+# emulator to read back the screen; nothing the installed program does requires it.
+docs = [
+  "pyte>=0.8,<0.9",
+]
 
 [tool.ruff]
 line-length = 110

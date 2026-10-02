@@ -37,7 +37,20 @@ from .ui import (
     show_uninstall_plan, show_uninstall_result,
 )
 
-app = typer.Typer(no_args_is_help=False, help="GrayOM AI Agent Environment Manager")
+# Two panels rather than one flat list of seven commands. Someone opening --help for the
+# first time needs to see that there is one command to run and that the rest only matter when
+# something is wrong; a single list made every command look equally necessary.
+EVERYDAY = "Everyday use"
+TROUBLE = "When something goes wrong"
+
+app = typer.Typer(
+    no_args_is_help=False,
+    help=(
+        "Set up Codex and Claude Code extensions for the work you actually do.\n\n"
+        "Run 'grayom' with no command and follow the menu. Nothing is written to your Agent "
+        "configuration until you approve the plan it shows you."
+    ),
+)
 console = Console()
 _verbose = False
 
@@ -167,12 +180,20 @@ def _interactive_menu() -> None:
     show_header(console)
     detected = detect_agents()
     show_detected_agents(console, detected)
+    # Every command has an entry here, so the menu is a complete way to use GrayOM and not a
+    # shortcut to some of it. 'uninstall' was missing: it existed only as a typed command, which
+    # left the menu unable to undo what the menu had just done. Each line says what happens,
+    # because "Setup Agent Environment" does not tell a first-time user whether it writes files.
     action = inquirer.select(message="What would you like to do?", choices=[
-        {"name": "Setup Agent Environment", "value": "setup"},
-        {"name": "Get Recommendations", "value": "recommend"},
-        {"name": "Run Doctor", "value": "doctor"},
-        {"name": "Check Updates", "value": "update"},
-        {"name": "Rollback", "value": "rollback"},
+        {"name": "Set up my Agents  -  choose my work, review the plan, then install",
+         "value": "setup"},
+        {"name": "Just show me the plan  -  decide nothing, install nothing", "value": "recommend"},
+        {"name": "Check for updates  -  see if anything installed has a newer version",
+         "value": "update"},
+        {"name": "Check my setup  -  confirm the Agents and everything installed still work",
+         "value": "doctor"},
+        {"name": "Remove what GrayOM installed  -  your own files stay", "value": "uninstall"},
+        {"name": "Undo the last change  -  restore the most recent backup", "value": "rollback"},
         {"name": "Exit", "value": "exit"},
     ]).execute()
     if action == "setup":
@@ -183,6 +204,11 @@ def _interactive_menu() -> None:
         doctor(probe_mcp=True)
     elif action == "update":
         update(yes=False)
+    elif action == "uninstall":
+        # --all, because the menu has no way to name one component, and dry_run is False so the
+        # confirmation inside uninstall is the one place the user decides. Empty lists rather
+        # than None: uninstall tests both for truth, and None contradicts its annotation.
+        uninstall(components=[], agent=[], remove_all=True, yes=False, dry_run=False)
     elif action == "rollback":
         rollback(path=None, yes=False)
 
@@ -203,13 +229,20 @@ def root(
         _interactive_menu()
 
 
-@app.command()
+@app.command(rich_help_panel=EVERYDAY)
 def setup(
-    probe_mcp: bool = typer.Option(True, "--probe-mcp/--no-probe-mcp"),
-    offline: bool = typer.Option(False, "--offline", help="Use Registry and verified cache only"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Build the complete Plan without writing files"),
+    offline: bool = typer.Option(
+        False, "--offline", help="Skip GitHub and use only the built-in list and verified cache"
+    ),
+    # Internal: the health check probes MCP servers by starting them, which a test or a CI run
+    # needs to switch off. Hidden because turning it off makes the result weaker, and no user
+    # has a reason to want that.
+    probe_mcp: bool = typer.Option(True, "--probe-mcp/--no-probe-mcp", hidden=True),
+    # Hidden because 'grayom recommend' is the same preview under a name that says so. Kept
+    # because scripts/real_agent_check.py and the test suite drive setup itself.
+    dry_run: bool = typer.Option(False, "--dry-run", hidden=True),
 ) -> None:
-    """Reconcile and transactionally apply an Agent environment."""
+    """Choose your work, review the plan, then install (asks before changing anything)."""
     _run_setup(probe_mcp=probe_mcp, offline=offline, dry_run=dry_run)
 
 
@@ -231,11 +264,11 @@ def _state_components(state: StateStore, agent: AgentType) -> list[Component]:
     return components
 
 
-@app.command()
+@app.command(rich_help_panel=TROUBLE)
 def doctor(
-    probe_mcp: bool = typer.Option(True, "--probe-mcp/--no-probe-mcp"),
+    probe_mcp: bool = typer.Option(True, "--probe-mcp/--no-probe-mcp", hidden=True),
 ) -> None:
-    """Diagnose every detected Agent without changing configuration."""
+    """Check whether your Agents and everything GrayOM installed still work."""
     show_header(console)
     detected = detect_agents()
     show_detected_agents(console, detected)
@@ -264,11 +297,13 @@ def doctor(
         raise typer.Exit(code=1)
 
 
-@app.command("recommend")
+@app.command("recommend", rich_help_panel=EVERYDAY)
 def recommend_only(
-    offline: bool = typer.Option(False, "--offline", help="Use Registry and verified cache only"),
+    offline: bool = typer.Option(
+        False, "--offline", help="Skip GitHub and use only the built-in list and verified cache"
+    ),
 ) -> None:
-    """Run the interview and print a Plan without installing."""
+    """Show what GrayOM would install, and why, without installing it."""
     show_header(console)
     detected = detect_agents()
     show_detected_agents(console, detected)
@@ -289,12 +324,14 @@ def _latest_manifest(root: Path) -> Path:
     return candidates[0]
 
 
-@app.command()
+@app.command(rich_help_panel=TROUBLE)
 def rollback(
-    path: Path | None = typer.Argument(None, help="Manifest file or transaction directory"),
-    yes: bool = typer.Option(False, "--yes", help="Confirm rollback non-interactively"),
+    path: Path | None = typer.Argument(
+        None, help="An older backup to restore; the newest one is used when omitted"
+    ),
+    yes: bool = typer.Option(False, "--yes", help="Do not ask for confirmation"),
 ) -> None:
-    """Restore the latest GrayOM transaction; existing user components are preserved."""
+    """Undo the last change GrayOM made. Anything you installed yourself is left alone."""
     try:
         manifest_path = path or _latest_manifest(grayom_home() / "backups")
         target = manifest_path / "manifest.json" if manifest_path.is_dir() else manifest_path
@@ -325,19 +362,19 @@ def rollback(
         raise typer.Exit(code=1) from exc
 
 
-@app.command()
+@app.command(rich_help_panel=TROUBLE)
 def uninstall(
     components: list[str] = typer.Argument(
-        None, help="Component IDs to remove; omit with --all to remove everything GrayOM installed",
+        None, help="What to remove, by name; use --all for everything GrayOM installed",
     ),
     agent: list[str] = typer.Option(
-        None, "--agent", help="Remove only for these Agents, leaving others as they are",
+        None, "--agent", help="Remove from one Agent only, leaving the other as it is",
     ),
-    remove_all: bool = typer.Option(False, "--all", help="Remove every GrayOM-installed component"),
-    yes: bool = typer.Option(False, "--yes", help="Confirm non-interactively"),
-    dry_run: bool = typer.Option(False, "--dry-run", help="Show the plan without removing anything"),
+    remove_all: bool = typer.Option(False, "--all", help="Remove everything GrayOM installed"),
+    yes: bool = typer.Option(False, "--yes", help="Do not ask for confirmation"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would be removed, remove nothing"),
 ) -> None:
-    """Remove GrayOM-installed components; existing and locally edited files are preserved."""
+    """Remove what GrayOM installed. Your own files, and any you edited, stay."""
     show_header(console)
     state = StateStore()
     for warning in state.warnings:
@@ -384,14 +421,14 @@ def uninstall(
         raise typer.Exit(code=1) from exc
 
 
-@app.command()
+@app.command(rich_help_panel=EVERYDAY)
 def update(
-    yes: bool = typer.Option(False, "--yes", help="Approve all managed updates"),
+    yes: bool = typer.Option(False, "--yes", help="Do not ask for confirmation"),
     offline: bool = typer.Option(
-        False, "--offline", help="Compare against the Local Registry without checking upstream"
+        False, "--offline", help="Skip GitHub and compare against the built-in list only"
     ),
 ) -> None:
-    """Update GrayOM-managed components whose upstream reference changed."""
+    """Check whether anything GrayOM installed has a newer version, and offer to update it."""
     state = StateStore()
     for warning in state.warnings:
         console.print(f"[yellow]! WARNING[/yellow] {warning}")
@@ -443,9 +480,9 @@ def update(
     console.print("[green]Update completed.[/green]")
 
 
-@app.command("debug-info")
+@app.command("debug-info", rich_help_panel=TROUBLE)
 def debug_info() -> None:
-    """Create a sanitized diagnostic bundle without credential values."""
+    """Write a report you can attach to a bug report. No tokens or passwords are included."""
     detected = detect_agents()
     state = StateStore()
     adapters = _adapter_map()

@@ -1,5 +1,44 @@
 # Changelog
 
+## Unreleased
+
+Everything here is about the part of the program a user actually touches: the menu, the
+questions, the help, and the README.
+
+### Added
+
+- Written labels for every work domain and task, in `labels.py`, with a guard test. The
+  interview derived its labels from the identifiers, so the only screen users interact with
+  offered "Osint Recon", "Ci Cd Pipeline", "Ios App" and "Ai Llm Security". Capitalisation
+  rules cannot recover an acronym from a snake_case key, so each of the 11 domains and 78
+  tasks now has a label someone wrote, and a new task fails the suite until it gets one.
+- `scripts/capture_screens.py`, which produces every screenshot in the README by running the
+  real CLI. The images it replaced were drawn by hand and showed a menu that no longer
+  existed. The interview is an InquirerPy prompt, so each screen is driven through a pty with
+  scripted keystrokes and read back from a VT100 emulator; `--check` re-captures and fails if
+  a committed image no longer matches the program.
+- `python -m grayom_agent_guidance`, for a source checkout or an unactivated virtualenv where
+  the `grayom` script is not on PATH.
+
+### Changed
+
+- `grayom --help` is now two panels, "Everyday use" and "When something goes wrong", instead
+  of one flat list of seven commands that made all seven look equally necessary. Every
+  description is written for someone who has just installed this: "Reconcile and
+  transactionally apply an Agent environment" is now "Choose your work, review the plan, then
+  install (asks before changing anything)."
+- `--probe-mcp/--no-probe-mcp` and `setup --dry-run` are hidden from help. The first is
+  internal and weakens the health check when turned off; the second duplicates
+  `grayom recommend`, which says what it does in its name. Both still work for scripts and
+  tests.
+- The menu offers every command it should. `uninstall` was reachable only by typing it, so
+  the menu could install but not undo. Each entry now says what choosing it does.
+- The detected-Agents line reads `Codex (0.160.0)` and `Claude Code (2.1.287)`. Both adapters
+  stored the raw `--version` output and printed it inside GrayOM's own parentheses, which
+  gave `Codex (codex-cli 0.160.0)` and `Claude Code (2.1.287 (Claude Code))`.
+- The README is a walkthrough with the captured screenshots: one command, what each screen
+  asks, and what the plan tells you before you approve it.
+
 ## 0.1.0 — 2026-10-02
 
 First release with every feature in `architecture.md` implemented and the audit's own gaps
