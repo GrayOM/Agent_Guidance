@@ -5,12 +5,14 @@
   github_url: https://github.com/trailofbits/skills
   official: false
   supported_agents: [codex, claude_code]
-  # Verified at the pinned ref 82fe8226, not at the default branch: `burpsuite-project-parser`
-  # carries web_security_testing and `firebase-apk-scanner` carries configuration_audit, so
-  # Skill selection can satisfy an assessment profile from a repository GrayOM already pins.
+  # Verified at the pinned ref 82fe8226, not at the default branch. configuration_audit was
+  # claimed here on the strength of `firebase-apk-scanner` and is withdrawn: scanning an APK
+  # for Firebase misconfigurations is not the baseline review of servers, network gear and
+  # databases that the question asks about, so the claim was the same over-reach it was meant
+  # to fix. Nothing in this repository covers that, and it now reads as uncovered.
   capabilities: [
     security_analysis, source_analysis, vulnerability_research, reporting,
-    web_security_testing, configuration_audit,
+    web_security_testing,
   ]
   permissions: [filesystem_read, shell, subprocess, external_download]
   context_cost: 3
@@ -20,6 +22,37 @@
     kind: git_skills
     repository: https://github.com/trailofbits/skills
     ref: 82fe8226252622fa807643bdca1710901198553a
+    # Curated from all 83 published Skills at this ref, read one by one. Automatic selection
+    # ranks by how much of the requested vocabulary a Skill uses, which cannot tell a
+    # general scanner from one scoped to a platform nobody asked about — measured, and no
+    # text signal separates them. The repository's own breadth is the problem: it also
+    # carries smart-contract scanners for six chains, sixteen fuzzing Skills, a Trailmark
+    # tool suite, Lean proofs and a Culture Index survey reader. Only the Skills that serve
+    # this entry's declared capabilities are offered to selection; the mode limit and the
+    # group share still apply on top.
+    subpaths:
+      # Understanding and preparing a target
+      - plugins/audit-context-building/skills/audit-context-building
+      - plugins/building-secure-contracts/skills/audit-prep-assistant
+      - plugins/building-secure-contracts/skills/code-maturity-assessor
+      # Static analysis and its output
+      - plugins/static-analysis/skills/semgrep
+      - plugins/static-analysis/skills/codeql
+      - plugins/static-analysis/skills/sarif-parsing
+      - plugins/semgrep-rule-creator/skills/semgrep-rule-creator
+      # Language-specific source review
+      - plugins/c-review/skills/c-review
+      - plugins/rust-review/skills/rust-review
+      # Finding, confirming and reporting
+      - plugins/differential-review/skills/differential-review
+      - plugins/variant-analysis/skills/variant-analysis
+      - plugins/fp-check/skills/fp-check
+      - plugins/vulnerability-triage-brocards/skills/vulnerability-triage-brocards
+      - plugins/post-patch-validation/skills/post-patch-validation
+      # Dependencies, CI and captured web traffic
+      - plugins/supply-chain-risk-auditor/skills/supply-chain-risk-auditor
+      - plugins/agentic-actions-auditor/skills/agentic-actions-auditor
+      - plugins/burpsuite-project-parser/skills/burpsuite-project-parser
   security_metadata:
     shell_execution: true
     subprocess: true
@@ -47,6 +80,21 @@
     kind: git_skills
     repository: https://github.com/obra/superpowers
     ref: 8ca22dba9a94f28898bbce59f2537ff4d87c747d
+    # All 15 Skills at this ref speak to the declared capabilities except the three that
+    # document the pack itself, which nobody selected a work domain to get.
+    subpaths:
+      - skills/brainstorming
+      - skills/writing-plans
+      - skills/executing-plans
+      - skills/test-driven-development
+      - skills/systematic-debugging
+      - skills/verification-before-completion
+      - skills/requesting-code-review
+      - skills/receiving-code-review
+      - skills/subagent-driven-development
+      - skills/dispatching-parallel-agents
+      - skills/using-git-worktrees
+      - skills/finishing-a-development-branch
   security_metadata:
     shell_execution: true
     external_download: true
@@ -73,6 +121,33 @@
     kind: git_skills
     repository: https://github.com/addyosmani/agent-skills
     ref: 2686b620fc1fed2e8f60c704839c766b8594c6b6
+    # Same rule: of the 25 Skills at this ref, only the one about using Agent Skills is
+    # dropped, because it teaches the mechanism rather than doing the work.
+    subpaths:
+      - skills/planning-and-task-breakdown
+      - skills/incremental-implementation
+      - skills/spec-driven-development
+      - skills/source-driven-development
+      - skills/constraint-driven-development
+      - skills/doubt-driven-development
+      - skills/test-driven-development
+      - skills/code-review-and-quality
+      - skills/code-simplification
+      - skills/debugging-and-error-recovery
+      - skills/performance-optimization
+      - skills/api-and-interface-design
+      - skills/frontend-ui-engineering
+      - skills/browser-testing-with-devtools
+      - skills/security-and-hardening
+      - skills/observability-and-instrumentation
+      - skills/ci-cd-and-automation
+      - skills/git-workflow-and-versioning
+      - skills/documentation-and-adrs
+      - skills/deprecation-and-migration
+      - skills/context-engineering
+      - skills/interview-me
+      - skills/idea-refine
+      - skills/shipping-and-launch
   security_metadata:
     shell_execution: true
     external_download: true

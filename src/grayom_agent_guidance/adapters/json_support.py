@@ -172,6 +172,28 @@ NON_PUBLISHED_DIRECTORIES = frozenset({
 })
 
 
+def _curated_files(repo: Path, subpaths: list[str]) -> tuple[list[Path], list[str]]:
+    """Resolve the curated Skill paths, separating the ones upstream no longer has.
+
+    A curated path is still validated against the clone root, so a Registry entry cannot
+    reach outside the repository it pinned.
+    """
+    files: list[Path] = []
+    missing: list[str] = []
+    root = repo.resolve()
+    for subpath in subpaths:
+        candidate = (repo / subpath / "SKILL.md").resolve()
+        if (
+            not candidate.is_relative_to(root)
+            or not candidate.is_file()
+            or NON_PUBLISHED_DIRECTORIES.intersection(candidate.parts)
+        ):
+            missing.append(subpath)
+            continue
+        files.append(candidate)
+    return files, missing
+
+
 def skill_group(directory: Path) -> str:
     """The repository sub-project a Skill belongs to, or "" when the layout is flat.
 
@@ -198,13 +220,20 @@ def install_git_skills(component: Component, skills_root: Path) -> ComponentInst
     skills_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="grayom-skill-") as temp_name:
         repo = clone_pinned(component, Path(temp_name))
-        files = ([repo / subpath / "SKILL.md" for subpath in method.subpaths]
-                 if method.subpaths else sorted(repo.rglob("SKILL.md")))
-        files = [
-            item for item in files
-            if not NON_PUBLISHED_DIRECTORIES.intersection(item.parts)
-        ]
-        if not files or any(not item.is_file() for item in files):
+        if method.subpaths:
+            files, missing = _curated_files(repo, method.subpaths)
+            # `update` reinstalls the component at a newer ref carrying the same curated
+            # paths, so upstream can move or rename one. A path that no longer resolves is
+            # reported and skipped rather than failing the whole install, which would make a
+            # single upstream rename break every update of the component.
+            for subpath in missing:
+                result.notes.append(f"curated Skill path no longer exists upstream: {subpath}")
+        else:
+            files = [
+                item for item in sorted(repo.rglob("SKILL.md"))
+                if not NON_PUBLISHED_DIRECTORIES.intersection(item.parts)
+            ]
+        if not files:
             raise AdapterError(f"no installable SKILL.md found for {component.id}")
 
         metadata_by_file = {item: skill_frontmatter(item) for item in files}
@@ -252,8 +281,8 @@ def _chosen_files(
         )
         return list(metadata_by_file)
 
-    by_name = {}
-    candidates = []
+    by_name: dict[str, Path] = {}
+    candidates: list[SkillCandidate] = []
     for skill_file, metadata in metadata_by_file.items():
         relative = skill_file.parent.relative_to(repo)
         candidate = SkillCandidate(
