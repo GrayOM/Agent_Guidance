@@ -1,2 +1,12 @@
+# Curated Claude Code plugins.
+#
+# Deliberately empty. A curated entry has to carry the marketplace name and the plugin id
+# exactly as the marketplace's own manifest declares them, because `claude plugin install`
+# takes `<plugin>@<marketplace>` and fails on anything else. Those two strings cannot be
+# inferred from a repository name, so writing them from memory would ship a registry of
+# install commands that do not resolve.
+#
+# Nothing is lost by leaving it empty: GitHub discovery reads `.claude-plugin/marketplace.json`
+# from the repositories it finds and builds the same install method from the live manifest,
+# which is also the only version that stays correct when a marketplace is renamed.
 []
-

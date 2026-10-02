@@ -2,7 +2,7 @@ import re
 
 from grayom_agent_guidance.models import (
     AgentInstallation, AgentType, CompatibilityResult, CompatibilityStatus, Component,
-    ComponentType,
+    ComponentType, InstallKind,
 )
 
 
@@ -37,10 +37,14 @@ def evaluate_compatibility(
                 agent=agent, component_id=component.id, status=CompatibilityStatus.UNSUPPORTED,
                 reason="Codex Plugin installation is not supported by the current adapter", evidence=evidence,
             )
-        if agent == AgentType.CLAUDE_CODE:
+        if (
+            agent == AgentType.CLAUDE_CODE
+            and component.install_method.kind != InstallKind.PLUGIN_MARKETPLACE
+        ):
             return CompatibilityResult(
                 agent=agent, component_id=component.id, status=CompatibilityStatus.PARTIAL,
-                reason="Claude Code requires a verified marketplace identifier for persistent Plugin installation",
+                reason="Claude Code installs a Plugin from a marketplace; this candidate "
+                       "records no marketplace plugin id",
                 evidence=evidence,
             )
     requirement = component.agent_requirements.get(agent)

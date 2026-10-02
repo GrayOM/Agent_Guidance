@@ -157,11 +157,17 @@ Windows PowerShell의 활성화 경로는 `.venv\Scripts\Activate.ps1`, macOS/Li
 
 | Agent | 감지 | Skill | MCP | Plugin | Health Check / Rollback |
 |---|---:|---:|---:|---:|---:|
-| Codex | 지원 | 지원 | 지원 | 지원 | 지원 |
-| Claude Code | 지원 | 지원 | 지원 | 제한적 | 지원 |
+| Codex | 지원 | 지원 | 지원 | 미지원 | 지원 |
+| Claude Code | 지원 | 지원 | 지원 | 지원 | 지원 |
 
-Claude Code는 현재 MCP 설정 및 discovery metadata 중심으로 확인합니다. Plugin은 공식적인
-transaction-safe 설치 방식이 확인될 때까지 자동 설치하지 않습니다.
+Codex는 자동 설치 대상 Plugin 형식이 없어 Plugin capability가 `false`입니다.
+
+Claude Code Plugin은 `claude plugin` 명령에 위임해 설치하고, GrayOM 트랜잭션으로 감쌉니다.
+`claude`를 실행할 수 없으면 Plugin capability가 `false`가 되어 추천에서 제외됩니다. 설치는
+marketplace manifest(`.claude-plugin/marketplace.json`)가 선언한 Plugin만 대상으로 하며,
+`marketplace add` → `install` 두 단계 모두 이 실행이 추가한 것만 기록해 rollback에서 역순으로
+되돌립니다. marketplace가 선언한 명령을 수락해야 하는 Plugin은 자동으로 승인하지 않고 직접
+실행할 명령을 안내합니다.
 
 ## 데이터 저장 위치
 

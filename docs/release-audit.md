@@ -8,7 +8,7 @@ exist. `PARTIAL` means the safe subset is implemented and the missing behavior i
 | Agent detection and version timeout | IMPLEMENTED | `adapters/*`, `runtime/process.py`, adapter tests |
 | Work interview and deterministic recommendation | IMPLEMENTED | `cli/interview.py`, `core/recommender.py`, tests |
 | Adapter capability filtering | IMPLEMENTED | `models/agent.py`, `core/multi_agent_plan.py`, RC tests |
-| Plugin installation | MISSING | capability is false for every adapter until a documented, transaction-safe install path exists |
+| Plugin installation | IMPLEMENTED | Claude Code plugins delegated to `claude plugin` with an inverse per step, marketplace-only install methods, and plugin tests; Codex capability stays false |
 | Config preservation | IMPLEMENTED | TOML comment-preserving merge; JSON semantic unknown-key preservation; fixtures and RC tests |
 | Config formatting/comment preservation | PARTIAL | Codex TOML comments/order preserved; JSON has no standard comments and is normalized on write |
 | Transaction lifecycle | IMPLEMENTED | explicit PREPARED through COMMITTED/ROLLED_BACK states and failure tests |

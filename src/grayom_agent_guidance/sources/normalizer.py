@@ -1,3 +1,4 @@
+import json
 import math
 import re
 import shutil
@@ -112,6 +113,9 @@ def _component_id(raw: RawCandidate) -> str:
     return slug
 
 
+MARKETPLACE_MANIFEST = ".claude-plugin/marketplace.json"
+
+
 def _component_type(raw: RawCandidate, text: str) -> ComponentType:
     if raw.expected_type:
         return raw.expected_type
@@ -120,8 +124,14 @@ def _component_type(raw: RawCandidate, text: str) -> ComponentType:
     # an incidental plugin.json must not reclassify a Skill repository.
     if any(path.endswith(".codex-plugin/plugin.json") for path in lowered_paths):
         return ComponentType.PLUGIN
+    # SKILL.md still wins over a marketplace manifest. Installing a Skill repository lets
+    # GrayOM pick a bounded subset of its Skills; installing the same repository as a plugin
+    # would load every Skill it bundles, which is the context cost the selection rules exist
+    # to avoid. A marketplace therefore decides the type only when there is nothing to select.
     if any(path.endswith("skill.md") for path in lowered_paths):
         return ComponentType.SKILL
+    if any(path.endswith(MARKETPLACE_MANIFEST) for path in lowered_paths):
+        return ComponentType.PLUGIN
     if any(path.endswith("plugin.json") for path in lowered_paths):
         return ComponentType.PLUGIN
     if any("mcp" in PurePosixPath(path).name.lower() for path in lowered_paths) or "mcp server" in text or "model context protocol" in text:
@@ -184,26 +194,93 @@ def _install_ref(raw: RawCandidate) -> str | None:
     return raw.metadata.get("head_sha") or raw.metadata.get("default_branch")
 
 
-def _install_method(raw: RawCandidate, component_type: ComponentType) -> InstallMethod:
+def _marketplace(raw: RawCandidate) -> tuple[str, list[tuple[str, str]]] | None:
+    """The marketplace name and its declared plugins, when the repository publishes one.
+
+    A Claude Code plugin is only installable through a marketplace, so this manifest is the
+    difference between a candidate the adapter can install and one it has to refuse.
+    """
+    for path, content in raw.files.items():
+        if not path.lower().endswith(MARKETPLACE_MANIFEST):
+            continue
+        try:
+            document = json.loads(content)
+        except ValueError:
+            continue
+        if not isinstance(document, dict):
+            continue
+        name = str(document.get("name") or "").strip()
+        declared = document.get("plugins")
+        if not name or not isinstance(declared, list):
+            continue
+        plugins = [
+            (str(entry["name"]).strip(), str(entry.get("description") or ""))
+            for entry in declared
+            if isinstance(entry, dict) and str(entry.get("name") or "").strip()
+        ]
+        if plugins:
+            return name, plugins
+    return None
+
+
+def _choose_plugin(plugins: list[tuple[str, str]]) -> tuple[str, str | None]:
+    """Pick one plugin from a marketplace, and say so when there was a choice.
+
+    One candidate carries one install method, so a marketplace declaring several plugins has
+    to be narrowed. The plugin matching the most capabilities is chosen, which is the same
+    relevance test the rest of the pipeline applies, with declaration order breaking ties.
+    """
+    if len(plugins) == 1:
+        return plugins[0][0], None
+
+    def relevance(index: int) -> tuple[int, int]:
+        name, description = plugins[index]
+        text = f"{name} {description}".lower()
+        matched = sum(
+            1 for keywords in CAPABILITY_KEYWORDS.values() if mentions(text, keywords)
+        )
+        return (-matched, index)
+
+    chosen = plugins[min(range(len(plugins)), key=relevance)][0]
+    return chosen, (
+        f"marketplace declares {len(plugins)} plugins; '{chosen}' was selected as the "
+        "closest match and the others are not installed"
+    )
+
+
+def _install_method(
+    raw: RawCandidate, component_type: ComponentType,
+) -> tuple[InstallMethod, str | None]:
     if component_type == ComponentType.SKILL:
         return InstallMethod(
             kind=InstallKind.GIT_SKILLS, repository=raw.repository_url,
             ref=_install_ref(raw),
-        )
+        ), None
     if component_type == ComponentType.PLUGIN:
+        marketplace = _marketplace(raw)
+        if marketplace is None:
+            # PLUGIN_GIT is recorded rather than guessed at: validation rejects it with a
+            # stated reason instead of the candidate silently looking installable.
+            return InstallMethod(
+                kind=InstallKind.PLUGIN_GIT, repository=raw.repository_url,
+                ref=_install_ref(raw),
+            ), None
+        name, plugins = marketplace
+        plugin, note = _choose_plugin(plugins)
         return InstallMethod(
-            kind=InstallKind.PLUGIN_GIT, repository=raw.repository_url,
-            ref=_install_ref(raw),
-        )
+            kind=InstallKind.PLUGIN_MARKETPLACE, plugin_id=f"{plugin}@{name}",
+            marketplace=name, marketplace_source=str(raw.repository_url),
+            repository=raw.repository_url, ref=_install_ref(raw),
+        ), note
     readme = raw.readme or ""
     urls = re.findall(r"https://[^\s)`\"']+/mcp/?", readme, flags=re.I)
     if urls:
-        return InstallMethod(kind=InstallKind.MCP_HTTP, url=urls[0].rstrip(".,"))
+        return InstallMethod(kind=InstallKind.MCP_HTTP, url=urls[0].rstrip(".,")), None
     npx = re.search(r"\bnpx\s+(?:-y\s+)?([@\w./-]+)([^\n`]*)", readme)
     if npx:
         args = ["-y", npx.group(1)] + [item for item in npx.group(2).strip().split() if not item.startswith("$")]
-        return InstallMethod(kind=InstallKind.MCP_STDIO, command="npx", args=args[:12])
-    return InstallMethod()
+        return InstallMethod(kind=InstallKind.MCP_STDIO, command="npx", args=args[:12]), None
+    return InstallMethod(), None
 
 
 def normalize_candidate(raw: RawCandidate) -> Component:
@@ -248,7 +325,7 @@ def normalize_candidate(raw: RawCandidate) -> Component:
     if security.metadata.credential_access:
         permissions.add(Permission.CREDENTIALS)
     dependencies = _dependencies(raw)
-    install_method = _install_method(raw, component_type)
+    install_method, install_note = _install_method(raw, component_type)
     evidence.append(EvidenceItem(
         field="install_method", value=install_method.kind.value,
         source="README/repository_structure",
@@ -263,8 +340,8 @@ def normalize_candidate(raw: RawCandidate) -> Component:
         maintenance_metadata=maintenance, trust=trust, evidence=evidence,
         dependencies=dependencies, candidate_state=CandidateState.DISCOVERED,
         validation_warnings=(
-            security.warnings + [agent_inference_note] if agent_inference_note
-            else security.warnings
+            security.warnings
+            + [note for note in (agent_inference_note, install_note) if note]
         ),
         install_complexity=min(5, 1 + len(dependencies)),
     )
