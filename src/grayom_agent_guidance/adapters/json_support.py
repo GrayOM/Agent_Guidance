@@ -356,7 +356,14 @@ def remove_managed_skills(
                 continue
             changed = _locally_changed(resolved, hashes)
             if changed:
-                preserved.append(f"{path.name}: changed since install ({changed})")
+                # Naming the directory matters: this is the one case where uninstall finishes
+                # and leaves files behind, and the user is the only one who can decide whether
+                # their edit is worth keeping. "changed since install" alone said what
+                # happened without saying where to look or what to do next.
+                preserved.append(
+                    f"{path.name}: {changed} after install, so it was left in place. "
+                    f"Delete {resolved} by hand if you no longer want it."
+                )
                 continue
             shutil.rmtree(resolved)
             removed.append(path)

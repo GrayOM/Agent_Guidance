@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+### Added
+
+- `tests/test_github_real_payload.py` and `tests/fixtures/github_repository.json`, a repository
+  object captured verbatim from `GET /repos/GrayOM/Agent_Guidance` with its volatile counters
+  pinned. The other GitHub tests write their responses by hand, so they prove the code works
+  against the fields those tests chose to include; this one runs search, paging, normalisation,
+  validation and recommendation against all 95 real fields, which leaves the socket call as the
+  only part of live discovery still unexercised. It is not a claim that discovery has been run
+  against api.github.com: this container's GitHub access is bound to one repository and
+  `GET /search/repositories` answers 403 with "sessions are bound to their configured
+  repositories".
+
+### Changed
+
+- The logo is an eye. The old one drew a four-quadrant iris inside an almond on a dark card,
+  which read as a colour wheel and showed a dark panel on GitHub's light theme. The new one has
+  no background, defines its shape once and uses it twice, and gives the lids different curves,
+  because an almond closed by two identical arcs reads as a lens.
+- The terminal header carries `( ◉ )` instead of five rows of box-drawing characters. The art it
+  replaced had arrowheads on its outer corners, which read as a media control; redrawing it as a
+  tapered lid read as a chip instead. Rendered in a browser at the width a 96-column terminal
+  occupies, every multi-row attempt came out as scattered brackets, so the drawing stays in the
+  SVG, where curves are available.
+- `grayom uninstall` now names the directory it left behind and says to delete it by hand. The
+  note read "changed since install", which said what happened without saying where to look.
+
+### Fixed
+
+- `scripts/capture_screens.py` stopped on a timer, so it wrote out whatever was on screen when a
+  fixed wait elapsed. Under load that captured the menu as its header alone. It now stops only
+  for a reason -- the process ended, or a question is waiting with no keystrokes left -- and
+  says so when a capture stalls instead of saving a blank screen. Tightening that exposed the
+  real defect: the prompt detector matched `? <question>:` and the menu asks "What would you
+  like to do?", so it never matched, and the menu was only ever captured by the timer. It now
+  looks for the pointer InquirerPy draws, which is on screen exactly while a question waits.
+
+### Verified
+
+- The captured screenshots were rendered in Chromium, and the columns line up. The local
+  rasteriser used earlier showed gaps because cairosvg ignores the `textLength` Rich puts on
+  every run; a browser honours it, and each panel line measures exactly 96 columns.
+
+## Unreleased
+
 Everything here is about the part of the program a user actually touches: the menu, the
 questions, the help, and the README.
 

@@ -44,6 +44,9 @@ COLUMNS, LINES = 96, 34
 # The plan is longer than a default terminal, and a screen that scrolls loses its top: the
 # first capture of it showed only the security panel. Each screen may ask for more rows.
 PLAN_LINES = 140
+# How long a silence has to last before the capture gives up and says so, rather than
+# writing out whatever happened to be on screen.
+MAX_IDLE = 30.0
 
 KEYS = {
     "enter": "\r",
@@ -126,13 +129,18 @@ def _style(cell) -> Style:
     )
 
 
-# An InquirerPy prompt renders as "? <question>:" and is rewritten to "? <question>: <answer>"
-# once answered, so an unanswered question is a line ending in a colon.
-_PROMPT = re.compile(r"^\? .*:$")
+# An InquirerPy prompt draws a pointer at the row the cursor is on, and erases the whole list
+# once answered, leaving a one-line summary behind. So the pointer is on screen exactly while a
+# question is waiting for an answer, whatever that question's wording or punctuation.
+#
+# The first version of this matched "? <question>:" instead, on the assumption that every
+# question ends in a colon. The menu asks "What would you like to do?", so it never matched,
+# and the menu screen was only ever captured because the loop also stopped on a timer.
+_POINTER = "❯"
 
 
 def _waiting_for_input(screen: pyte.Screen) -> bool:
-    return any(_PROMPT.match(line.strip()) for line in screen.display)
+    return any(line.strip().startswith(_POINTER) for line in screen.display)
 
 
 def _drive(
@@ -161,7 +169,8 @@ def _drive(
     )
     os.close(slave)
     pending = list(keys)
-    deadline = time.monotonic() + 90
+    quiet = 0.0
+    deadline = time.monotonic() + 180
     try:
         while time.monotonic() < deadline:
             readable, _, _ = select.select([master], [], [], 0.2)
@@ -181,12 +190,24 @@ def _drive(
             # as it starts, and the terminal echoed the raw escape sequence into the capture.
             if pending and _waiting_for_input(screen):
                 os.write(master, KEYS[pending.pop(0)].encode())
+                quiet = 0.0
                 continue
+            quiet += 0.2
+            # The capture is finished when the program has nothing left to say, and silence
+            # alone does not establish that. An earlier version waited a fixed `settle` and
+            # stopped; start-up runs `codex --version` and `claude --version` before printing
+            # anything else, and once that pause grew past the guess the menu screen captured
+            # as the header alone. So stop only on a reason: the process ended, or a question
+            # is on screen with no keys left to answer it.
             if process.poll() is not None:
                 break
-            time.sleep(settle)
-            if not select.select([master], [], [], 0.2)[0]:
+            if not pending and _waiting_for_input(screen) and quiet >= settle:
                 break
+            if quiet >= MAX_IDLE:
+                raise SystemExit(
+                    f"{' '.join(arguments) or 'grayom'}: nothing happened for {MAX_IDLE:.0f}s "
+                    f"and no prompt appeared; {len(pending)} keystrokes were left unsent"
+                )
     finally:
         if process.poll() is None:
             process.terminate()

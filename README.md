@@ -211,6 +211,9 @@ Claude Code Plugin은 `claude plugin` 명령에 위임하고 GrayOM 트랜잭션
   없어도 동작합니다.
 - 네트워크 없이 쓰려면 `grayom setup --offline` — 내장 Registry와 검증된 캐시만 사용합니다.
   위 Plan 스크린샷이 이 모드로 캡처한 것이라, 실제로는 후보가 더 많습니다.
+- `grayom uninstall`은 **설치 후 직접 수정한 Skill은 지우지 않습니다.** 고쳐 쓴 파일을 프로그램이
+  삭제하면 안 되기 때문입니다. 이 경우 어느 디렉터리가 남았는지 경로까지 알려주니, 필요 없으면
+  직접 지우시면 됩니다.
 
 ---
 
