@@ -73,25 +73,45 @@ def show_detected_agents(console: Console, agents: list[AgentInstallation]) -> N
     console.print()
 
 
+def _show_not_selected(console: Console, plan: RecommendationPlan) -> None:
+    """The candidates that were considered and passed over, counted by reason."""
+    counts: dict[str, int] = {}
+    for item in plan.items:
+        if item.selected:
+            continue
+        reason = item.reasons[0] if item.reasons else "not selected"
+        counts[reason] = counts.get(reason, 0) + 1
+    if not counts:
+        return
+    total = sum(counts.values())
+    detail = "; ".join(
+        f"{count} {reason}" for reason, count in sorted(counts.items(), key=lambda row: -row[1])
+    )
+    console.print(f"[dim]{total} other candidates considered: {detail}[/dim]")
+
+
 def show_plan(
     console: Console, plan: RecommendationPlan, multi_plan: MultiAgentPlan | None = None,
     explanation: PlanExplanation | None = None,
 ) -> None:
+    # Only what will be installed gets a row. Every candidate discovery considered used to
+    # get one, so a live run put ten "Skipped" rows around the two that mattered.
     table = Table(title="Recommended Agent Environment")
-    table.add_column("Decision")
     table.add_column("Type")
     table.add_column("Component")
     table.add_column("Source")
     table.add_column("Maintenance")
     table.add_column("Reason")
     for item in plan.items:
+        if not item.selected:
+            continue
         source = "Official" if item.component.trust.official else item.component.trust.source_type.value.title()
         table.add_row(
-            "Install" if item.selected else "Skipped", item.component.type.value,
-            item.component.name, source, item.component.maintenance_metadata.status.value.title(),
-            "; ".join(item.reasons),
+            item.component.type.value, item.component.name, source,
+            item.component.maintenance_metadata.status.value.title(), "; ".join(item.reasons),
         )
     console.print(table)
+    _show_not_selected(console, plan)
     if explanation:
         console.print("\n[bold]Why this setup?[/bold]")
         for line in explanation.summary:
@@ -163,7 +183,8 @@ def show_discovery(console: Console, result: DiscoveryResult) -> None:
         )
         if source.rate_limit_remaining is not None:
             console.print(f"  GitHub rate limit remaining: {source.rate_limit_remaining}")
-    for warning in result.warnings:
+    # Sources fail for the same reason at the same time, so the same sentence arrives twice.
+    for warning in dict.fromkeys(result.warnings):
         console.print(f"[yellow]Warning:[/yellow] {warning}")
     console.print(f"[green]✓[/green] {result.validated} unique candidates available\n")
 
