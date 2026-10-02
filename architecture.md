@@ -111,12 +111,19 @@ Cache는 영구 catalog가 아니다. live search는 계속 수행하며 source 
 낮은 중복을, Performance는 전문 coverage를 우선한다. 각 추천은 입력 업무, 담당 capability, 선택 이유,
 적용 Agent, 제한사항과 evidence confidence를 갖는다. 충족되지 않은 capability는 Plan에 명시한다.
 
-Skill 저장소는 Skill 하나가 아니다. 저장소 안에서 설치할 Skill은 네 규칙으로 좁힌다.
+Skill 저장소는 Skill 하나가 아니다. 저장소 안에서 설치할 Skill은 다섯 규칙으로 좁힌다.
 
 1. 이번 실행이 요청한 capability를 말하는 Skill만 남긴다
 2. 이미 선택한 Skill과 이름이나 목적이 겹치면 버린다
 3. 저장소의 한 하위 프로젝트가 예산의 1/3을 넘게 가져가지 못한다
-4. mode 한도까지, 일치도가 높은 순으로 멈춘다
+4. 요청된 capability마다, 저장소가 덮을 수 있다면 한 자리를 먼저 준다 (희소한 것 우선)
+5. 남은 자리를 mode 한도까지, 일치도가 높은 순으로 채운다
+
+4번이 없으면 "덮었다고 보고하고 그것을 제공하는 Skill은 설치하지 않는" 상태가 된다. 실제로
+`trailofbits/skills`의 pinned ref에서 웹앱 진단을 선택하면 `web_security_testing`이 덮였다고
+보고되지만 — 저장소에 `burpsuite-project-parser`가 있으므로 맞다 — 그 Skill은 한도 아래로
+밀려 설치되지 않았다. 덮이지 않았다고 말하는 것보다 나쁘다. 희소한 capability를 먼저 배치하면
+하나뿐인 Skill이 붐비는 capability의 일곱 번째 Skill에 밀리지 않는다.
 
 3번은 2번이 놓치는 것을 잡는다. `trailofbits/skills`에서 CVE 분석과 OSS 취약점 연구를 선택하면
 `building-secure-contracts`가 Performance 12칸 중 7칸을 플랫폼별 smart contract 스캐너로 채웠다.

@@ -147,58 +147,89 @@ def select_skills(
     always produce the same selection.
     """
     taken = {name.lower() for name in (existing_names or set())}
-    scored = [
-        (candidate, _matched(candidate, policy.capabilities),
-         _keyword_hits(candidate, policy.capabilities))
-        for candidate in candidates
+    by_rank = sorted(
+        (
+            (candidate, _matched(candidate, policy.capabilities),
+             _keyword_hits(candidate, policy.capabilities))
+            for candidate in candidates
+        ),
+        key=lambda item: (-len(item[1]), -item[2], item[0].name),
+    )
+    scored: list[tuple[SkillCandidate, set[Capability]]] = [
+        (candidate, matched) for candidate, matched, _ in by_rank
     ]
-    scored.sort(key=lambda item: (-len(item[1]), -item[2], item[0].name))
-    scored = [(candidate, matched) for candidate, matched, _ in scored]
 
     selection = SkillSelection()
     kept: list[tuple[SkillCandidate, set[Capability], set[str]]] = []
     quota = group_quota(policy.limit)
     taken_per_group: dict[str, int] = {}
-    for candidate, matched in scored:
+    outcome: dict[int, str] = {}
+    chosen: set[int] = set()
+
+    def consider(index: int) -> bool:
+        """Take this Skill if every rule allows it, and record why when one does not."""
+        if index in outcome:
+            return False
+        candidate, matched = scored[index]
         covered = sorted(item.value for item in matched)
         if not matched:
-            selection.decisions.append(SkillDecision(
-                name=candidate.name, selected=False, reason=SKIP_UNRELATED,
-            ))
-            continue
+            outcome[index] = SKIP_UNRELATED
+            return False
         if candidate.name.lower() in taken:
-            selection.decisions.append(SkillDecision(
-                name=candidate.name, selected=False, reason=SKIP_NAME_CLASH, capabilities=covered,
-            ))
-            continue
+            outcome[index] = SKIP_NAME_CLASH
+            return False
         words = candidate.words()
-        twin = next((
-            other for other, other_matched, other_words in kept
-            if other_matched == matched and _overlap(words, other_words) >= REDUNDANCY_THRESHOLD
-        ), None)
-        if twin is not None:
-            selection.decisions.append(SkillDecision(
-                name=candidate.name, selected=False,
-                reason=SKIP_REDUNDANT, capabilities=covered,
-            ))
-            continue
+        if any(
+            other_matched == matched and _overlap(words, other_words) >= REDUNDANCY_THRESHOLD
+            for _, other_matched, other_words in kept
+        ):
+            outcome[index] = SKIP_REDUNDANT
+            return False
         if candidate.group and taken_per_group.get(candidate.group, 0) >= quota:
-            selection.decisions.append(SkillDecision(
-                name=candidate.name, selected=False, reason=SKIP_GROUP_FULL, capabilities=covered,
-            ))
-            continue
+            outcome[index] = SKIP_GROUP_FULL
+            return False
         if len(selection.selected) >= policy.limit:
-            selection.decisions.append(SkillDecision(
-                name=candidate.name, selected=False, reason=SKIP_OVER_LIMIT, capabilities=covered,
-            ))
-            continue
+            outcome[index] = SKIP_OVER_LIMIT
+            return False
         if candidate.group:
             taken_per_group[candidate.group] = taken_per_group.get(candidate.group, 0) + 1
         selection.selected.append(candidate)
-        selection.decisions.append(SkillDecision(
-            name=candidate.name, selected=True,
-            reason="covers " + ", ".join(covered), capabilities=covered,
-        ))
+        chosen.add(index)
+        outcome[index] = "covers " + ", ".join(covered)
         taken.add(candidate.name.lower())
         kept.append((candidate, matched, words))
+        return True
+
+    # Coverage before depth. Filling purely by rank let a capability the repository *can*
+    # satisfy go unrepresented while several Skills covered an already-covered one: a
+    # request for web application assessment reported web_security_testing as covered and
+    # installed nothing providing it, because the only such Skill ranked below the limit.
+    # Scarce capabilities go first, so the one Skill that can cover a capability is not
+    # displaced by the seventh Skill covering a crowded one.
+    reachable = [
+        capability for capability in policy.capabilities
+        if any(capability in matched for _, matched in scored)
+    ]
+    scarcity = {
+        capability: sum(1 for _, matched in scored if capability in matched)
+        for capability in reachable
+    }
+    for capability in sorted(reachable, key=lambda item: (scarcity[item], item.value)):
+        for index, (_, matched) in enumerate(scored):
+            if capability in matched and consider(index):
+                break
+
+    for index in range(len(scored)):
+        consider(index)
+
+    # Decisions stay in rank order whichever pass took each Skill, so the report reads the
+    # same way it always did and every Skill is accounted for exactly once.
+    for index, (candidate, matched) in enumerate(scored):
+        reason = outcome[index]
+        selection.decisions.append(SkillDecision(
+            name=candidate.name, selected=index in chosen, reason=reason,
+            capabilities=[] if reason == SKIP_UNRELATED else sorted(
+                item.value for item in matched
+            ),
+        ))
     return selection

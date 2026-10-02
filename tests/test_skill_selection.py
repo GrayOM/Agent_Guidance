@@ -23,6 +23,7 @@ from grayom_agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstalledComponent, InterviewAnswer,
     RecommendationPlan, SetupMode, SkillSelectionPolicy, WorkDomain,
 )
+from grayom_agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
 
 SECURITY = {Capability.VULNERABILITY_RESEARCH, Capability.SECURITY_ANALYSIS}
 
@@ -438,3 +439,78 @@ def test_a_repositorys_own_test_fixtures_are_not_installable_skills() -> None:
 
     assert all(NON_PUBLISHED_DIRECTORIES.intersection(item.parts) for item in fixtures)
     assert not NON_PUBLISHED_DIRECTORIES.intersection(published.parts)
+
+
+# --- rule 5: coverage before depth ---------------------------------------------------
+
+
+def test_the_only_skill_covering_a_capability_is_not_crowded_out() -> None:
+    """Claiming a capability and installing nothing that provides it is the worse failure.
+
+    Measured on `trailofbits/skills` at its pinned ref: a request for web application
+    assessment reported `web_security_testing` as covered, because the repository does carry
+    `burpsuite-project-parser`, and then installed six other Skills — the one Skill
+    providing it ranked below the limit. Scarce capabilities now take a slot first.
+    """
+    wanted = {Capability.VULNERABILITY_RESEARCH, Capability.BROWSER_AUTOMATION}
+    crowd = [
+        _candidate(
+            f"advisory-{index}",
+            f"Reads a vulnerability advisory about {subject} and summarises its impact.",
+        )
+        for index, subject in enumerate([
+            "heap corruption in image parsers", "unsafe deserialization in RPC servers",
+            "privilege escalation through setuid helpers", "integer overflow in codecs",
+            "signature bypass in update channels", "cache poisoning in reverse proxies",
+            "symlink races in extraction tools",
+        ])
+    ]
+    only_one = _candidate(
+        "session-driver",
+        "Drives a headless browser automation session to replay an authenticated flow.",
+    )
+
+    selection = select_skills(crowd + [only_one], _policy(limit=6, capabilities=wanted))
+
+    assert "session-driver" in selection.selected_names, (
+        "the single Skill covering browser_automation lost its slot to a seventh "
+        "vulnerability_research Skill"
+    )
+    covered = {
+        capability for item in selection.selected
+        for capability in wanted
+        if mentions(item.text, CAPABILITY_KEYWORDS[capability])
+    }
+    assert covered == wanted
+
+
+def test_coverage_does_not_override_the_group_share_or_the_limit() -> None:
+    """A capability only one group can cover must not let that group exceed its share."""
+    candidates = [
+        _grouped(
+            f"{platform}-scanner",
+            f"Scans {platform} smart contracts for the vulnerability classes specific to "
+            f"{platform}, and audits their deployment settings.",
+            "contracts",
+        )
+        for platform in ("algorand", "cairo", "cosmos", "solana", "ton")
+    ]
+
+    selection = select_skills(candidates, _policy(limit=6))
+
+    assert len(selection.selected) <= group_quota(6)
+
+
+def test_every_skill_is_still_accounted_for_once_after_two_passes() -> None:
+    """Coverage and fill are two passes over the same list; decisions must not double up."""
+    candidates = [
+        _candidate("scanner", "Finds a vulnerability class in source code."),
+        _candidate("reporter", "Writes the reporting section of a security audit."),
+        _candidate("unrelated", "Formats spreadsheets for quarterly planning."),
+    ]
+
+    selection = select_skills(candidates, _policy(limit=2))
+
+    assert selection.available == len(candidates)
+    assert len(selection.decisions) == len(candidates)
+    assert len({decision.name for decision in selection.decisions}) == len(candidates)

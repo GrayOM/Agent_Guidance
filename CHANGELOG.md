@@ -5,11 +5,15 @@
 ### Added
 
 - A `penetration_testing` work domain for assessing a target someone else built and
-  deployed, with ten engagement-phase questions (web application, authentication,
-  authorisation, injection, API, mobile, infrastructure, reproduction, reporting, retest).
-  It carries a new `web_security_testing` capability because `security_analysis` and
-  `source_analysis` both surface SAST tooling, which is the wrong tool class for a deployed
-  application the user did not write. All eleven domains still produce distinct profiles.
+  deployed, with thirteen engagement-phase questions (web application, authentication,
+  authorisation, injection, API, mobile, secure code review, infrastructure, configuration,
+  cloud configuration, reproduction, reporting, retest). It carries two new capabilities:
+  `web_security_testing`, because `security_analysis` and `source_analysis` both surface
+  SAST tooling, which is the wrong tool class for a deployed application the user did not
+  write; and `configuration_audit`, because a checklist review against a baseline reaches
+  neither of those vocabularies. All eleven domains still produce distinct profiles.
+- Skill selection gives every requested capability the repository can cover a slot before
+  filling the rest by rank, scarcest capability first.
 - Claude Code Plugin installation, delegated to `claude plugin` and wrapped in a GrayOM
   transaction. Each step has an inverse (`marketplace add`/`remove`, `install`/`uninstall`), the
   manifest records only what the run added, and rollback removes plugins before marketplaces.
@@ -44,6 +48,13 @@
 
 ### Fixed
 
+- A capability is no longer reported as covered while nothing providing it is installed.
+  Measured on `trailofbits/skills` at its pinned ref: a web application assessment profile
+  reported `web_security_testing` covered — correctly, the repository carries
+  `burpsuite-project-parser` — and then installed six other Skills, because that one ranked
+  below the limit. The assessment profile now covers 8 of 8 reachable capabilities.
+- `trailofbits-skills` declares `web_security_testing` and `configuration_audit`, both
+  verified against the pinned commit rather than the default branch.
 - Two plugins published by one marketplace repository are two candidates again. Candidate
   merging keyed on the repository, so the six curated plugins from
   `github.com/anthropics/claude-code` collapsed into a single candidate carrying one
