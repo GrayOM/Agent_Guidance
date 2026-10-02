@@ -161,10 +161,10 @@ def _drive(
         # and lost the next, so the request is turned off at its documented switch instead.
         "PROMPT_TOOLKIT_NO_CPR": "1",
         # The screenshots must not depend on a token, a network reply or a cached result.
-        "GITHUB_TOKEN": "", "GH_TOKEN": "", "GRAYOM_HOME": str(home / ".grayom"),
+        "GITHUB_TOKEN": "", "GH_TOKEN": "", "AGENT_GUIDANCE_HOME": str(home / ".agent-guidance"),
     }
     process = subprocess.Popen(
-        [sys.executable, "-m", "grayom_agent_guidance", *arguments],
+        [sys.executable, "-m", "agent_guidance", *arguments],
         stdin=slave, stdout=slave, stderr=slave, env=environment, cwd=ROOT, close_fds=True,
     )
     os.close(slave)
@@ -205,7 +205,7 @@ def _drive(
                 break
             if quiet >= MAX_IDLE:
                 raise SystemExit(
-                    f"{' '.join(arguments) or 'grayom'}: nothing happened for {MAX_IDLE:.0f}s "
+                    f"{' '.join(arguments) or 'agent-guidance'}: nothing happened for {MAX_IDLE:.0f}s "
                     f"and no prompt appeared; {len(pending)} keystrokes were left unsent"
                 )
     finally:
@@ -233,14 +233,14 @@ ASSESSMENT_TASKS = (0, 1, 3)  # web application, authentication, injection
 SCREENS: list[dict] = [
     {
         "name": "menu",
-        "title": "grayom",
+        "title": "agent-guidance",
         "arguments": [],
         "keys": [],
         "settle": 0.6,
     },
     {
         "name": "interview-domains",
-        "title": "grayom  -  choose your work",
+        "title": "agent-guidance  -  choose your work",
         "arguments": ["recommend", "--offline"],
         "keys": [
             "enter",
@@ -251,7 +251,7 @@ SCREENS: list[dict] = [
     },
     {
         "name": "interview-tasks",
-        "title": "grayom  -  choose your work",
+        "title": "agent-guidance  -  choose your work",
         "arguments": ["recommend", "--offline"],
         "keys": [
             "enter",
@@ -265,8 +265,8 @@ SCREENS: list[dict] = [
         # One run, two images: a capture takes about half a minute, and the plan is too tall to
         # read as a single picture once GitHub scales it to the width of the page.
         "images": [
-            {"name": "plan", "title": "grayom recommend", "rows": (16, 65)},
-            {"name": "plan-approval", "title": "grayom recommend  -  what will change",
+            {"name": "plan", "title": "agent-guidance recommend", "rows": (16, 65)},
+            {"name": "plan-approval", "title": "agent-guidance recommend  -  what will change",
              "rows": (66, 104)},
         ],
         "arguments": ["recommend", "--offline"],
@@ -286,14 +286,14 @@ SCREENS: list[dict] = [
     },
     {
         "name": "doctor",
-        "title": "grayom doctor",
+        "title": "agent-guidance doctor",
         "arguments": ["doctor"],
         "keys": [],
         "settle": 1.0,
     },
     {
         "name": "help",
-        "title": "grayom --help",
+        "title": "agent-guidance --help",
         "arguments": ["--help"],
         "keys": [],
         "settle": 0.4,
@@ -306,7 +306,7 @@ def capture(destination: Path, only: str | None = None, as_text: bool = False) -
     for screen in SCREENS:
         if only and screen["name"] != only:
             continue
-        with tempfile.TemporaryDirectory(prefix="grayom-capture-") as name:
+        with tempfile.TemporaryDirectory(prefix="agent-guidance-capture-") as name:
             home = Path(name).resolve()
             buffer = _drive(
                 screen["arguments"], screen["keys"], home, screen["settle"],
@@ -350,7 +350,7 @@ def main() -> int:
         return 0
 
     if arguments.check:
-        with tempfile.TemporaryDirectory(prefix="grayom-check-") as name:
+        with tempfile.TemporaryDirectory(prefix="agent-guidance-check-") as name:
             fresh = Path(name)
             print("capturing screens for comparison")
             stale = [

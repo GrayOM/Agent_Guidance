@@ -1,4 +1,4 @@
-"""What `grayom --help` and the menu offer, held in place.
+"""What `agent-guidance --help` and the menu offer, held in place.
 
 The help output and the menu are the whole interface for someone who has just installed this.
 Two things regressed before these tests existed: internal flags (`--probe-mcp`) appeared in
@@ -8,7 +8,7 @@ typed command, so the menu could install but not undo.
 
 from typer.testing import CliRunner
 
-from grayom_agent_guidance.cli.main import EVERYDAY, TROUBLE, app
+from agent_guidance.cli.main import EVERYDAY, TROUBLE, app
 
 
 runner = CliRunner()
@@ -64,7 +64,7 @@ def test_the_help_shows_the_everyday_commands_first():
 def test_internal_flags_are_not_offered_to_users():
     text = _help() + runner.invoke(app, ["setup", "--help"], env={"COLUMNS": "100"}).stdout
     assert "--probe-mcp" not in text
-    assert "--dry-run" not in text, "setup --dry-run duplicates 'grayom recommend'"
+    assert "--dry-run" not in text, "setup --dry-run duplicates 'agent-guidance recommend'"
 
 
 def test_hidden_flags_still_work_for_scripts_and_tests():
@@ -83,8 +83,8 @@ def test_help_text_names_no_internal_concept():
 
 
 def test_every_command_is_reachable_from_the_menu(monkeypatch):
-    """The menu is a complete way to use GrayOM, not a shortcut to part of it."""
-    import grayom_agent_guidance.cli.main as main
+    """The menu is a complete way to use Agent Guidance, not a shortcut to part of it."""
+    import agent_guidance.cli.main as main
 
     choices: list[dict] = []
 
@@ -107,7 +107,7 @@ def test_every_command_is_reachable_from_the_menu(monkeypatch):
 
 
 def test_menu_entries_say_what_will_happen(monkeypatch):
-    import grayom_agent_guidance.cli.main as main
+    import agent_guidance.cli.main as main
 
     captured: list[str] = []
 

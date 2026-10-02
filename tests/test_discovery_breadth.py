@@ -10,14 +10,14 @@ import asyncio
 import httpx
 import pytest
 
-from grayom_agent_guidance.models import AgentType, ComponentType, SourceType
-from grayom_agent_guidance.sources.base import RawCandidate
-from grayom_agent_guidance.sources.budget import (
+from agent_guidance.models import AgentType, ComponentType, SourceType
+from agent_guidance.sources.base import RawCandidate
+from agent_guidance.sources.budget import (
     CORE_LIMIT_PER_HOUR, SEARCH_LIMIT_PER_MINUTE, DiscoveryBudget,
 )
-from grayom_agent_guidance.sources.github import GitHubSource, _interleave
-from grayom_agent_guidance.sources.normalizer import SKILL_FORMAT_NOTE, _supported_agents
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.sources.github import GitHubSource, _interleave
+from agent_guidance.sources.normalizer import SKILL_FORMAT_NOTE, _supported_agents
+from agent_guidance.sources.validator import ComponentValidator
 
 
 def _raw(full_name: str, stars: int = 0) -> RawCandidate:

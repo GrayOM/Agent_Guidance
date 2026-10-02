@@ -1,6 +1,6 @@
 """Every image the README shows has to parse.
 
-A version of docs/assets/grayom-mark.svg shipped with a double hyphen inside an XML comment,
+A version of docs/assets/agent-guidance-mark.svg shipped with a double hyphen inside an XML comment,
 which XML forbids. Chromium parses SVG leniently and drew it correctly, so rendering it in a
 browser -- the check that was supposed to be the careful one -- said nothing was wrong. GitHub
 and other strict parsers refused the file, and the README showed a broken image.
@@ -62,7 +62,7 @@ def test_the_hand_drawn_mark_fetches_nothing() -> None:
     why the columns still line up; stripping it would mean post-processing every capture for no
     gain. The mark is written by hand, so it has no such excuse.
     """
-    text = (ASSETS / "grayom-mark.svg").read_text(encoding="utf-8")
+    text = (ASSETS / "agent-guidance-mark.svg").read_text(encoding="utf-8")
     assert "http://" not in text.replace("http://www.w3.org/2000/svg", "")
     assert "https://" not in text
     assert "url(" not in text, "a fill referencing a definition is an indirection to go wrong"

@@ -7,9 +7,9 @@ A new task added to cli/interview.py's TASKS fails here until someone writes its
 
 import re
 
-from grayom_agent_guidance.cli.interview import TASKS
-from grayom_agent_guidance.labels import DOMAIN_LABELS, TASK_LABELS, domain_label, task_label
-from grayom_agent_guidance.models import WorkDomain
+from agent_guidance.cli.interview import TASKS
+from agent_guidance.labels import DOMAIN_LABELS, TASK_LABELS, domain_label, task_label
+from agent_guidance.models import WorkDomain
 
 
 def _offered_tasks() -> set[str]:

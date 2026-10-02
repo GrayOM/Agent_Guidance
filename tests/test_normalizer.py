@@ -1,8 +1,8 @@
-from grayom_agent_guidance.models import (
+from agent_guidance.models import (
     AgentType, Capability, ComponentType, InstallKind, MaintenanceStatus, SourceType,
 )
-from grayom_agent_guidance.sources.base import RawCandidate
-from grayom_agent_guidance.sources.normalizer import normalize_candidate
+from agent_guidance.sources.base import RawCandidate
+from agent_guidance.sources.normalizer import normalize_candidate
 
 
 def test_normalizes_repository_metadata_readme_structure_and_dependencies() -> None:

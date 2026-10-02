@@ -1,4 +1,4 @@
-from grayom_agent_guidance.models import RollbackResult
+from agent_guidance.models import RollbackResult
 
 
 def test_partial_rollback_failure_is_reported() -> None:

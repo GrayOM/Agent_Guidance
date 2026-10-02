@@ -1,6 +1,6 @@
-from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
-from grayom_agent_guidance.core import build_multi_agent_plan
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
+from agent_guidance.core import build_multi_agent_plan
+from agent_guidance.models import (
     AgentInstallation, AgentType, Capability, Component, ComponentType, InterviewAnswer,
     RecommendationItem, RecommendationPlan, SetupMode, WorkDomain,
 )

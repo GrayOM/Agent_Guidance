@@ -8,11 +8,11 @@ python -m venv .venv
 python -m pip install -r requirements-dev.lock
 python -m pip install -e . --no-deps
 ruff check src tests
-mypy src/grayom_agent_guidance/models src/grayom_agent_guidance/runtime
+mypy src/agent_guidance/models src/agent_guidance/runtime
 bandit -q -r src
 pip-audit
 python scripts/release_check.py
-pytest -q --cov=grayom_agent_guidance
+pytest -q --cov=agent_guidance
 python -m build
 ```
 

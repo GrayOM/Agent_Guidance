@@ -1,8 +1,8 @@
-from grayom_agent_guidance.core import recommend
-from grayom_agent_guidance.models import (
+from agent_guidance.core import recommend
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InterviewAnswer, SetupMode, WorkDomain,
 )
-from grayom_agent_guidance.registry import load_registry
+from agent_guidance.registry import load_registry
 
 
 def test_minimal_does_not_select_redundant_components() -> None:

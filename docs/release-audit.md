@@ -25,11 +25,11 @@ executed.
 | Structured process execution | IMPLEMENTED | argument-list runner, `shell=False`, timeout, capture, redaction, tests |
 | Immutable repository install | PARTIAL | configured refs are fetched detached; Registry entries without immutable refs remain unverified |
 | Component manifests and hashes | IMPLEMENTED | per-component state manifests, source refs, paths and SHA-256 hashes |
-| Safe uninstall | IMPLEMENTED | `grayom uninstall` works from state, so it reaches a component installed long before the last transaction; it refuses an EXISTING component, a Skill directory whose files no longer hash to what was installed, and any MCP name GrayOM did not record writing; `core/uninstall.py` with 13 tests and an executed run on real Codex and Claude Code |
+| Safe uninstall | IMPLEMENTED | `agent-guidance uninstall` works from state, so it reaches a component installed long before the last transaction; it refuses an EXISTING component, a Skill directory whose files no longer hash to what was installed, and any MCP name Agent Guidance did not record writing; `core/uninstall.py` with 13 tests and an executed run on real Codex and Claude Code |
 | Three-level Health Check | PARTIAL | Codex's functional probe was executed on 2026-10-02 against the real CLI and correctly reported L3 `WARN mcp_tool_discovery:github: authentication environment variable is not set`; Claude Code stops at L2 (static and initialization), so no functional probe exists for it |
 | Offline mode and damaged cache recovery | IMPLEMENTED | Registry/verified cache fallback, atomic cache writes, damaged cache warning state |
 | Windows/macOS/Linux CI | IMPLEMENTED | GitHub Actions 3-OS × Python 3.11/3.12 matrix |
-| Real installed-Agent OS test | IMPLEMENTED | Verified 2026-10-02 on Linux, Windows and macOS against real Codex 0.160.0 and Claude Code 2.1.287 installed from npm, by the `real-agents` CI job running `scripts/real_agent_check.py`: detection, install for both Agents, health including Codex's L3 probe, state record, uninstall, and a check that nothing of GrayOM's is left. Its first run failed on Windows and macOS and found a real cross-platform defect, which is the evidence that the job tests something Linux could not |
+| Real installed-Agent OS test | IMPLEMENTED | Verified 2026-10-02 on Linux, Windows and macOS against real Codex 0.160.0 and Claude Code 2.1.287 installed from npm, by the `real-agents` CI job running `scripts/real_agent_check.py`: detection, install for both Agents, health including Codex's L3 probe, state record, uninstall, and a check that nothing of Agent Guidance's is left. Its first run failed on Windows and macOS and found a real cross-platform defect, which is the evidence that the job tests something Linux could not |
 | Packaging/clean install | IMPLEMENTED | wheel build, wheel reinstall, entry-point smoke in CI/release checks |
 | Update | IMPLEMENTED | `cli/main.py` resolves upstream live through `resolve_upstream_refs` and reports unchecked components separately from unchanged ones; the Registry is the fallback when upstream cannot be reached. It reinstalls at the new ref rather than migrating state across versions, which is the stated behaviour, not a gap |
 
@@ -48,7 +48,7 @@ outside what has been executed anywhere:
 
 - **Live GitHub discovery.** Every end-to-end run so far was made in a container whose GitHub access
   is restricted to this repository, so the Registry and verified-cache paths are exercised and the
-  live search path is not. GrayOM reports that refusal correctly — as an access decision rather than
+  live search path is not. Agent Guidance reports that refusal correctly — as an access decision rather than
   a rate limit — but the path itself is unverified.
 - **Uninstalling a component the user has edited.** The directory is preserved on purpose and the
   component stays recorded, so removing it is still the user's own job. That is the safe behaviour,

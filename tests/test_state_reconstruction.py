@@ -9,19 +9,19 @@ import json
 
 import pytest
 
-from grayom_agent_guidance.cli.main import _state_components
-from grayom_agent_guidance.errors import ConfigurationError
-from grayom_agent_guidance.models import (
+from agent_guidance.cli.main import _state_components
+from agent_guidance.errors import ConfigurationError
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod, MultiAgentManifest,
     Ownership,
 )
-from grayom_agent_guidance.state import ManagedComponent, StateStore
+from agent_guidance.state import ManagedComponent, StateStore
 
 
 def _managed(**overrides) -> ManagedComponent:
     values = {
         "component_id": "community-skills", "agents": [AgentType.CLAUDE_CODE],
-        "ownership": Ownership.GRAYOM_INSTALLED, "transaction_id": "t",
+        "ownership": Ownership.AGENT_GUIDANCE_INSTALLED, "transaction_id": "t",
         "component_name": "Community Skills", "component_type": ComponentType.SKILL,
         "source_repository": "https://github.com/someone/skills",
         "install_method": InstallMethod(
@@ -73,12 +73,12 @@ def test_a_registry_component_still_resolves_for_an_older_record(tmp_path) -> No
 
 
 def test_recording_an_install_stores_what_diagnosis_needs(tmp_path) -> None:
-    from grayom_agent_guidance.core.multi_agent_plan import build_multi_agent_plan
-    from grayom_agent_guidance.models import (
+    from agent_guidance.core.multi_agent_plan import build_multi_agent_plan
+    from agent_guidance.models import (
         AgentInstallation, InterviewAnswer, RecommendationItem, RecommendationPlan, SetupMode,
         WorkDomain,
     )
-    from grayom_agent_guidance.adapters import ClaudeCodeAdapter
+    from agent_guidance.adapters import ClaudeCodeAdapter
 
     component = Component(
         id="community-skills", name="Community Skills", type=ComponentType.SKILL,

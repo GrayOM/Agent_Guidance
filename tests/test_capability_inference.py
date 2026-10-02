@@ -1,5 +1,5 @@
-from grayom_agent_guidance.core import infer_capabilities
-from grayom_agent_guidance.models import AgentType, Capability, InterviewAnswer, SetupMode, WorkDomain
+from agent_guidance.core import infer_capabilities
+from agent_guidance.models import AgentType, Capability, InterviewAnswer, SetupMode, WorkDomain
 
 
 def test_security_choices_infer_implementation_capabilities() -> None:

@@ -1,4 +1,4 @@
-from grayom_agent_guidance.core.platform import EnvironmentType, OperatingSystem, detect_platform
+from agent_guidance.core.platform import EnvironmentType, OperatingSystem, detect_platform
 
 
 def test_wsl_detection_adds_warning(monkeypatch, tmp_path) -> None:

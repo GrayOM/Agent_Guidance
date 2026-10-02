@@ -1,7 +1,7 @@
 import tomllib
 from pathlib import Path
 
-from grayom_agent_guidance import __version__
+from agent_guidance import __version__
 
 
 def test_pyproject_uses_runtime_version_as_single_source() -> None:

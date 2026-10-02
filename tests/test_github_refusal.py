@@ -2,7 +2,7 @@
 
 Reporting every 403 as a rate limit sent a user with a scoped or expired token away for an
 hour over something that would never change on its own. It happened in a real run: the
-token was valid but scoped to one repository, and GrayOM said "rate limited" four times
+token was valid but scoped to one repository, and Agent Guidance said "rate limited" four times
 while `remaining=unknown` sat in the same message as the evidence against it.
 """
 
@@ -11,11 +11,11 @@ import asyncio
 import httpx
 import pytest
 
-from grayom_agent_guidance.models import AgentType, SourceType
-from grayom_agent_guidance.sources.base import RawCandidate, SourceUnavailable
-from grayom_agent_guidance.sources.budget import DiscoveryBudget
-from grayom_agent_guidance.sources.github import GitHubSource, describe_refusal
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.models import AgentType, SourceType
+from agent_guidance.sources.base import RawCandidate, SourceUnavailable
+from agent_guidance.sources.budget import DiscoveryBudget
+from agent_guidance.sources.github import GitHubSource, describe_refusal
+from agent_guidance.sources.validator import ComponentValidator
 
 
 def _response(status: int, headers: dict[str, str] | None = None, message: str = "") -> httpx.Response:

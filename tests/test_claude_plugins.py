@@ -14,28 +14,28 @@ from typing import Any
 
 import pytest
 
-from grayom_agent_guidance.adapters import ClaudeCodeAdapter
-from grayom_agent_guidance.adapters.claude_plugins import (
+from agent_guidance.adapters import ClaudeCodeAdapter
+from agent_guidance.adapters.claude_plugins import (
     COMMAND_APPROVAL_HINT, ClaudePluginCli, PluginCliUnavailable,
 )
-from grayom_agent_guidance.adapters.codex import AdapterError
-from grayom_agent_guidance.core.compatibility import evaluate_compatibility
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters.codex import AdapterError
+from agent_guidance.core.compatibility import evaluate_compatibility
+from agent_guidance.models import (
     AgentInstallation, AgentType, Capability, CompatibilityStatus, Component, ComponentType,
     InstallKind, InstallMethod, SourceType,
 )
-from grayom_agent_guidance.sources.base import RawCandidate
-from grayom_agent_guidance.sources.github import _file_priority
-from grayom_agent_guidance.sources.normalizer import normalize_candidate
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.sources.base import RawCandidate
+from agent_guidance.sources.github import _file_priority
+from agent_guidance.sources.normalizer import normalize_candidate
+from agent_guidance.sources.validator import ComponentValidator
 
 
 MARKETPLACE_PATH = ".claude-plugin/marketplace.json"
 
 
-def marketplace(*plugins: dict[str, str], name: str = "grayom-lab") -> str:
+def marketplace(*plugins: dict[str, str], name: str = "agent-guidance-lab") -> str:
     return json.dumps({
-        "name": name, "owner": {"name": "GrayOM"},
+        "name": name, "owner": {"name": "Agent Guidance"},
         "plugins": [{"source": f"./plugins/{item['name']}", **item} for item in plugins],
     })
 
@@ -65,8 +65,8 @@ def test_marketplace_repository_becomes_an_installable_plugin() -> None:
 
     assert component.type == ComponentType.PLUGIN
     assert component.install_method.kind == InstallKind.PLUGIN_MARKETPLACE
-    assert component.install_method.plugin_id == "sast@grayom-lab"
-    assert component.install_method.marketplace == "grayom-lab"
+    assert component.install_method.plugin_id == "sast@agent-guidance-lab"
+    assert component.install_method.marketplace == "agent-guidance-lab"
     assert component.install_method.marketplace_source == "https://github.com/example/lab"
     assert AgentType.CLAUDE_CODE in component.supported_agents
 
@@ -79,7 +79,7 @@ def test_marketplace_repository_becomes_an_installable_plugin() -> None:
 
 
 def test_plugin_without_a_marketplace_is_refused_with_a_stated_reason() -> None:
-    """A bare plugin.json has no install path GrayOM can take or reverse.
+    """A bare plugin.json has no install path Agent Guidance can take or reverse.
 
     Claude Code fetches a plugin through a marketplace, so a repository that only declares a
     plugin manifest is recorded as PLUGIN_GIT and rejected by name, rather than appearing on
@@ -122,7 +122,7 @@ def test_multi_plugin_marketplace_picks_the_closest_match_and_says_which() -> No
         {"name": "auditor", "description": "static analysis and vulnerability research for code review"},
     )))
 
-    assert component.install_method.plugin_id == "auditor@grayom-lab"
+    assert component.install_method.plugin_id == "auditor@agent-guidance-lab"
     assert any(
         "declares 2 plugins" in warning and "auditor" in warning
         for warning in component.validation_warnings
@@ -239,7 +239,7 @@ def test_forbidden_flags_are_never_passed_to_claude(tmp_path) -> None:
 
 
 def test_a_missing_executable_is_its_own_error(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("grayom_agent_guidance.adapters.claude_plugins.shutil.which", lambda _: None)
+    monkeypatch.setattr("agent_guidance.adapters.claude_plugins.shutil.which", lambda _: None)
     with pytest.raises(PluginCliUnavailable):
         ClaudePluginCli().installed()
 
@@ -263,16 +263,16 @@ def test_a_plugin_needing_command_approval_is_handed_back_to_the_user(tmp_path) 
 
 def test_the_real_mutation_commands_carry_the_scope_and_the_json_flag(tmp_path) -> None:
     """These are the two commands that change the user's machine, so their shape is asserted."""
-    cli = fake_claude(tmp_path, json.dumps({"outcome": "ok", "marketplace": "grayom-lab"}))
+    cli = fake_claude(tmp_path, json.dumps({"outcome": "ok", "marketplace": "agent-guidance-lab"}))
 
-    assert cli.add_marketplace("https://github.com/example/lab") == "grayom-lab"
-    cli.remove_marketplace("grayom-lab")
-    cli.uninstall("sast@grayom-lab")
+    assert cli.add_marketplace("https://github.com/example/lab") == "agent-guidance-lab"
+    cli.remove_marketplace("agent-guidance-lab")
+    cli.uninstall("sast@agent-guidance-lab")
 
     assert recorded_calls(tmp_path) == [
         "plugin marketplace add https://github.com/example/lab --scope user --json",
-        "plugin marketplace remove grayom-lab --scope user --json",
-        "plugin uninstall sast@grayom-lab --scope user --json",
+        "plugin marketplace remove agent-guidance-lab --scope user --json",
+        "plugin uninstall sast@agent-guidance-lab --scope user --json",
     ]
 
 
@@ -285,9 +285,9 @@ def test_an_ok_that_names_no_marketplace_is_not_treated_as_success(tmp_path) -> 
 
 
 def test_install_returns_the_id_claude_actually_used(tmp_path) -> None:
-    cli = fake_claude(tmp_path, json.dumps({"outcome": "ok", "pluginId": "sast@grayom-lab"}))
+    cli = fake_claude(tmp_path, json.dumps({"outcome": "ok", "pluginId": "sast@agent-guidance-lab"}))
 
-    assert cli.install("sast@grayom-lab") == "sast@grayom-lab"
+    assert cli.install("sast@agent-guidance-lab") == "sast@agent-guidance-lab"
 
 
 def test_a_reading_command_that_returns_an_object_is_rejected(tmp_path) -> None:
@@ -326,8 +326,8 @@ class StubCli(ClaudePluginCli):
 
     def add_marketplace(self, source: str, scope: str = "user") -> str:
         self.calls.append(("marketplace add", source))
-        self._marketplaces.add("grayom-lab")
-        return "grayom-lab"
+        self._marketplaces.add("agent-guidance-lab")
+        return "agent-guidance-lab"
 
     def remove_marketplace(self, name: str, scope: str = "user") -> None:
         self.calls.append(("marketplace remove", name))
@@ -350,8 +350,8 @@ def plugin_component() -> Component:
         github_url="https://github.com/example/lab",
         supported_agents={AgentType.CLAUDE_CODE}, capabilities={Capability.SOURCE_ANALYSIS},
         install_method=InstallMethod(
-            kind=InstallKind.PLUGIN_MARKETPLACE, plugin_id="sast@grayom-lab",
-            marketplace="grayom-lab", marketplace_source="https://github.com/example/lab",
+            kind=InstallKind.PLUGIN_MARKETPLACE, plugin_id="sast@agent-guidance-lab",
+            marketplace="agent-guidance-lab", marketplace_source="https://github.com/example/lab",
         ),
     )
 
@@ -362,24 +362,24 @@ def test_install_adds_the_marketplace_then_the_plugin_and_records_both(tmp_path)
 
     assert cli.calls == [
         ("marketplace add", "https://github.com/example/lab"),
-        ("install", "sast@grayom-lab"),
+        ("install", "sast@agent-guidance-lab"),
     ]
-    assert result.added_marketplaces == ["grayom-lab"]
-    assert result.installed_plugins == ["sast@grayom-lab"]
+    assert result.added_marketplaces == ["agent-guidance-lab"]
+    assert result.installed_plugins == ["sast@agent-guidance-lab"]
     assert result.changed
 
 
 def test_a_marketplace_the_user_already_had_is_not_recorded_as_ours(tmp_path) -> None:
     """Rollback must not remove a marketplace this run did not add."""
-    cli = StubCli(marketplaces={"grayom-lab"})
+    cli = StubCli(marketplaces={"agent-guidance-lab"})
     result = ClaudeCodeAdapter(tmp_path, plugins=cli).install_plugin(plugin_component())
 
-    assert cli.calls == [("install", "sast@grayom-lab")]
+    assert cli.calls == [("install", "sast@agent-guidance-lab")]
     assert result.added_marketplaces == []
 
 
 def test_an_already_installed_plugin_is_preserved(tmp_path) -> None:
-    cli = StubCli(installed={"sast@grayom-lab": {"installPath": "/cache/sast", "enabled": True}})
+    cli = StubCli(installed={"sast@agent-guidance-lab": {"installPath": "/cache/sast", "enabled": True}})
     result = ClaudeCodeAdapter(tmp_path, plugins=cli).install_plugin(plugin_component())
 
     assert cli.calls == []
@@ -410,7 +410,7 @@ def test_rollback_removes_the_plugin_before_the_marketplace(tmp_path) -> None:
     """A marketplace cannot be removed while a plugin installed from it is still there."""
     adapter = ClaudeCodeAdapter(tmp_path, plugins=StubCli())
     manifest = adapter.backup(tmp_path / "backup")
-    from grayom_agent_guidance.models import InstallationManifest
+    from agent_guidance.models import InstallationManifest
 
     installation = InstallationManifest(backup=manifest)
     installation.record(adapter.install_plugin(plugin_component()))
@@ -421,7 +421,7 @@ def test_rollback_removes_the_plugin_before_the_marketplace(tmp_path) -> None:
     result = adapter.rollback(installation)
 
     assert cli.calls == [
-        ("uninstall", "sast@grayom-lab"), ("marketplace remove", "grayom-lab"),
+        ("uninstall", "sast@agent-guidance-lab"), ("marketplace remove", "agent-guidance-lab"),
     ]
     assert not result.errors
 
@@ -449,14 +449,14 @@ def test_a_marketplace_registered_under_another_name_retargets_the_install(tmp_p
 
 def test_health_check_separates_installed_from_merely_enabled(tmp_path) -> None:
     component = plugin_component()
-    cli = StubCli(installed={"sast@grayom-lab": {"installPath": "/cache/sast", "enabled": False}})
+    cli = StubCli(installed={"sast@agent-guidance-lab": {"installPath": "/cache/sast", "enabled": False}})
     checks = {
         check.name: check
         for check in ClaudeCodeAdapter(tmp_path, plugins=cli).health_check([component]).checks
     }
 
-    assert checks["claude_plugin_installed:sast@grayom-lab"].passed
-    enabled = checks["claude_plugin_enabled:sast@grayom-lab"]
+    assert checks["claude_plugin_installed:sast@agent-guidance-lab"].passed
+    enabled = checks["claude_plugin_enabled:sast@agent-guidance-lab"]
     assert not enabled.passed and not enabled.fatal, "switched off is a warning, not a failure"
 
 
@@ -464,35 +464,35 @@ def test_health_check_fails_when_the_plugin_is_not_installed(tmp_path) -> None:
     result = ClaudeCodeAdapter(tmp_path, plugins=StubCli()).health_check([plugin_component()])
     failed = [check for check in result.checks if not check.passed and check.fatal]
 
-    assert any(check.name == "claude_plugin_installed:sast@grayom-lab" for check in failed)
+    assert any(check.name == "claude_plugin_installed:sast@agent-guidance-lab" for check in failed)
 
 
 def test_listing_plugins_falls_back_to_settings_when_the_cli_is_unavailable(tmp_path) -> None:
     """`enabledPlugins` is the only record left when `claude` cannot be run."""
     settings = tmp_path / ".claude" / "settings.json"
     settings.parent.mkdir(parents=True)
-    settings.write_text(json.dumps({"enabledPlugins": {"sast@grayom-lab": True}}), encoding="utf-8")
+    settings.write_text(json.dumps({"enabledPlugins": {"sast@agent-guidance-lab": True}}), encoding="utf-8")
 
     class Unavailable(StubCli):
         def installed(self) -> dict[str, dict[str, Any]]:
             raise PluginCliUnavailable("claude is not installed")
 
     adapter = ClaudeCodeAdapter(tmp_path, plugins=Unavailable())
-    assert adapter.list_existing_plugins() == ["sast@grayom-lab"]
+    assert adapter.list_existing_plugins() == ["sast@agent-guidance-lab"]
     assert os.path.exists(settings)
 
 
 def test_the_install_summary_names_the_plugin_and_the_marketplace() -> None:
     """The user is told what landed in one line, without reading their Agent's config."""
-    from grayom_agent_guidance.models import InstalledComponent
+    from agent_guidance.models import InstalledComponent
 
     installed = InstalledComponent(
         agent=AgentType.CLAUDE_CODE, component_id="example-lab", name="lab",
         type=ComponentType.PLUGIN, changed=True,
-        installed_plugins=["sast@grayom-lab"], added_marketplaces=["grayom-lab"],
+        installed_plugins=["sast@agent-guidance-lab"], added_marketplaces=["agent-guidance-lab"],
     )
     assert installed.summary() == (
-        "Plugin sast@grayom-lab installed, marketplace grayom-lab added"
+        "Plugin sast@agent-guidance-lab installed, marketplace agent-guidance-lab added"
     )
 
     preserved = InstalledComponent(
@@ -513,7 +513,7 @@ def test_every_curated_plugin_is_installable_and_claude_code_only() -> None:
     entry written from the repository name would ship an install command that never
     resolves. Codex cannot load Claude Code plugins at all.
     """
-    from grayom_agent_guidance.registry.loader import load_registry
+    from agent_guidance.registry.loader import load_registry
 
     plugins = [item for item in load_registry() if item.type == ComponentType.PLUGIN]
     assert plugins, "the curated plugin registry is empty"
@@ -541,8 +541,8 @@ def test_two_plugins_from_one_marketplace_repository_stay_two_candidates() -> No
     union of everyone's capabilities — a component that does not exist, recommended with a
     reason listing capabilities it does not have.
     """
-    from grayom_agent_guidance.core.discovery import _merge_candidates
-    from grayom_agent_guidance.registry.loader import load_registry
+    from agent_guidance.core.discovery import _merge_candidates
+    from agent_guidance.registry.loader import load_registry
 
     plugins = [item for item in load_registry() if item.type == ComponentType.PLUGIN]
     merged = [item for item in _merge_candidates(plugins) if item.type == ComponentType.PLUGIN]
@@ -560,7 +560,7 @@ def test_two_plugins_from_one_marketplace_repository_stay_two_candidates() -> No
 
 def test_one_repository_offering_the_same_plugin_twice_still_merges() -> None:
     """Keying on the install id must not stop a real duplicate from merging."""
-    from grayom_agent_guidance.core.discovery import _merge_candidates
+    from agent_guidance.core.discovery import _merge_candidates
 
     first = plugin_component()
     second = plugin_component()

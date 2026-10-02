@@ -1,5 +1,5 @@
-from grayom_agent_guidance.cli.interview import build_answer
-from grayom_agent_guidance.models import AgentType, SetupMode, WorkDomain
+from agent_guidance.cli.interview import build_answer
+from agent_guidance.models import AgentType, SetupMode, WorkDomain
 
 
 def test_interview_accepts_multiple_domains_and_tasks() -> None:

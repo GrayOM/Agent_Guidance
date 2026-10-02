@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
-from grayom_agent_guidance.errors import ConfigurationError
-from grayom_agent_guidance.models import AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod
-from grayom_agent_guidance.runtime import (
+from agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
+from agent_guidance.errors import ConfigurationError
+from agent_guidance.models import AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod
+from agent_guidance.runtime import (
     OperationLock, OperationLockedError, PathSecurityError, ProcessRunner,
     ProcessTimeoutError, validate_managed_path,
 )
-from grayom_agent_guidance.runtime.lock import _pid_alive
-from grayom_agent_guidance.state import StateStore
+from agent_guidance.runtime.lock import _pid_alive
+from agent_guidance.state import StateStore
 
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -22,8 +22,8 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 def mcp(agent: AgentType) -> Component:
     return Component(
-        id="grayom-test", name="GrayOM Test", type=ComponentType.MCP,
-        github_url="https://github.com/example/grayom-test", supported_agents={agent},
+        id="agent-guidance-test", name="Agent Guidance Test", type=ComponentType.MCP,
+        github_url="https://github.com/example/agent-guidance-test", supported_agents={agent},
         capabilities={Capability.REPOSITORY_ACCESS},
         install_method=InstallMethod(kind=InstallKind.MCP_HTTP, url="https://example.test/mcp"),
     )
@@ -45,11 +45,11 @@ def test_complex_fixture_preserves_unrelated_settings(tmp_path, agent, adapter_t
     adapter = adapter_type(tmp_path)
     adapter.configure_mcp(mcp(agent))
     assert unknown_key in target.read_text(encoding="utf-8")
-    assert "grayom-test" in target.read_text(encoding="utf-8")
+    assert "agent-guidance-test" in target.read_text(encoding="utf-8")
 
 
 def test_operation_lock_rejects_concurrent_owner_and_recovers_stale_lock(tmp_path) -> None:
-    path = tmp_path / "grayom.lock"
+    path = tmp_path / "agent-guidance.lock"
     with OperationLock(path, "setup"):
         with pytest.raises(OperationLockedError):
             OperationLock(path, "update").acquire()
@@ -98,11 +98,11 @@ def test_adapter_capabilities_are_explicit(tmp_path) -> None:
     }
     # Plugin support depends on Claude Code's CLI being present, so both states are stated
     # explicitly rather than inherited from whatever is on this machine's PATH.
-    from grayom_agent_guidance.adapters.claude_plugins import ClaudePluginCli
+    from agent_guidance.adapters.claude_plugins import ClaudePluginCli
 
     present = ClaudeCodeAdapter(tmp_path, plugins=ClaudePluginCli(executable="/usr/bin/claude"))
     assert present.capabilities.plugins
 
     with pytest.MonkeyPatch.context() as patch:
-        patch.setattr("grayom_agent_guidance.adapters.claude_plugins.shutil.which", lambda _: None)
+        patch.setattr("agent_guidance.adapters.claude_plugins.shutil.which", lambda _: None)
         assert not ClaudeCodeAdapter(tmp_path).capabilities.plugins

@@ -1,4 +1,4 @@
-from grayom_agent_guidance.adapters import AgentAdapter
+from agent_guidance.adapters import AgentAdapter
 
 
 def test_adapter_contract_includes_inspection_version_and_inventory() -> None:

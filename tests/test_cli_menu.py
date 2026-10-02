@@ -1,11 +1,11 @@
 from typer.testing import CliRunner
 
-from grayom_agent_guidance.cli.main import app
+from agent_guidance.cli.main import app
 
 
 def test_help_and_version_are_fast_and_non_networked(monkeypatch) -> None:
     monkeypatch.setattr(
-        "grayom_agent_guidance.cli.main.discover_components_sync",
+        "agent_guidance.cli.main.discover_components_sync",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("network called")),
     )
     runner = CliRunner()
@@ -18,8 +18,8 @@ def test_help_and_version_are_fast_and_non_networked(monkeypatch) -> None:
 def test_the_plan_table_shows_only_what_will_be_installed() -> None:
     """A live run put ten "Skipped" rows around the two components that mattered."""
     from rich.console import Console
-    from grayom_agent_guidance.cli.ui import show_plan
-    from grayom_agent_guidance.models import (
+    from agent_guidance.cli.ui import show_plan
+    from agent_guidance.models import (
         AgentType, Capability, Component, ComponentType, InterviewAnswer, RecommendationItem,
         RecommendationPlan, SetupMode, WorkDomain,
     )

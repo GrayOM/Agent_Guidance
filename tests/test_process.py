@@ -1,6 +1,6 @@
 """Reading a version number out of each Agent's own `--version` output."""
 
-from grayom_agent_guidance.runtime import read_version
+from agent_guidance.runtime import read_version
 
 
 def test_read_version_takes_the_number_out_of_each_agents_own_format():

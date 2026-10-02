@@ -2,7 +2,7 @@
 
 The other GitHub tests write their responses by hand, so they prove the code works against the
 fields those tests chose to include. This one serves `tests/fixtures/github_repository.json`,
-captured verbatim from `GET /repos/grayom/agent_guidance` (95 fields, public metadata of this
+captured verbatim from `GET /repos/agent-guidance/agent_guidance` (95 fields, public metadata of this
 project's own repository, with the volatile counters and timestamps pinned). A search response
 carries the same repository object as its items, so the fixture stands in for both.
 
@@ -21,13 +21,13 @@ from pathlib import Path
 import httpx
 import pytest
 
-from grayom_agent_guidance.core.recommender import recommend
-from grayom_agent_guidance.models import (
+from agent_guidance.core.recommender import recommend
+from agent_guidance.models import (
     AgentType, Capability, ComponentType, InterviewAnswer, SetupMode, WorkDomain,
 )
-from grayom_agent_guidance.sources.cache import CandidateCache
-from grayom_agent_guidance.sources.github import GitHubSource
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.sources.cache import CandidateCache
+from agent_guidance.sources.github import GitHubSource
+from agent_guidance.sources.validator import ComponentValidator
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "github_repository.json"
@@ -115,7 +115,8 @@ def test_discovery_reads_a_real_repository_object_end_to_end(repository, tmp_pat
     assert result.discovered == 1 and result.validated == 1
     component = result.candidates[0]
 
-    # The id is derived from a real full_name, which is mixed case and carries an underscore.
+    # Derived from a real full_name: mixed case, an underscore, and the owner's name,
+    # which is GrayOM whatever the project itself is called.
     assert component.id == "grayom-agent_guidance"
     assert str(component.github_url) == repository["html_url"]
     assert component.type is ComponentType.SKILL

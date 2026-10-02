@@ -3,11 +3,11 @@ import asyncio
 import httpx
 import pytest
 
-from grayom_agent_guidance.models import AgentType, Capability, ComponentType
-from grayom_agent_guidance.sources.base import SourceUnavailable
-from grayom_agent_guidance.sources.cache import CandidateCache
-from grayom_agent_guidance.sources.github import GitHubSource
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.models import AgentType, Capability, ComponentType
+from agent_guidance.sources.base import SourceUnavailable
+from agent_guidance.sources.cache import CandidateCache
+from agent_guidance.sources.github import GitHubSource
+from agent_guidance.sources.validator import ComponentValidator
 
 
 def github_handler(request: httpx.Request) -> httpx.Response:

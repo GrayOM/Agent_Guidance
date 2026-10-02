@@ -1,4 +1,4 @@
-from grayom_agent_guidance.sources.repository_security import scan_repository
+from agent_guidance.sources.repository_security import scan_repository
 
 
 def test_repository_security_uses_file_evidence_for_warning_metadata() -> None:

@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from grayom_agent_guidance.models import InterviewAnswer, RiskLevel, SetupMode
+from agent_guidance.models import InterviewAnswer, RiskLevel, SetupMode
 
 
 def test_risk_levels_are_limited() -> None:
