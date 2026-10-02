@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Fixed
+
+- `docs/assets/grayom-mark.svg` was not well-formed XML. A comment in it carried a double
+  hyphen, which XML forbids, so GitHub and other strict parsers refused the file and the
+  README showed a broken image. Chromium parses SVG leniently and drew it correctly, which is
+  why rendering it in a browser -- the check meant to be the careful one -- reported nothing.
+
+### Added
+
+- `tests/test_assets.py` parses every SVG in `docs/assets` with a strict XML parser, names the
+  double-hyphen case directly, and checks that none of them carry executable content. A
+  rendered screenshot shows how a file looks; it does not show that the file is well formed,
+  and that distinction is what let a broken asset ship.
+
+## Unreleased
+
 ### Changed
 
 - The mark is a terminal window with a prompt and the lines being written into it, which is
