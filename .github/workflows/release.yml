@@ -1,11 +1,22 @@
 name: Release
 
 # A pushed tag is not a release on GitHub; the release object has to be created through the
-# API. This does that, so the tag is the only manual step and the notes come from the file in
-# the repository rather than a second copy typed into a web form.
+# API. This does that, so the notes come from the file in the repository rather than a second
+# copy typed into a web form.
+#
+# There are two ways in. A pushed tag is the usual one. workflow_dispatch exists because not
+# every environment that can push a branch can push a tag: this session's git credentials are
+# scoped to branch refs and GitHub answers 403 on refs/tags. Dispatched, the job creates the
+# tag itself, from the repository's own token, at the commit it checked out.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, without a leading v (e.g. 0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -19,22 +30,38 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Work out what is being released
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
       # The tag and the package have to agree. A tag that says one thing while the built
       # artefact says another is worse than no release, because the artefact is what people
       # install and the tag is what they cite.
-      - name: Check the tag matches the package version
+      - name: Check the version matches the package
         run: |
           python -m pip install --upgrade pip build
           python -m build
-          tag="${GITHUB_REF_NAME#v}"
           built=$(ls dist/*.whl | sed -E 's/.*-([0-9][^-]*)-py3.*/\1/')
-          echo "tag=$tag built=$built"
-          test "$tag" = "$built"
+          echo "asked=${{ steps.target.outputs.version }} built=$built"
+          test "${{ steps.target.outputs.version }}" = "$built"
 
       - name: Take the notes from the changelog
-        run: python scripts/release_notes.py "${GITHUB_REF_NAME#v}" > notes.md
+        run: python scripts/release_notes.py "${{ steps.target.outputs.version }}" > notes.md
 
+      # `gh release create` creates the tag when it does not exist, at --target, so a dispatched
+      # run needs no separate tag step and a tag-triggered run finds its tag already there.
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md
+        run: |
+          gh release create "${{ steps.target.outputs.tag }}" dist/* \
+            --title "${{ steps.target.outputs.tag }}" \
+            --notes-file notes.md \
+            --target "$GITHUB_SHA"
