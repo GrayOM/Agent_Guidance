@@ -12,16 +12,15 @@ from grayom_agent_guidance.core.explainer import PlanExplanation
 from grayom_agent_guidance import __version__
 
 
-# A prompt in a frame, echoing docs/assets/grayom-mark.svg. One line, because the marks that
-# came before this were drawings: a five-row eye whose corner arrowheads read as a media
-# control, and a redrawn lid that read as a chip. At the width a 96-column terminal occupies,
-# every multi-row attempt came out as scattered brackets, so the drawing stays in the SVG.
+# An eye around a reticle, echoing docs/assets/grayom-mark.svg. One line, because every
+# multi-row attempt at this came out as scattered brackets once rendered at the width a
+# 96-column terminal occupies, so the drawing stays in the SVG where curves are available.
 #
 # The pointer character U+276F must not appear here. scripts/capture_screens.py treats a line
 # starting with it as a question waiting for an answer, so a header carrying one would have the
 # capture typing into the startup banner.
 LOGO = """
-   [ >_ ]
+   ( ◎ )
 """
 
 
@@ -42,7 +41,7 @@ def _brand() -> Group:
 
 def _mark() -> Text:
     mark = Text(LOGO, style="bold bright_blue")
-    mark.highlight_regex(r">_", style="bold bright_magenta")
+    mark.highlight_regex("◎", style="bold bright_cyan")
     return mark
 
 

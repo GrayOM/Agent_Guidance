@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+### Changed
+
+- The mark is an eye again, with a scanner reticle for an iris: a broken outer arc, a ring of
+  sixteen ticks, an inner ring and a core. The plain eye before it was withdrawn for reading as
+  nmap's logo, and the reticle is what keeps this one from doing the same; it also says what
+  the program is for. Green, which is the user's choice and the colour of the reference they
+  gave.
+- The terminal header carries `( ◎ )` to match. It still avoids U+276F, because
+  `scripts/capture_screens.py` reads a line starting with that character as a question waiting
+  for an answer.
+
+It sits on a dark rounded card, which was asked for: the mark reads as an app icon rather
+than a line drawing, and the green keeps its glow against it. The trade is that the mark now
+brings its own background to a light page instead of sitting on it.
+
+The file stays deliberately plain: no defs, gradients, clipPath or `use`, so there is no
+internal reference for a renderer to resolve and nothing is fetched. The reticle is sized to
+sit inside the lid rather than clipped to it. Checked with two strict XML parsers, and rendered
+in Chromium under the headers GitHub serves a README image with.
+
+## Unreleased
+
 ### Fixed
 
 - `docs/assets/grayom-mark.svg` was not well-formed XML. A comment in it carried a double
