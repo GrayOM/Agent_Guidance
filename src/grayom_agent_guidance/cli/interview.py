@@ -2,10 +2,11 @@ import sys
 
 from InquirerPy import inquirer
 
+from grayom_agent_guidance.labels import domain_label, task_label
 from grayom_agent_guidance.models import AgentInstallation, AgentType, InterviewAnswer, SetupMode, WorkDomain
 
 
-DOMAIN_LABELS = {domain.value.replace("_", " ").title(): domain for domain in WorkDomain}
+DOMAIN_LABELS = {domain_label(domain): domain for domain in WorkDomain}
 
 # Every domain needs detailed tasks: the domain alone only says what is true of everyone in
 # it, so the selected tasks are what makes a recommendation specific to this person. A domain
@@ -106,8 +107,8 @@ def run_interview(detected: list[AgentInstallation] | None = None) -> InterviewA
         choices = TASKS.get(domain, [])
         if choices:
             tasks.extend(inquirer.checkbox(
-                message=f"Select tasks for {domain.value.replace('_', ' ').title()}:",
-                choices=[{"name": task.replace("_", " ").title(), "value": task} for task in choices],
+                message=f"Select tasks for {domain_label(domain)}:",
+                choices=[{"name": task_label(task), "value": task} for task in choices],
             ).execute())
     mode = inquirer.select(
         message="Configuration mode:",

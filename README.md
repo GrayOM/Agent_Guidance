@@ -1,143 +1,57 @@
 <p align="center">
-  <img src="docs/assets/grayom-eye.svg" width="220" alt="GrayOM eye logo">
+  <img src="docs/assets/grayom-eye.svg" width="180" alt="GrayOM eye logo">
 </p>
 
 <h1 align="center">Agent Guidance</h1>
 
-<p align="center"><strong>업무만 선택하면 필요한 AI Agent 확장 구성을 찾아서 설치·검증해 주는 CLI 도구</strong></p>
+<p align="center">
+  <strong>Codex와 Claude Code를 설치한 다음, 뭘 깔아야 할지 대신 정해주는 CLI</strong>
+</p>
 
-Agent Guidance은 사용자가 Skill, MCP, Plugin을 직접 공부하거나 고르게 하지 않습니다. 사용하는 Agent와
-업무를 선택하면 호환성, 기능 중복, 충돌, 보안 위험을 분석하고 설치 전 전체 Plan을 보여줍니다.
+<p align="center">
+  하는 일을 고르면 됩니다. Skill·MCP·Plugin 이름을 알 필요도, 고를 필요도 없습니다.
+</p>
 
-> GrayOM은 Codex, Claude Code 자체를 설치하지 않습니다. 이미 설치된 Agent의 확장 환경만
-> 안전하게 설정합니다.
+---
 
-## 빠른 시작
-
-### 1. 준비 사항
-
-- Python 3.11 이상
-- Git
-- [pipx](https://pipx.pypa.io/stable/installation/)
-- Codex, Claude Code 중 하나 이상
-
-### 2. 설치
-
-Windows, macOS, Linux에서 같은 명령을 사용합니다.
-
-```bash
-pipx install "git+https://github.com/GrayOM/Agent_Guidance.git@main"
-```
-
-### 3. 실행
+## 명령어는 하나입니다
 
 ```bash
 grayom
 ```
 
-이후에는 화면의 선택지만 따라가면 됩니다. 다른 명령어를 외울 필요가 없습니다.
+나머지는 전부 화살표 키와 Enter로 끝납니다.
 
-![GrayOM first run](docs/assets/first-run.svg)
+<img src="docs/assets/menu.svg" alt="grayom 실행 화면 - 설치된 Agent를 찾고 메뉴를 보여준다">
 
-## 어떻게 동작하나요?
+설치된 Agent를 먼저 찾아서 버전과 함께 보여주고, 할 일을 고르게 합니다. 각 줄이 **선택하면 무슨 일이
+일어나는지**까지 적혀 있으니 처음 써도 어떤 걸 눌러야 할지 고민할 필요가 없습니다.
 
-1. 설치된 Agent를 찾습니다.
-2. 사용할 Agent와 업무 분야, 세부 작업을 선택합니다.
-3. GrayOM이 필요한 기능을 내부적으로 추론합니다.
-4. Local Registry와 검증된 후보에서 Skill, MCP, Plugin을 추천합니다.
-5. 호환성, 중복, 충돌, 권한과 보안 위험을 검사합니다.
-6. 실제 변경 내용을 하나의 Plan으로 보여줍니다.
-7. 사용자가 한 번 승인하면 설정을 백업한 뒤 설치합니다.
-8. Health Check에 실패하면 변경 전 상태로 되돌립니다.
+> 이 문서의 모든 스크린샷은 실제로 프로그램을 돌려서 캡처한 것입니다
+> (`python scripts/capture_screens.py`). 손으로 그린 그림이 아닙니다.
 
-사용자에게 `GitHub MCP가 필요한가?`, `브라우저 자동화가 필요한가?` 같은 기술 질문을 하지 않습니다.
-사용자는 자신의 업무만 선택하면 됩니다.
+---
 
-## 사용자가 선택하는 항목
+## 설치
 
-- Agent: Codex, Claude Code
-- 업무 분야(대분류, 중복 선택): 일반 개발, 웹 개발, 모바일 개발, AI Agent 개발,
-  보안 도구 개발, 취약점 연구, **모의해킹·취약점 진단**, OSINT, DevOps, 데이터 분석, 리서치·문서 작성
-- 세부 작업(소분류, 중복 선택): 선택한 대분류마다 다시 묻습니다. 예를 들어 모의해킹·취약점 진단은
-  웹앱 진단, 인증 점검, 권한 우회 점검, 인젝션 점검, API 보안 점검, 모바일 앱 진단,
-  소스코드 보안 점검, 인프라 모의침투, 설정 취약점 진단, 클라우드 설정 진단, 재현·PoC,
-  진단 보고서, 재점검을 묻습니다.
-- 구성 모드
-  - **Minimal**: 필요한 구성만 최소한으로 설치
-  - **Performance**: 전문 구성과 기능 범위를 더 넓게 사용
-
-## 설치 전 확인할 수 있는 내용
-
-최종 Plan에는 다음 내용이 한 번에 표시됩니다.
-
-- 설치할 Skill, MCP, Plugin
-- 선택한 이유와 제외한 후보
-- Agent별 호환성
-- 기능 중복과 설정 충돌
-- 파일·네트워크·Shell·Credential 접근 위험
-- 변경할 설정과 백업 여부
-
-보안 등급은 `LOW`와 `WARNING`만 사용합니다. `WARNING`은 설치 차단이 아니라 사용자가 승인 전에
-확인해야 할 정보입니다.
-
-## 안전하게 변경하는 방식
-
-- 최종 승인 전에는 Agent 설정을 수정하지 않습니다.
-- 기존 설정은 덮어쓰지 않고 merge합니다.
-- 모든 대상 Agent를 먼저 백업한 뒤 설치를 시작합니다.
-- 기존에 사용자가 설치한 Component는 삭제하지 않습니다.
-- 설정 parse, Skill discovery, MCP 등록과 실행 가능 여부를 확인합니다.
-- 중간 실패 시 새로 만든 항목을 제거하고 기존 설정을 복원합니다.
-- Token, password, OAuth 값, SSH key를 로그나 상태 파일에 저장하지 않습니다.
-
-자세한 보안 정책은 [SECURITY.md](SECURITY.md)를 참고하십시오.
-
-## 자주 쓰는 기능
-
-일반 사용자는 `grayom`만 실행하면 됩니다. 문제가 있는 경우에만 아래 명령을 사용합니다.
+Windows, macOS, Linux 모두 같은 명령입니다.
 
 ```bash
-grayom doctor    # 현재 Agent 설정 점검
-grayom rollback  # 최근 GrayOM 변경 복원
+pipx install "git+https://github.com/GrayOM/Agent_Guidance.git@main"
 ```
-
-설치하지 않고 추천 Plan만 확인하려면:
-
-```bash
-grayom setup --dry-run
-```
-
-## 업데이트와 제거
-
-업데이트:
-
-```bash
-pipx upgrade grayom-agent-guidance
-```
-
-제거:
-
-```bash
-pipx uninstall grayom-agent-guidance
-```
-
-프로그램을 제거해도 이미 적용된 Agent 설정은 자동 복원되지 않습니다. 설정까지 되돌리려면 제거 전에
-`grayom rollback`을 실행하십시오.
-
-## 설치 문제 해결
-
-### `grayom` 명령을 찾을 수 없는 경우
-
-```bash
-pipx ensurepath
-```
-
-명령 실행 후 터미널을 다시 엽니다.
-
-### pipx를 사용할 수 없는 경우
 
 <details>
-<summary>Python 가상환경으로 설치하기</summary>
+<summary>준비물과, pipx가 없을 때</summary>
+
+필요한 것:
+
+- Python 3.11 이상
+- Git
+- Codex 또는 Claude Code 중 **하나 이상이 이미 설치되어 있어야** 합니다
+  (GrayOM은 Agent 자체를 설치하지 않습니다)
+
+pipx가 없다면 [pipx 설치 문서](https://pipx.pypa.io/stable/installation/)를 보시거나, 가상환경으로
+설치할 수 있습니다.
 
 ```bash
 git clone https://github.com/GrayOM/Agent_Guidance.git
@@ -145,44 +59,166 @@ cd Agent_Guidance
 python -m venv .venv
 ```
 
-가상환경을 활성화한 뒤 설치합니다.
+가상환경을 활성화한 뒤 (Windows PowerShell은 `.venv\Scripts\Activate.ps1`,
+macOS·Linux는 `source .venv/bin/activate`):
 
 ```bash
 python -m pip install .
 grayom
 ```
 
-Windows PowerShell의 활성화 경로는 `.venv\Scripts\Activate.ps1`, macOS/Linux는
-`source .venv/bin/activate`입니다.
+`grayom` 명령을 찾을 수 없다고 나오면 `pipx ensurepath`를 실행하고 터미널을 다시 여십시오.
+그래도 안 되면 `python -m grayom_agent_guidance`로도 똑같이 실행됩니다.
 
 </details>
 
+---
+
+## 쓰는 순서
+
+### 1. 분야를 고릅니다 (복수 선택)
+
+<img src="docs/assets/interview-domains.svg" alt="업무 분야 선택 화면 - 모의해킹과 OSINT를 선택한 상태">
+
+Space로 체크, Enter로 다음. 설치된 Agent는 **미리 체크되어** 있으니 그대로 Enter를 눌러도 됩니다.
+
+고를 수 있는 분야는 11개입니다.
+
+| | |
+|---|---|
+| General development | 일반 개발 |
+| Web development | 웹 개발 |
+| Mobile development | 모바일 개발 |
+| AI Agent development | AI Agent 개발 |
+| Security tool development | 보안 도구 개발 |
+| Vulnerability research | 취약점 연구 |
+| **Penetration testing and assessment** | **모의해킹·취약점 진단** |
+| OSINT | OSINT |
+| DevOps | DevOps |
+| Data analysis | 데이터 분석 |
+| Research and writing | 리서치·문서 작성 |
+
+### 2. 세부 작업을 고릅니다 (복수 선택)
+
+고른 분야마다 한 번씩 더 묻습니다. 여기가 추천의 정확도를 결정하는 부분입니다.
+
+<img src="docs/assets/interview-tasks.svg" alt="모의해킹 세부 작업 선택 화면 - 웹앱 진단, 인증 점검, 인젝션 점검을 선택한 상태">
+
+모의해킹·취약점 진단은 위처럼 13개를 묻습니다 — 웹앱 진단, 인증 점검, 권한 우회 점검, 인젝션 점검,
+API 보안 점검, 모바일 앱 진단, 소스코드 보안 점검, 인프라 모의침투, 설정 취약점 진단,
+클라우드 설정 진단, 재현·PoC, 진단 보고서, 재점검. 전체 11개 분야에 세부 작업이 78개 있습니다.
+
+마지막으로 구성 모드를 고릅니다.
+
+- **Minimal** — 꼭 필요한 것만 최소로
+- **Performance** — 전문 구성까지 넓게
+
+> `GitHub MCP가 필요한가요?` 같은 건 묻지 않습니다. 하는 일만 고르면 필요한 기능은 GrayOM이
+> 역으로 추론합니다.
+
+### 3. 설치 전에 전부 보여줍니다
+
+<img src="docs/assets/plan.svg" alt="추천 결과 화면 - 선택된 구성요소와 선정 이유">
+
+- 설치할 Skill·MCP·Plugin과 **그걸 고른 이유**
+- 어떤 선택에서 그 기능이 추론됐는지 (`Inferred from:`)
+- 검토했지만 **제외한 후보** 개수와 사유
+- 아무 후보도 못 채운 기능 (`No verified candidate covers:`) — 과장하지 않고 못 채운 건 못 채웠다고 적습니다
+
+이어서 Agent별로 실제 변경 내용과 보안 검토 결과가 나옵니다.
+
+<img src="docs/assets/plan-approval.svg" alt="변경 내역과 보안 검토 화면">
+
+- Agent별 ADD/SKIP과 호환성
+- 파일·네트워크·Shell·Credential 접근 위험 (`LOW` / `WARNING`)
+- 기능이 겹치는 구성요소 (`Conflicts`)
+- 몇 개가 설치되고, 기존 설정은 백업·merge된다는 사실
+
+`WARNING`은 설치를 막는 게 아니라 **승인 전에 알고 있어야 할 정보**입니다. 여기서 Enter를 누르기
+전까지 Agent 설정 파일은 한 글자도 바뀌지 않습니다.
+
+---
+
+## 안전장치
+
+- 최종 승인 전에는 아무것도 쓰지 않습니다.
+- 기존 설정은 덮어쓰지 않고 **merge**합니다. 주석, 직접 등록한 MCP 서버, 기존 옵션 모두 유지됩니다.
+- 설치 전에 대상 Agent를 **전부 백업**합니다.
+- 직접 설치한 Component는 건드리지 않습니다.
+- 중간에 실패하면 새로 만든 것만 지우고 원래 상태로 되돌립니다.
+- Token, password, OAuth 값, SSH key는 로그·상태 파일에 저장하지 않습니다.
+
+자세한 내용은 [SECURITY.md](SECURITY.md)에 있습니다.
+
+---
+
+## 문제가 생겼을 때
+
+평소에는 `grayom` 하나면 됩니다. 아래는 뭔가 이상할 때만 쓰십시오.
+
+```bash
+grayom doctor      # Agent와 설치된 것들이 아직 정상인지 점검
+grayom rollback    # 마지막 변경 되돌리기
+grayom uninstall   # GrayOM이 설치한 것 제거 (직접 만든 파일은 남김)
+grayom debug-info  # 버그 리포트에 첨부할 진단 정보 (토큰·비밀번호 미포함)
+```
+
+<img src="docs/assets/doctor.svg" alt="grayom doctor 실행 결과">
+
+전부 메뉴에서도 똑같이 고를 수 있습니다. 명령어를 외울 필요는 없습니다.
+
+<details>
+<summary><code>grayom --help</code> 전체</summary>
+
+<img src="docs/assets/help.svg" alt="grayom --help 출력">
+
+</details>
+
+### 업데이트와 제거
+
+```bash
+pipx upgrade grayom-agent-guidance    # GrayOM 자체 업데이트
+pipx uninstall grayom-agent-guidance  # GrayOM 제거
+```
+
+GrayOM을 지워도 이미 적용된 Agent 설정은 자동으로 돌아오지 않습니다. 설정까지 되돌리려면 지우기 전에
+`grayom rollback` 또는 `grayom uninstall`을 먼저 실행하십시오.
+
+---
+
 ## 지원 범위
 
-| Agent | 감지 | Skill | MCP | Plugin | Health Check / Rollback |
-|---|---:|---:|---:|---:|---:|
-| Codex | 지원 | 지원 | 지원 | 미지원 | 지원 |
-| Claude Code | 지원 | 지원 | 지원 | 지원 | 지원 |
+| Agent | 감지 | Skill | MCP | Plugin | 점검 / 되돌리기 |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Codex | O | O | O | — | O |
+| Claude Code | O | O | O | O | O |
 
-Codex는 자동 설치 대상 Plugin 형식이 없어 Plugin capability가 `false`입니다.
+Codex는 자동 설치할 Plugin 형식 자체가 없습니다.
 
-Claude Code Plugin은 `claude plugin` 명령에 위임해 설치하고, GrayOM 트랜잭션으로 감쌉니다.
-`claude`를 실행할 수 없으면 Plugin capability가 `false`가 되어 추천에서 제외됩니다. 설치는
-marketplace manifest(`.claude-plugin/marketplace.json`)가 선언한 Plugin만 대상으로 하며,
-`marketplace add` → `install` 두 단계 모두 이 실행이 추가한 것만 기록해 rollback에서 역순으로
-되돌립니다. marketplace가 선언한 명령을 수락해야 하는 Plugin은 자동으로 승인하지 않고 직접
-실행할 명령을 안내합니다.
+Claude Code Plugin은 `claude plugin` 명령에 위임하고 GrayOM 트랜잭션으로 감쌉니다. `claude`를
+실행할 수 없으면 Plugin은 추천에서 빠집니다. marketplace manifest가 선언한 Plugin만 설치하며,
+`marketplace add` → `install` 두 단계 모두 이번 실행이 추가한 것만 기록해 역순으로 되돌립니다.
+**marketplace가 선언한 명령을 수락해야 하는 Plugin은 자동 승인하지 않고**, 직접 실행할 명령을
+안내만 합니다.
 
-## 데이터 저장 위치
+---
 
-GrayOM의 백업, 캐시, 로그, 상태 정보는 기본적으로 `~/.grayom/`에 저장됩니다. 사용자의 업무 선택
-Profile 전체와 Credential 값은 저장하지 않습니다.
+## 알아두면 좋은 것
+
+- 상태·백업·캐시·로그는 `~/.grayom/`에 저장됩니다. 업무 선택 Profile 전체와 Credential 값은
+  저장하지 않습니다.
+- 추천 후보는 내장 Registry와 GitHub에서 가져옵니다. `GITHUB_TOKEN`이 있으면 후보 수가 늘어나고,
+  없어도 동작합니다.
+- 네트워크 없이 쓰려면 `grayom setup --offline` — 내장 Registry와 검증된 캐시만 사용합니다.
+  위 Plan 스크린샷이 이 모드로 캡처한 것이라, 실제로는 후보가 더 많습니다.
+
+---
 
 ## 개발자 문서
 
 - [Architecture](architecture.md)
-- [Release audit](docs/release-audit.md)
 - [Security policy](SECURITY.md)
+- [Release audit](docs/release-audit.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 

@@ -1,3 +1,4 @@
+import re
 import os
 import subprocess  # nosec B404
 from pathlib import Path
@@ -51,3 +52,18 @@ class ProcessRunner:
             detail = result.stderr.strip() or result.stdout.strip() or "no process output"
             raise RuntimeError(f"process failed ({result.returncode}): {args[0]}: {detail}")
         return result
+
+
+def read_version(output: str) -> str | None:
+    """The version number out of a `--version` line, which each Agent formats differently.
+
+    `codex --version` prints "codex-cli 0.160.0" and `claude --version` prints
+    "2.1.287 (Claude Code)". Both were stored raw and then printed inside GrayOM's own
+    parentheses, which read as "Codex (codex-cli 0.160.0)" and, worse, "Claude Code (2.1.287
+    (Claude Code))". Only the number is wanted, so the first dotted-numeric token is taken.
+
+    The whole stripped line is returned when there is no such token, because an unparsed
+    version still tells a user more than no version at all.
+    """
+    match = re.search(r"\d+(?:\.\d+)+(?:[-+][0-9A-Za-z.\-]+)?", output)
+    return match.group(0) if match else (output.strip() or None)

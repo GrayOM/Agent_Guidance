@@ -8,7 +8,7 @@ from grayom_agent_guidance.models import (
     ComponentInstallResult, ComponentRemovalResult, ComponentType, HealthCheckResult, HealthLevel,
     InstallationManifest, InstallKind, RollbackResult,
 )
-from grayom_agent_guidance.runtime import ProcessRunner
+from grayom_agent_guidance.runtime import ProcessRunner, read_version
 
 from .base import AgentAdapter
 from .claude_plugins import ClaudePluginCli
@@ -44,7 +44,7 @@ class ClaudeCodeAdapter(AgentAdapter):
         version = None
         if executable:
             try:
-                version = ProcessRunner().run([executable, "--version"], timeout=3).stdout.strip() or None
+                version = read_version(ProcessRunner().run([executable, "--version"], timeout=3).stdout)
             except (OSError, RuntimeError):
                 pass
         detected = bool(executable or self.claude_home.exists() or self.config_path.exists())

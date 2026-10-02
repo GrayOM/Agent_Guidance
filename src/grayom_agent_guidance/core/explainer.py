@@ -2,6 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
+from grayom_agent_guidance.labels import domain_label, task_label
 from grayom_agent_guidance.models import AgentType, Capability, RecommendationPlan
 from .capability_inference import DOMAIN_CAPABILITIES, TASK_CAPABILITIES
 
@@ -39,10 +40,10 @@ def _origins(plan: RecommendationPlan, capabilities: set[Capability]) -> list[st
     origins = []
     for domain in plan.interview.domains:
         if DOMAIN_CAPABILITIES.get(domain, set()) & capabilities:
-            origins.append(domain.value.replace("_", " ").title())
+            origins.append(domain_label(domain))
     for task in plan.interview.tasks:
         if TASK_CAPABILITIES.get(task, set()) & capabilities:
-            origins.append(task.replace("_", " ").title())
+            origins.append(task_label(task))
     return list(dict.fromkeys(origins))
 
 

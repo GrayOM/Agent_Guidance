@@ -17,7 +17,7 @@ from grayom_agent_guidance.models import (
     ComponentInstallResult, ComponentRemovalResult, ComponentType, HealthCheckResult, HealthLevel,
     InstallationManifest, InstallKind, RollbackResult,
 )
-from grayom_agent_guidance.runtime import ProcessRunner, validate_managed_path
+from grayom_agent_guidance.runtime import ProcessRunner, read_version, validate_managed_path
 
 from .base import AgentAdapter
 
@@ -62,7 +62,7 @@ class CodexAdapter(AgentAdapter):
         version = None
         if executable:
             try:
-                version = ProcessRunner().run([executable, "--version"], timeout=3).stdout.strip() or None
+                version = read_version(ProcessRunner().run([executable, "--version"], timeout=3).stdout)
             except (OSError, RuntimeError):
                 pass
         return AgentInstallation(

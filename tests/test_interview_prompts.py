@@ -28,6 +28,7 @@ from InquirerPy import inquirer
 
 import grayom_agent_guidance.cli.interview as interview
 from grayom_agent_guidance.cli.interview import DOMAIN_LABELS, TASKS, run_interview
+from grayom_agent_guidance.labels import domain_label
 from grayom_agent_guidance.models import AgentInstallation, AgentType, SetupMode, WorkDomain
 
 
@@ -165,7 +166,7 @@ def test_the_interview_asks_agents_then_domains_then_tasks_then_mode(monkeypatch
     assert [kind for kind, _, _ in recorder.asked] == [
         "checkbox", "checkbox", "checkbox", "select",
     ]
-    assert recorder.asked[2][1] == "Select tasks for Penetration Testing:"
+    assert recorder.asked[2][1] == f"Select tasks for {domain_label(WorkDomain.PENETRATION_TESTING)}:"
     assert recorder.asked[2][2] == TASKS[target]
     assert answer.agents == [AgentType.CLAUDE_CODE]
     assert answer.domains == [target]
