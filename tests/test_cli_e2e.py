@@ -2,18 +2,18 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
-from grayom_agent_guidance.adapters import CodexAdapter
-from grayom_agent_guidance.cli.main import app
-from grayom_agent_guidance.core.discovery import DiscoveryResult
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import CodexAdapter
+from agent_guidance.cli.main import app
+from agent_guidance.core.discovery import DiscoveryResult
+from agent_guidance.models import (
     AgentInstallation, AgentType, Capability, Component, ComponentType, InterviewAnswer,
     InstallKind, InstallMethod, SetupMode, WorkDomain,
 )
-from grayom_agent_guidance.sources.base import SourceResult
+from agent_guidance.sources.base import SourceResult
 
 
 def test_setup_rerun_doctor_update_and_rollback(tmp_path, monkeypatch) -> None:
-    grayom_root = tmp_path / "grayom"
+    agent_guidance_root = tmp_path / "agent-guidance"
     agent_home = tmp_path / "agent-home"
     adapter = CodexAdapter(agent_home)
     answer = InterviewAnswer(
@@ -30,14 +30,14 @@ def test_setup_rerun_doctor_update_and_rollback(tmp_path, monkeypatch) -> None:
         candidates=[component],
         sources=[SourceResult(source="registry", checked=True, discovered=1, validated=1)],
     )
-    monkeypatch.setattr("grayom_agent_guidance.cli.main.grayom_home", lambda: grayom_root)
-    monkeypatch.setattr("grayom_agent_guidance.state.grayom_home", lambda: grayom_root)
-    monkeypatch.setattr("grayom_agent_guidance.cli.main.detect_agents", lambda: detected)
-    monkeypatch.setattr("grayom_agent_guidance.cli.main._adapter_map", lambda home=None: {AgentType.CODEX: adapter})
-    monkeypatch.setattr("grayom_agent_guidance.cli.main.run_interview", lambda items: answer)
-    monkeypatch.setattr("grayom_agent_guidance.cli.main.discover_components_sync", lambda *args, **kwargs: discovery)
+    monkeypatch.setattr("agent_guidance.cli.main.agent_guidance_home", lambda: agent_guidance_root)
+    monkeypatch.setattr("agent_guidance.state.agent_guidance_home", lambda: agent_guidance_root)
+    monkeypatch.setattr("agent_guidance.cli.main.detect_agents", lambda: detected)
+    monkeypatch.setattr("agent_guidance.cli.main._adapter_map", lambda home=None: {AgentType.CODEX: adapter})
+    monkeypatch.setattr("agent_guidance.cli.main.run_interview", lambda items: answer)
+    monkeypatch.setattr("agent_guidance.cli.main.discover_components_sync", lambda *args, **kwargs: discovery)
     monkeypatch.setattr(
-        "grayom_agent_guidance.cli.main.inquirer.confirm",
+        "agent_guidance.cli.main.inquirer.confirm",
         lambda **kwargs: SimpleNamespace(execute=lambda: True),
     )
 

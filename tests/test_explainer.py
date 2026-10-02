@@ -1,8 +1,8 @@
-from grayom_agent_guidance.core import explain_plan
-from grayom_agent_guidance.labels import domain_label
-from grayom_agent_guidance.models import AgentType, InterviewAnswer, SetupMode, WorkDomain
-from grayom_agent_guidance.core import recommend
-from grayom_agent_guidance.registry import load_registry
+from agent_guidance.core import explain_plan
+from agent_guidance.labels import domain_label
+from agent_guidance.models import AgentType, InterviewAnswer, SetupMode, WorkDomain
+from agent_guidance.core import recommend
+from agent_guidance.registry import load_registry
 
 
 def test_explainer_links_components_to_user_work() -> None:

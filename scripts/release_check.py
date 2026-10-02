@@ -32,7 +32,7 @@ def _is_release(version: str) -> bool:
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
-    package = importlib.import_module("grayom_agent_guidance")
+    package = importlib.import_module("agent_guidance")
     version = package.__version__
     changelog = (root / "CHANGELOG.md").read_text(encoding="utf-8")
     checks = {
@@ -43,13 +43,13 @@ def main() -> int:
         # notes say "Unreleased" tells a user nothing about what they installed.
         "released version": _is_release(version),
         "changelog documents this version": _documented(version, changelog),
-        "CLI import": callable(importlib.import_module("grayom_agent_guidance.cli.main").app),
+        "CLI import": callable(importlib.import_module("agent_guidance.cli.main").app),
         "adapter imports": all(
-            hasattr(importlib.import_module("grayom_agent_guidance.adapters"), name)
+            hasattr(importlib.import_module("agent_guidance.adapters"), name)
             for name in ("CodexAdapter", "ClaudeCodeAdapter")
         ),
-        "registry parse": bool(importlib.import_module("grayom_agent_guidance.registry").load_registry()),
-        "state schema": importlib.import_module("grayom_agent_guidance.state").StateDocument().schema_version == 1,
+        "registry parse": bool(importlib.import_module("agent_guidance.registry").load_registry()),
+        "state schema": importlib.import_module("agent_guidance.state").StateDocument().schema_version == 1,
     }
     for name, passed in checks.items():
         print(f"{'PASS' if passed else 'FAIL'} {name}")

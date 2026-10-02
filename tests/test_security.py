@@ -1,5 +1,5 @@
-from grayom_agent_guidance.core import analyze_security
-from grayom_agent_guidance.models import (
+from agent_guidance.core import analyze_security
+from agent_guidance.models import (
     AgentType, Compatibility, Component, ComponentType, DependencyRequirement,
     InstallKind, InstallMethod, Permission, RiskLevel,
 )

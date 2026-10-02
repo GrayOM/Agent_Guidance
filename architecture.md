@@ -1,8 +1,8 @@
-# GrayOM Agent Guidance Architecture
+# Agent Guidance Architecture
 
 ## 1. 목적과 경계
 
-GrayOM Agent Guidance는 이미 설치된 AI Agent를 감지하고 사용자의 업무 선택에서 필요한 capability를
+Agent Guidance는 이미 설치된 AI Agent를 감지하고 사용자의 업무 선택에서 필요한 capability를
 추론해 Skill, MCP, Plugin을 추천·설치·검증하는 CLI다. Agent, IDE, Node.js, Python, Docker, Git 등
 일반 개발환경은 설치하지 않으며 최종 일괄 승인 전에는 Agent 설정이나 backup을 만들지 않는다.
 
@@ -21,7 +21,7 @@ Component × Agent compatibility를 다시 계산해 지원되는 Agent에만 �
 | `sources` | Registry·공식·GitHub 수집, 정규화, 검증, 보안 증거, cache |
 | `network` | timeout, proxy 환경, User-Agent를 포함한 공통 HTTP client |
 | `runtime` | `shell=False` process runner, timeout/redaction, path validation, operation lock |
-| `state` | GrayOM ownership, Agent 사용 관계, source/ref/path/hash, transaction 참조 |
+| `state` | Agent Guidance ownership, Agent 사용 관계, source/ref/path/hash, transaction 참조 |
 
 CLI 입력은 `InterviewAnswer`로 core에 전달하며 core에서 `input()`을 호출하지 않는다.
 
@@ -43,12 +43,12 @@ Agent별 사용자 범위는 공식 문서에 근거한다.
 | Claude Code | `~/.claude/skills` | `~/.claude.json`의 `mcpServers` | `claude plugin` CLI 위임 (marketplace ID 없으면 `PARTIAL`) |
 
 설정은 read → parse → merge → validate → fsync → atomic replace 순으로 쓴다. 같은 MCP 이름에 다른
-구현이 있으면 사용자 설정을 보존하고 가능한 경우 `-grayom` 별칭을 사용한다.
+구현이 있으면 사용자 설정을 보존하고 가능한 경우 `-agent-guidance` 별칭을 사용한다.
 
 Plugin은 설정 키가 아니다. `settings.json`의 `enabledPlugins`는 이미 설치된 Plugin을 켜고 끄는
 스위치일 뿐이고, 실제 설치는 marketplace 등록 → 아카이브 수신 → manifest 검증 → `~/.claude/plugins/cache`
 전개로 이루어지며 marketplace가 선언한 명령을 실행할 수도 있다. 그 신뢰 모델을 재구현하지 않고
-Claude Code의 `claude plugin` 명령에 위임한 뒤 GrayOM 트랜잭션으로 감싼다. 각 단계에 역연산이
+Claude Code의 `claude plugin` 명령에 위임한 뒤 Agent Guidance 트랜잭션으로 감싼다. 각 단계에 역연산이
 있으므로 되돌릴 수 있다.
 
 | 단계 | 역연산 |
@@ -61,7 +61,7 @@ Claude Code의 `claude plugin` 명령에 위임한 뒤 GrayOM 트랜잭션으로
 marketplace를 제거할 수 없다). `--yes`, `--accept-command`는 절대 전달하지 않는다. marketplace가
 선언한 명령의 수락은 사용자의 결정이므로, 승인이 필요한 Plugin은 그 사실을 보고하고 건너뛴다. 되돌린 뒤 Claude Code의
 `installed_plugins.json`, `known_marketplaces.json`, `marketplaces/`는 모두 원상태로 돌아간다.
-`plugins/cache/` 아래 디렉터리는 Claude Code가 `.orphaned_at` 표시만 남기고 보관하며, GrayOM
+`plugins/cache/` 아래 디렉터리는 Claude Code가 `.orphaned_at` 표시만 남기고 보관하며, Agent Guidance
 관리 root 밖이라 직접 삭제하지 않는다.
 
 후보는 저장소의 `.claude-plugin/marketplace.json`에서 marketplace 이름과 Plugin 이름을 읽어
@@ -155,7 +155,7 @@ false인 component type은 설치 Plan에서 `UNSUPPORTED`로 제외한다. vers
 
 현재 환경과 추천 환경을 비교해 `UNCHANGED`, `ADD`, `UPDATE`, `REFERENCE`, `SKIP`, `CONFLICT`를
 만든다. 반복 setup은 동일 component를 다시 설치하거나 설정을 다시 쓰지 않는다. 새 추천에서 빠진
-기존 GrayOM component는 자동 삭제하지 않는다.
+기존 Agent Guidance component는 자동 삭제하지 않는다.
 
 ## 7. Shared component와 ownership
 
@@ -163,20 +163,20 @@ false인 component type은 설치 Plan에서 `UNSUPPORTED`로 제외한다. vers
 참조를 등록한다. HTTP MCP는 설치 자산 없이 endpoint를 공유하며 STDIO dependency는 존재 여부만
 검사하고 runtime 자체를 설치하지 않는다.
 
-Ownership은 `EXISTING`, `GRAYOM_INSTALLED`, `GRAYOM_MODIFIED`, `SHARED`다. `EXISTING` component는
+Ownership은 `EXISTING`, `AGENT_GUIDANCE_INSTALLED`, `AGENT_GUIDANCE_MODIFIED`, `SHARED`다. `EXISTING` component는
 update나 rollback 삭제 대상이 아니다.
 
 `uninstall`은 rollback과 다르다. rollback은 마지막 transaction을 되돌리므로 세 번 전 실행에서
 설치한 component에는 닿지 못하고, 입력이 transaction manifest다. `uninstall`은 State를 입력으로
 쓰므로 설치 시점과 무관하게 제거할 수 있다. 거부 규칙은 셋이고 모두 보고한다.
 
-1. `EXISTING` component는 GrayOM이 설치한 것이 아니므로 제거하지 않는다
+1. `EXISTING` component는 Agent Guidance가 설치한 것이 아니므로 제거하지 않는다
 2. 설치 시점 hash와 달라진 Skill 디렉터리는 사용자의 것이므로 보존하고, 그 component는 해당
    Agent에 대해 계속 기록된다(기록을 지우면 다음 실행이 옆에 두 번째 사본을 설치한다)
-3. GrayOM이 쓴 기록이 없는 MCP 등록 이름은 지우지 않는다
+3. Agent Guidance가 쓴 기록이 없는 MCP 등록 이름은 지우지 않는다
 
 3번이 State에 `configured_mcp`와 `added_marketplaces`를 Agent별로 남기는 이유다. MCP는 사용자가
-이미 가진 것에 따라 `<id>`, `<id>-grayom`, `<id>-grayom-2` 중 하나로 등록되므로, 이름을 추론하면
+이미 가진 것에 따라 `<id>`, `<id>-agent-guidance`, `<id>-agent-guidance-2` 중 하나로 등록되므로, 이름을 추론하면
 결국 사용자 자신의 서버를 지운다. 이 필드가 없는 과거 기록은 추측하지 않고 건너뛴다.
 
 여러 Agent가 공유하는 component는 마지막 Agent가 떠날 때까지 파일이 남고, 떠나는 Agent의 등록만
@@ -197,10 +197,10 @@ Multi-Agent 설치는 `PREPARED → BACKING_UP → APPLYING → VERIFYING → CO
 
 Manifest에는 원본/사후 hash, backup, 생성 경로, 설치/기존 component, shared ownership, 그리고 이
 실행이 추가한 Plugin과 marketplace를 기록한다.
-Rollback은 GrayOM marker가 있고 Adapter 관리 root 안에 있는 경로만 제거한다. 일부 rollback 실패는
+Rollback은 Agent Guidance marker가 있고 Adapter 관리 root 안에 있는 경로만 제거한다. 일부 rollback 실패는
 숨기지 않고 Agent별 오류를 남긴다.
 
-Mutating command는 `~/.grayom/grayom.lock`을 원자적으로 획득한다. 다음 setup은 미완료 transaction을
+Mutating command는 `~/.agent-guidance/agent-guidance.lock`을 원자적으로 획득한다. 다음 setup은 미완료 transaction을
 탐지해 새 변경 전에 rollback을 우선하며, live PID lock은 거부하고 stale lock만 회수한다.
 
 Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적 HTTP initialize/tools/list를
@@ -211,16 +211,16 @@ Codex는 config parse, Skill discovery, MCP 등록/command/endpoint와 선택적
 
 ## 9. CLI와 운영 데이터
 
-`grayom`은 interactive menu, `setup/recommend/doctor/update/rollback/debug-info`는 direct command다.
+`agent-guidance`은 interactive menu, `setup/recommend/doctor/update/rollback/debug-info`는 direct command다.
 `--help`와 `--version`은 discovery나 Agent 진단을 수행하지 않는다. `setup --dry-run`은 Plan까지
 실행하되 backup, config, state를 만들지 않는다.
 
-`GRAYOM_HOME` 또는 기본 `~/.grayom` 아래에 `config.yaml`, `cache/`, `backups/`, `logs/`, `state/`를
+`AGENT_GUIDANCE_HOME` 또는 기본 `~/.agent-guidance` 아래에 `config.yaml`, `cache/`, `backups/`, `logs/`, `state/`를
 둔다. JSONL event log와 debug bundle은 credential key와 Bearer token을 redact한다.
 
 ## 10. Update 범위
 
-`grayom update`는 `EXISTING`을 제외한 GrayOM-managed component만 대상으로 한다. 비교 기준은
+`agent-guidance update`는 `EXISTING`을 제외한 Agent Guidance-managed component만 대상으로 한다. 비교 기준은
 upstream이 현재 publish하는 ref이며, 고정 방식을 따라 commit pin은 default branch head commit,
 tag pin은 최신 release와 비교한다. upstream을 확인할 수 없는 component는 unchanged가 아니라
 미확인으로 보고하고 Local Registry의 검증된 source ref로 비교를 대체한다. `--offline`은 upstream

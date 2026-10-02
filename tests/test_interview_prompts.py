@@ -26,10 +26,10 @@ from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
 from InquirerPy import inquirer
 
-import grayom_agent_guidance.cli.interview as interview
-from grayom_agent_guidance.cli.interview import DOMAIN_LABELS, TASKS, run_interview
-from grayom_agent_guidance.labels import domain_label
-from grayom_agent_guidance.models import AgentInstallation, AgentType, SetupMode, WorkDomain
+import agent_guidance.cli.interview as interview
+from agent_guidance.cli.interview import DOMAIN_LABELS, TASKS, run_interview
+from agent_guidance.labels import domain_label
+from agent_guidance.models import AgentInstallation, AgentType, SetupMode, WorkDomain
 
 
 ENTER = "\r"
@@ -175,7 +175,7 @@ def test_the_interview_asks_agents_then_domains_then_tasks_then_mode(monkeypatch
 
 
 def test_an_agent_that_is_not_installed_is_never_offered(monkeypatch) -> None:
-    """GrayOM does not install Agents, so it must not offer to configure a missing one.
+    """Agent Guidance does not install Agents, so it must not offer to configure a missing one.
 
     InquirerPy's checkbox has no unselectable entry, so an undetected Agent is withheld from
     the list rather than shown disabled — which is what keeps Enter from selecting it.
@@ -199,7 +199,7 @@ def test_both_detected_agents_are_offered_when_both_are_present(monkeypatch) -> 
 
 
 def test_every_agent_is_offered_when_detection_was_not_run(monkeypatch) -> None:
-    """`grayom recommend` may ask before detecting, and then nothing is withheld."""
+    """`agent-guidance recommend` may ask before detecting, and then nothing is withheld."""
     _, recorder = interviewed(
         monkeypatch, None,
         [[AgentType.CODEX], [WorkDomain.GENERAL_DEVELOPMENT], [], SetupMode.MINIMAL],

@@ -26,7 +26,7 @@ jobs:
       - run: python -m pip install -r requirements-dev.lock
       - run: python -m pip install -e . --no-deps
       - run: python -m compileall -q src tests
-      - run: python -m pytest -q --cov=grayom_agent_guidance --cov-fail-under=70
+      - run: python -m pytest -q --cov=agent_guidance --cov-fail-under=70
 
   real-agents:
     # The audit's standing gap: every end-to-end run had happened on Linux, so Windows and
@@ -68,11 +68,11 @@ jobs:
       - run: python -m pip install -r requirements-dev.lock
       - run: python -m pip install -e . --no-deps
       - run: ruff check src tests
-      - run: mypy src/grayom_agent_guidance/models src/grayom_agent_guidance/runtime
+      - run: mypy src/agent_guidance/models src/agent_guidance/runtime
       - run: bandit -q -r src
       - run: pip-audit
       - run: python scripts/release_check.py
       - run: python -m build
       - run: python -c "import glob,subprocess,sys; subprocess.check_call([sys.executable,'-m','pip','install','--force-reinstall','--no-deps',glob.glob('dist/*.whl')[0]])"
-      - run: grayom --version
-      - run: grayom --help
+      - run: agent-guidance --version
+      - run: agent-guidance --help

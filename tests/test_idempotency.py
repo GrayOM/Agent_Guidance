@@ -1,7 +1,7 @@
 import tomllib
 
-from grayom_agent_guidance.adapters import CodexAdapter
-from grayom_agent_guidance.models import AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod
+from agent_guidance.adapters import CodexAdapter
+from agent_guidance.models import AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod
 
 
 def mcp_component() -> Component:

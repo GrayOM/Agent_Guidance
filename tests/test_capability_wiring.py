@@ -4,7 +4,7 @@ Three tables have to agree, and nothing used to hold them together:
 
 - `TASKS` / `DOMAIN_CAPABILITIES` / `TASK_CAPABILITIES` turn answers into capabilities
 - `CAPABILITY_TERMS` turns a capability into a GitHub search
-- `CAPABILITY_KEYWORDS` recognises that capability in a repository GrayOM found
+- `CAPABILITY_KEYWORDS` recognises that capability in a repository Agent Guidance found
 
 A capability missing from either of the last two is unsatisfiable: it is asked about, and
 then no candidate can ever cover it. `planning`, `development_workflow` and `test_execution`
@@ -14,13 +14,13 @@ it. These tests make the tables fail loudly instead of quietly recommending noth
 
 import pytest
 
-from grayom_agent_guidance.cli.interview import TASKS, build_answer
-from grayom_agent_guidance.core.capability_inference import (
+from agent_guidance.cli.interview import TASKS, build_answer
+from agent_guidance.core.capability_inference import (
     DOMAIN_CAPABILITIES, TASK_CAPABILITIES, infer_capabilities, infer_task_capabilities,
 )
-from grayom_agent_guidance.core.query_builder import CAPABILITY_TERMS, build_queries
-from grayom_agent_guidance.models import AgentType, Capability, ComponentType, SetupMode, WorkDomain
-from grayom_agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
+from agent_guidance.core.query_builder import CAPABILITY_TERMS, build_queries
+from agent_guidance.models import AgentType, Capability, ComponentType, SetupMode, WorkDomain
+from agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
 
 
 def _asked_capabilities() -> set[Capability]:
@@ -241,7 +241,7 @@ def test_dynamic_testing_is_recognised_from_the_tool_a_repository_names() -> Non
 def test_reproduction_asks_for_verification_and_a_write_up() -> None:
     """A diagnosis deliverable is a reproducible finding, not an attack tool.
 
-    Mapping this phase to offensive vocabulary would make GrayOM recommend weaponised
+    Mapping this phase to offensive vocabulary would make Agent Guidance recommend weaponised
     tooling by default for consulting work whose output is a report.
     """
     assert TASK_CAPABILITIES["finding_reproduction"] == {

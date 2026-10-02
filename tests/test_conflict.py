@@ -1,5 +1,5 @@
-from grayom_agent_guidance.core import analyze_conflicts
-from grayom_agent_guidance.models import AgentType, Compatibility, Component, ComponentType
+from agent_guidance.core import analyze_conflicts
+from agent_guidance.models import AgentType, Compatibility, Component, ComponentType
 
 
 def component(identifier: str) -> Component:

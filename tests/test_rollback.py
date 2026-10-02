@@ -1,8 +1,8 @@
 import json
 
-from grayom_agent_guidance.adapters import CodexAdapter
-from grayom_agent_guidance.core import InstallationTransaction
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import CodexAdapter
+from agent_guidance.core import InstallationTransaction
+from agent_guidance.models import (
     AgentType, CheckResult, Component, ComponentInstallResult, ComponentType,
     HealthCheckResult, InstallationManifest,
 )
@@ -20,7 +20,7 @@ def test_rollback_restores_config_and_removes_only_created_components(tmp_path) 
     existing = adapter.skills_root / "existing"
     created.mkdir(parents=True)
     existing.mkdir(parents=True)
-    created.joinpath(".grayom-component.json").write_text(
+    created.joinpath(".agent-guidance-component.json").write_text(
         json.dumps({"component_id": "created"}), encoding="utf-8",
     )
     existing.joinpath("SKILL.md").write_text("user content", encoding="utf-8")
@@ -59,7 +59,7 @@ def test_transaction_rolls_back_after_fatal_health_failure(tmp_path, monkeypatch
 
     def install(_component):
         created.mkdir(parents=True)
-        created.joinpath(".grayom-component.json").write_text(
+        created.joinpath(".agent-guidance-component.json").write_text(
             json.dumps({"component_id": "demo"}), encoding="utf-8",
         )
         return ComponentInstallResult(component_id="demo", changed=True, created_paths=[created])

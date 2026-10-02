@@ -2,12 +2,12 @@ import asyncio
 
 import httpx
 
-from grayom_agent_guidance.core.discovery import discover_components
-from grayom_agent_guidance.models import (
+from agent_guidance.core.discovery import discover_components
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InterviewAnswer, SetupMode,
     SourceType, TrustMetadata, WorkDomain,
 )
-from grayom_agent_guidance.sources.cache import CandidateCache
+from agent_guidance.sources.cache import CandidateCache
 
 
 def cached_component() -> Component:

@@ -12,21 +12,21 @@ from pathlib import Path
 
 import pytest
 
-from grayom_agent_guidance.adapters.codex import AdapterError
-from grayom_agent_guidance.adapters.json_support import (
+from agent_guidance.adapters.codex import AdapterError
+from agent_guidance.adapters.json_support import (
     NON_PUBLISHED_DIRECTORIES, foreign_skill_names, skill_group,
 )
-from grayom_agent_guidance.core.multi_agent_plan import _with_skill_policy
-from grayom_agent_guidance.core.skill_selection import (
+from agent_guidance.core.multi_agent_plan import _with_skill_policy
+from agent_guidance.core.skill_selection import (
     LIMIT_BY_MODE, SKIP_GROUP_FULL, SKIP_NAME_CLASH, SKIP_OVER_LIMIT, SKIP_REDUNDANT,
     SKIP_UNRELATED, SkillCandidate, group_quota, limit_for, select_skills,
 )
-from grayom_agent_guidance.models import (
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstalledComponent, InterviewAnswer,
     InstallKind, InstallMethod, RecommendationPlan, SetupMode, SkillSelectionPolicy,
     WorkDomain,
 )
-from grayom_agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
+from agent_guidance.sources.normalizer import CAPABILITY_KEYWORDS, mentions
 
 SECURITY = {Capability.VULNERABILITY_RESEARCH, Capability.SECURITY_ANALYSIS}
 
@@ -229,7 +229,7 @@ def test_a_components_own_skills_are_not_treated_as_a_name_clash(tmp_path) -> No
             f"---\nname: {skill}\ndescription: a security analysis tool\n---\n", encoding="utf-8",
         )
         if owner:
-            (directory / ".grayom-component.json").write_text(
+            (directory / ".agent-guidance-component.json").write_text(
                 json.dumps({"component_id": owner}), encoding="utf-8",
             )
 
@@ -290,11 +290,11 @@ def test_a_repository_with_no_match_says_so_rather_than_appearing_installed() ->
 def test_an_mcp_reports_the_name_it_was_registered_under() -> None:
     registered = InstalledComponent(
         agent=AgentType.CODEX, component_id="github", name="GitHub MCP",
-        type=ComponentType.MCP, changed=True, configured_mcp=["github-grayom"],
+        type=ComponentType.MCP, changed=True, configured_mcp=["github-agent-guidance"],
     )
     preserved = registered.model_copy(update={"changed": False})
 
-    assert registered.summary() == "MCP registered as github-grayom"
+    assert registered.summary() == "MCP registered as github-agent-guidance"
     assert preserved.summary() == "MCP already registered"
 
 
@@ -530,7 +530,7 @@ REGISTRY_CLONES = {
 
 
 def _curated_entries():
-    from grayom_agent_guidance.registry.loader import load_registry
+    from agent_guidance.registry.loader import load_registry
 
     return [item for item in load_registry() if item.install_method.subpaths]
 
@@ -550,7 +550,7 @@ def test_a_curated_path_cannot_reach_outside_the_repository_it_pinned() -> None:
 
 
 def test_a_curated_path_is_resolved_inside_the_clone_only(tmp_path) -> None:
-    from grayom_agent_guidance.adapters.json_support import _curated_files
+    from agent_guidance.adapters.json_support import _curated_files
 
     repo = tmp_path / "repo"
     (repo / "skills" / "wanted").mkdir(parents=True)
@@ -572,7 +572,7 @@ def test_a_curated_path_upstream_removed_is_reported_and_skipped(tmp_path, monke
     single upstream rename break every update of the component, so the path is reported and
     the rest still install.
     """
-    from grayom_agent_guidance.adapters.json_support import install_git_skills
+    from agent_guidance.adapters.json_support import install_git_skills
 
     source = tmp_path / "clone"
     for name in ("kept", "also-kept"):
@@ -583,7 +583,7 @@ def test_a_curated_path_upstream_removed_is_reported_and_skipped(tmp_path, monke
             encoding="utf-8",
         )
     monkeypatch.setattr(
-        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        "agent_guidance.adapters.json_support.clone_pinned",
         lambda component, destination: source,
     )
     component = Component(
@@ -607,12 +607,12 @@ def test_a_curated_path_upstream_removed_is_reported_and_skipped(tmp_path, monke
 
 
 def test_a_component_whose_every_curated_path_is_gone_fails_loudly(tmp_path, monkeypatch) -> None:
-    from grayom_agent_guidance.adapters.json_support import install_git_skills
+    from agent_guidance.adapters.json_support import install_git_skills
 
     source = tmp_path / "clone"
     source.mkdir()
     monkeypatch.setattr(
-        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        "agent_guidance.adapters.json_support.clone_pinned",
         lambda component, destination: source,
     )
     component = Component(
@@ -637,7 +637,7 @@ def test_curation_does_not_claim_a_capability_the_curated_set_cannot_cover() -> 
     baseline review of servers and databases the question asks about, so the claim was
     withdrawn rather than curated around.
     """
-    from grayom_agent_guidance.registry.loader import load_registry
+    from agent_guidance.registry.loader import load_registry
 
     entry = next(item for item in load_registry() if item.id == "trailofbits-skills")
 
@@ -658,7 +658,7 @@ def test_a_clone_root_that_is_not_its_own_real_path_still_installs(tmp_path, mon
     under `/var`, a symlink to `/private/var`. Either made `relative_to` raise and the whole
     install fail. A POSIX symlink reproduces the same mismatch here.
     """
-    from grayom_agent_guidance.adapters.json_support import install_git_skills
+    from agent_guidance.adapters.json_support import install_git_skills
 
     real = tmp_path / "actual-long-name"
     skill = real / "plugins" / "demo" / "skills" / "demo"
@@ -672,7 +672,7 @@ def test_a_clone_root_that_is_not_its_own_real_path_still_installs(tmp_path, mon
     assert shortened.resolve() != shortened, "the stand-in has to differ from its real path"
 
     monkeypatch.setattr(
-        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        "agent_guidance.adapters.json_support.clone_pinned",
         lambda component, destination: shortened,
     )
     component = Component(

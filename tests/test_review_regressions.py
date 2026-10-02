@@ -7,21 +7,21 @@ import sys
 import pytest
 from pydantic import ValidationError
 
-from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
-from grayom_agent_guidance.adapters.codex import MCP_DIFFERENT_SETTINGS_REASON
-from grayom_agent_guidance.core.discovery import _merge_candidates
-from grayom_agent_guidance.core.query_builder import build_queries
-from grayom_agent_guidance.errors import ConfigurationError
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
+from agent_guidance.adapters.codex import MCP_DIFFERENT_SETTINGS_REASON
+from agent_guidance.core.discovery import _merge_candidates
+from agent_guidance.core.query_builder import build_queries
+from agent_guidance.errors import ConfigurationError
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod,
     MultiAgentManifest, Ownership, SourceType, TrustMetadata,
 )
-from grayom_agent_guidance.observability import EventLogger
-from grayom_agent_guidance.runtime import PathSecurityError
-from grayom_agent_guidance.sources.base import RawCandidate
-from grayom_agent_guidance.sources.normalizer import _component_type
-from grayom_agent_guidance.sources.validator import ComponentValidator
-from grayom_agent_guidance.state import ManagedComponent, StateStore
+from agent_guidance.observability import EventLogger
+from agent_guidance.runtime import PathSecurityError
+from agent_guidance.sources.base import RawCandidate
+from agent_guidance.sources.normalizer import _component_type
+from agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.state import ManagedComponent, StateStore
 
 
 def _skill(component_id: str = "owner-repo", agents=None) -> Component:
@@ -114,7 +114,7 @@ def test_component_id_cannot_escape_the_managed_state_directory(tmp_path) -> Non
     store = StateStore(tmp_path / "state" / "components.json")
     store.document.components["../escape"] = ManagedComponent(
         component_id="../escape", agents=[AgentType.CODEX],
-        ownership=Ownership.GRAYOM_INSTALLED, transaction_id="t",
+        ownership=Ownership.AGENT_GUIDANCE_INSTALLED, transaction_id="t",
     )
     with pytest.raises(PathSecurityError):
         store.save()
@@ -176,7 +176,7 @@ def test_incidental_plugin_manifest_does_not_reclassify_a_skill_repository() -> 
 
 
 def test_event_log_does_not_expose_a_secret_it_was_given(tmp_path) -> None:
-    log = tmp_path / "logs" / "grayom.jsonl"
+    log = tmp_path / "logs" / "agent-guidance.jsonl"
     EventLogger(path=log).write("setup_complete", token="ghp_secret")
 
     assert "ghp_secret" not in log.read_text(encoding="utf-8")
@@ -188,7 +188,7 @@ def test_event_log_does_not_expose_a_secret_it_was_given(tmp_path) -> None:
 )
 def test_event_log_is_created_without_group_or_world_access(tmp_path) -> None:
     """The log was created under the default umask and chmoded only afterwards."""
-    log = tmp_path / "logs" / "grayom.jsonl"
+    log = tmp_path / "logs" / "agent-guidance.jsonl"
     EventLogger(path=log).write("setup_complete", token="ghp_secret")
 
     assert stat.S_IMODE(log.stat().st_mode) & 0o077 == 0
@@ -196,18 +196,18 @@ def test_event_log_is_created_without_group_or_world_access(tmp_path) -> None:
 
 def test_shared_runtime_warnings_reach_the_transaction_manifest(tmp_path) -> None:
     """architecture.md 7: a missing STDIO runtime is reported, never silently dropped."""
-    from grayom_agent_guidance.core.shared_components import SharedComponentManager
-    from grayom_agent_guidance.models import DependencyRequirement, SharedComponentRecord
+    from agent_guidance.core.shared_components import SharedComponentManager
+    from agent_guidance.models import DependencyRequirement, SharedComponentRecord
 
     component = Component(
         id="needs-runtime", name="Needs Runtime", type=ComponentType.MCP,
         github_url="https://github.com/owner/mcp",
         supported_agents={AgentType.CODEX},
         install_method=InstallMethod(
-            kind=InstallKind.MCP_STDIO, command="grayom-absent-runtime",
+            kind=InstallKind.MCP_STDIO, command="agent-guidance-absent-runtime",
         ),
         dependencies=[DependencyRequirement(
-            name="Absent", executable="grayom-absent-runtime", required=True,
+            name="Absent", executable="agent-guidance-absent-runtime", required=True,
         )],
     )
     record = SharedComponentRecord(
@@ -218,5 +218,5 @@ def test_shared_runtime_warnings_reach_the_transaction_manifest(tmp_path) -> Non
     manifest.shared_warnings.extend(SharedComponentManager().prepare(component, record))
 
     assert manifest.shared_warnings == [
-        "Needs Runtime dependency is unavailable: grayom-absent-runtime"
+        "Needs Runtime dependency is unavailable: agent-guidance-absent-runtime"
     ]

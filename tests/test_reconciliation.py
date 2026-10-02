@@ -1,6 +1,6 @@
-from grayom_agent_guidance.adapters import CodexAdapter
-from grayom_agent_guidance.core.reconcile import reconcile_component
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import CodexAdapter
+from agent_guidance.core.reconcile import reconcile_component
+from agent_guidance.models import (
     AgentType, Capability, CompatibilityStatus, Component, ComponentType,
     ReconciliationStatus,
 )

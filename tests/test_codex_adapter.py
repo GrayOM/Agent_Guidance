@@ -1,8 +1,8 @@
 import json
 import tomllib
 
-from grayom_agent_guidance.adapters import CodexAdapter
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import CodexAdapter
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod,
 )
 
@@ -73,13 +73,13 @@ def test_skill_install_discovers_valid_skill_and_preserves_existing(tmp_path, mo
     adapter = CodexAdapter(home=home)
     # Cloning is now the one shared implementation both Agents install through.
     monkeypatch.setattr(
-        "grayom_agent_guidance.adapters.json_support.clone_pinned",
+        "agent_guidance.adapters.json_support.clone_pinned",
         lambda component, destination: source,
     )
 
     first = adapter.install_skill(skill_component())
     target = home / ".agents" / "skills" / "demo-pack--demo"
-    marker = json.loads((target / ".grayom-component.json").read_text(encoding="utf-8"))
+    marker = json.loads((target / ".agent-guidance-component.json").read_text(encoding="utf-8"))
     second = adapter.install_skill(skill_component())
 
     assert first.changed and target in first.created_paths
@@ -97,7 +97,7 @@ def test_health_check_parses_config_discovers_skill_and_mcp(tmp_path, monkeypatc
     target.joinpath("SKILL.md").write_text(
         "---\nname: Demo\ndescription: Test skill\n---\n", encoding="utf-8",
     )
-    target.joinpath(".grayom-component.json").write_text(
+    target.joinpath(".agent-guidance-component.json").write_text(
         json.dumps({"component_id": "demo-pack"}), encoding="utf-8",
     )
     monkeypatch.setattr(adapter, "_probe_http_mcp", lambda server_id, config: (True, "discovered 10 tools"))

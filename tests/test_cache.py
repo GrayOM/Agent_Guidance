@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta, timezone
 
-from grayom_agent_guidance.models import (
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, SourceType, TrustMetadata,
 )
-from grayom_agent_guidance.sources.cache import CandidateCache
+from agent_guidance.sources.cache import CandidateCache
 
 
 def component() -> Component:

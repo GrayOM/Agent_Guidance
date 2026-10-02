@@ -1,0 +1,177 @@
+# Curated Claude Code plugins.
+#
+# Every entry below was read from the live marketplace manifest, not from memory. A curated
+# plugin has to carry the marketplace name and plugin id exactly as the manifest declares
+# them, because `claude plugin install` takes `<plugin>@<marketplace>` and fails on anything
+# else — and the two are not the same string as the repository. Verified 2026-10-02 against
+# Claude Code 2.1.287: adding `https://github.com/anthropics/claude-code` registers the
+# marketplace under the name `claude-code-plugins`, so that, not `claude-code`, is what the
+# install id must say.
+#
+# Only this first-party marketplace is curated. Its owner is Anthropic, the same party that
+# ships Claude Code, so recommending it adds no third party the user did not already trust.
+# Community marketplaces are left to GitHub discovery, which reads their manifests live and
+# shows the user what it found rather than Agent Guidance vouching for them.
+#
+# `security-guidance` is deliberately absent although the same marketplace offers it: it
+# installs a SessionStart hook that runs bash and Python, fetches the Claude Agent SDK on
+# first run and calls api.anthropic.com. That is a decision for the user to make knowingly,
+# not a default recommendation.
+#
+# Codex cannot load Claude Code plugins, so every entry lists claude_code alone.
+
+- id: claude-official-code-review
+  name: Code Review (Anthropic)
+  type: plugin
+  source: local_registry
+  github_url: https://github.com/anthropics/claude-code
+  official: true
+  supported_agents: [claude_code]
+  capabilities: [code_review, repository_access]
+  permissions: [filesystem_read, shell]
+  overlaps: [claude-official-pr-review-toolkit]
+  context_cost: 2
+  quality_score: 95
+  install_method:
+    kind: plugin_marketplace
+    plugin_id: code-review@claude-code-plugins
+    marketplace: claude-code-plugins
+    marketplace_source: https://github.com/anthropics/claude-code
+    repository: https://github.com/anthropics/claude-code
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-10-02"
+    license: Anthropic Commercial Terms of Service
+
+- id: claude-official-pr-review-toolkit
+  name: PR Review Toolkit (Anthropic)
+  type: plugin
+  source: local_registry
+  github_url: https://github.com/anthropics/claude-code
+  official: true
+  supported_agents: [claude_code]
+  capabilities: [code_review, testing, repository_access]
+  permissions: [filesystem_read, shell]
+  overlaps: [claude-official-code-review]
+  context_cost: 3
+  quality_score: 92
+  install_method:
+    kind: plugin_marketplace
+    plugin_id: pr-review-toolkit@claude-code-plugins
+    marketplace: claude-code-plugins
+    marketplace_source: https://github.com/anthropics/claude-code
+    repository: https://github.com/anthropics/claude-code
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-10-02"
+    license: Anthropic Commercial Terms of Service
+
+- id: claude-official-feature-dev
+  name: Feature Development (Anthropic)
+  type: plugin
+  source: local_registry
+  github_url: https://github.com/anthropics/claude-code
+  official: true
+  supported_agents: [claude_code]
+  capabilities: [code_editing, planning, development_workflow, code_review]
+  permissions: [filesystem_read, filesystem_write, shell]
+  context_cost: 3
+  quality_score: 93
+  install_method:
+    kind: plugin_marketplace
+    plugin_id: feature-dev@claude-code-plugins
+    marketplace: claude-code-plugins
+    marketplace_source: https://github.com/anthropics/claude-code
+    repository: https://github.com/anthropics/claude-code
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+    filesystem_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-10-02"
+    license: Anthropic Commercial Terms of Service
+
+- id: claude-official-commit-commands
+  name: Commit Commands (Anthropic)
+  type: plugin
+  source: local_registry
+  github_url: https://github.com/anthropics/claude-code
+  official: true
+  supported_agents: [claude_code]
+  capabilities: [development_workflow, repository_access]
+  permissions: [filesystem_read, shell, repository_write]
+  context_cost: 1
+  quality_score: 90
+  install_method:
+    kind: plugin_marketplace
+    plugin_id: commit-commands@claude-code-plugins
+    marketplace: claude-code-plugins
+    marketplace_source: https://github.com/anthropics/claude-code
+    repository: https://github.com/anthropics/claude-code
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+    repository_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-10-02"
+    license: Anthropic Commercial Terms of Service
+
+- id: claude-official-plugin-dev
+  name: Plugin Development (Anthropic)
+  type: plugin
+  source: local_registry
+  github_url: https://github.com/anthropics/claude-code
+  official: true
+  supported_agents: [claude_code]
+  capabilities: [agent_development, code_editing]
+  permissions: [filesystem_read, filesystem_write, shell]
+  context_cost: 4
+  quality_score: 88
+  install_method:
+    kind: plugin_marketplace
+    plugin_id: plugin-dev@claude-code-plugins
+    marketplace: claude-code-plugins
+    marketplace_source: https://github.com/anthropics/claude-code
+    repository: https://github.com/anthropics/claude-code
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+    filesystem_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-10-02"
+    license: Anthropic Commercial Terms of Service
+
+- id: claude-official-agent-sdk-dev
+  name: Agent SDK Development (Anthropic)
+  type: plugin
+  source: local_registry
+  github_url: https://github.com/anthropics/claude-code
+  official: true
+  supported_agents: [claude_code]
+  capabilities: [agent_development, code_editing]
+  permissions: [filesystem_read, filesystem_write, shell]
+  context_cost: 3
+  quality_score: 87
+  install_method:
+    kind: plugin_marketplace
+    plugin_id: agent-sdk-dev@claude-code-plugins
+    marketplace: claude-code-plugins
+    marketplace_source: https://github.com/anthropics/claude-code
+    repository: https://github.com/anthropics/claude-code
+  security_metadata:
+    shell_execution: true
+    subprocess: true
+    filesystem_write: true
+  maintenance_metadata:
+    status: ACTIVE
+    last_verified: "2026-10-02"
+    license: Anthropic Commercial Terms of Service

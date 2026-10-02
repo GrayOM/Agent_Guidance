@@ -1,13 +1,13 @@
 import asyncio
 import httpx
 
-from grayom_agent_guidance.core import recommend
-from grayom_agent_guidance.models import (
+from agent_guidance.core import recommend
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InterviewAnswer, SetupMode,
     SourceType, TrustMetadata, WorkDomain,
 )
-from grayom_agent_guidance.sources.official import OfficialSource
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.sources.official import OfficialSource
+from agent_guidance.sources.validator import ComponentValidator
 
 
 def test_official_catalog_is_scoped_to_selected_agent() -> None:

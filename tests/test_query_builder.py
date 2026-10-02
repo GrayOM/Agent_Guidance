@@ -1,5 +1,5 @@
-from grayom_agent_guidance.core.query_builder import build_queries
-from grayom_agent_guidance.models import AgentType, Capability, ComponentType
+from agent_guidance.core.query_builder import build_queries
+from agent_guidance.models import AgentType, Capability, ComponentType
 
 
 def test_queries_are_capability_and_agent_aware_and_bounded() -> None:

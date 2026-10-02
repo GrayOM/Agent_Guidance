@@ -1,5 +1,5 @@
-from grayom_agent_guidance.core import evaluate_compatibility
-from grayom_agent_guidance.models import (
+from agent_guidance.core import evaluate_compatibility
+from agent_guidance.models import (
     AgentInstallation, AgentRequirement, AgentType, Capability, CompatibilityStatus,
     Component, ComponentType,
 )

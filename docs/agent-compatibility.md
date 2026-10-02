@@ -2,14 +2,14 @@
 
 Verified against official documentation on 2026-09-30.
 
-| Agent | Skills | MCP | Plugins | GrayOM decision |
+| Agent | Skills | MCP | Plugins | Agent Guidance decision |
 |---|---|---|---|---|
 | Codex | [Agent Skills](https://developers.openai.com/codex/skills) | [`config.toml` MCP](https://developers.openai.com/codex/mcp) | No separate filesystem plugin install in scope | User Skill directory and TOML merge; Plugin capability false |
 | Claude Code | [`~/.claude/skills/`](https://code.claude.com/docs/en/skills) | [User/project MCP](https://code.claude.com/docs/en/mcp) | [Marketplace-based plugins](https://code.claude.com/docs/en/plugins) | Skills and user MCP supported; Plugins installed through `claude plugin`, and only from a marketplace manifest |
 
 Direct config merge is retained where the format and scope are documented because it permits exact backup,
 atomic replacement, preservation checks, and rollback. Agent CLIs are used for read-only version detection;
-GrayOM does not trade rollback guarantees for an opaque mutating CLI command.
+Agent Guidance does not trade rollback guarantees for an opaque mutating CLI command.
 
 Claude Code plugins are the one documented exception, and they are not an opaque command. Verified
 against an installed Claude Code on 2026-10-02: `settings.json`'s `enabledPlugins` only toggles a
@@ -25,7 +25,7 @@ previous state exactly, so the delegation keeps the rollback guarantee rather th
 | `claude plugin install <plugin>@<marketplace> --scope user` | `claude plugin uninstall <plugin>@<marketplace> --scope user` |
 
 `claude plugin install` also accepts `-y` / `--yes` and `--accept-command <sha256>`, which accept a
-marketplace-declared command on the user's behalf. GrayOM never passes either, and refuses before the
+marketplace-declared command on the user's behalf. Agent Guidance never passes either, and refuses before the
 process starts if one reaches the wrapper. A plugin that needs that approval is reported with the
 command to run by hand.
 
@@ -33,5 +33,5 @@ Verified by installing a local marketplace into an isolated HOME and rolling it 
 and `marketplace remove` return `installed_plugins.json`, `known_marketplaces.json` and
 `marketplaces/` to their previous contents, and `settings.json` to its previous state. Claude Code
 keeps the extracted files under `plugins/cache/<marketplace>/<plugin>/<version>/` and marks them
-`.orphaned_at` for its own collection; that path is outside GrayOM's managed root, so GrayOM leaves
+`.orphaned_at` for its own collection; that path is outside Agent Guidance's managed root, so Agent Guidance leaves
 it to Claude Code rather than deleting another tool's cache.

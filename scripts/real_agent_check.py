@@ -1,8 +1,8 @@
-"""Run GrayOM against the Agents actually installed on this machine.
+"""Run Agent Guidance against the Agents actually installed on this machine.
 
 The audit's standing gap is that every end-to-end run happened on Linux against isolated
 fixtures or this developer's container. This script closes it by doing the whole thing for
-real — detect, install, health check, uninstall, verify nothing of GrayOM's is left — inside a
+real — detect, install, health check, uninstall, verify nothing of Agent Guidance's is left — inside a
 throwaway HOME, so it can run on a CI runner and on a user's own machine with one command.
 
 It needs no credentials: discovery runs offline against the Local Registry, and installation
@@ -35,14 +35,14 @@ def main() -> int:
     )
     arguments = parser.parse_args()
 
-    # Resolved because GrayOM refuses to manage a path with a symlink in it, and macOS puts
+    # Resolved because Agent Guidance refuses to manage a path with a symlink in it, and macOS puts
     # the temporary directory under /var, which is a symlink to /private/var.
-    workspace = Path(tempfile.mkdtemp(prefix="grayom-real-agent-")).resolve()
+    workspace = Path(tempfile.mkdtemp(prefix="agent-guidance-real-agent-")).resolve()
     home = workspace / "home"
     home.mkdir()
     os.environ["HOME"] = str(home)
     os.environ["USERPROFILE"] = str(home)  # Path.home() reads this one on Windows
-    os.environ["GRAYOM_HOME"] = str(workspace / "grayom")
+    os.environ["AGENT_GUIDANCE_HOME"] = str(workspace / "agent-guidance")
     os.environ.pop("GITHUB_TOKEN", None)
     os.environ.pop("GH_TOKEN", None)
     try:
@@ -52,19 +52,19 @@ def main() -> int:
 
 
 def check(home: Path, required: list[str]) -> int:
-    from grayom_agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
-    from grayom_agent_guidance.adapters.detection import detect_agents
-    from grayom_agent_guidance.cli.interview import build_answer
-    from grayom_agent_guidance.config import load_config
-    from grayom_agent_guidance.core.discovery import discover_components_sync
-    from grayom_agent_guidance.core.multi_agent_installer import (
+    from agent_guidance.adapters import ClaudeCodeAdapter, CodexAdapter
+    from agent_guidance.adapters.detection import detect_agents
+    from agent_guidance.cli.interview import build_answer
+    from agent_guidance.config import load_config
+    from agent_guidance.core.discovery import discover_components_sync
+    from agent_guidance.core.multi_agent_installer import (
         MultiAgentInstallationTransaction,
     )
-    from grayom_agent_guidance.core.multi_agent_plan import build_multi_agent_plan
-    from grayom_agent_guidance.core.recommender import recommend
-    from grayom_agent_guidance.core.uninstall import apply_uninstall, plan_uninstall
-    from grayom_agent_guidance.models import AgentType, SetupMode, WorkDomain
-    from grayom_agent_guidance.state import StateStore
+    from agent_guidance.core.multi_agent_plan import build_multi_agent_plan
+    from agent_guidance.core.recommender import recommend
+    from agent_guidance.core.uninstall import apply_uninstall, plan_uninstall
+    from agent_guidance.models import AgentType, SetupMode, WorkDomain
+    from agent_guidance.state import StateStore
 
     failures: list[str] = []
 
@@ -112,7 +112,7 @@ def check(home: Path, required: list[str]) -> int:
     record(bool(multi.agents), "the Plan covers at least one Agent")
     result = MultiAgentInstallationTransaction(
         {agent: adapters[agent] for agent in multi.agents},
-        Path(os.environ["GRAYOM_HOME"]) / "backups",
+        Path(os.environ["AGENT_GUIDANCE_HOME"]) / "backups",
     ).execute(multi, probe_mcp=False)
     record(result.success, "the install transaction committed", str(result.error or ""))
     if not result.success:
@@ -151,13 +151,13 @@ def check(home: Path, required: list[str]) -> int:
             name for name in adapter.list_existing_skills()
             if any(name.startswith(f"{component}--") for component in installed)
         ]
-        record(not leftover, f"{agent.value} has no GrayOM Skill left", ", ".join(leftover))
+        record(not leftover, f"{agent.value} has no Agent Guidance Skill left", ", ".join(leftover))
     config = home / ".claude.json"
     if config.exists():
         servers = json.loads(config.read_text(encoding="utf-8")).get("mcpServers") or {}
         record(
             not [name for name in servers if name in installed],
-            "Claude Code has no GrayOM MCP registration left",
+            "Claude Code has no Agent Guidance MCP registration left",
         )
     return report(failures)
 

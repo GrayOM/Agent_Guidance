@@ -1,5 +1,5 @@
-from grayom_agent_guidance.core.shared_components import SharedComponentManager
-from grayom_agent_guidance.models import (
+from agent_guidance.core.shared_components import SharedComponentManager
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, SharedComponentRecord, Ownership,
 )
 

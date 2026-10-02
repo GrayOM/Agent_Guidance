@@ -4,6 +4,37 @@
 
 ### Changed
 
+- GrayOM is the author; the project is Agent Guidance. The two had been conflated everywhere:
+  the header put GrayOM where a product name goes, every message said "GrayOM installed", and
+  the command, package, module, state directory and environment variable all carried the
+  author's name. The project now carries its own.
+
+  | | before | after |
+  |---|---|---|
+  | command | `grayom` | `agent-guidance` |
+  | package | `grayom-agent-guidance` | `agent-guidance` |
+  | module | `grayom_agent_guidance` | `agent_guidance` |
+  | state | `~/.grayom/` | `~/.agent-guidance/` |
+  | environment | `GRAYOM_HOME` | `AGENT_GUIDANCE_HOME` |
+  | lock | `grayom.lock` | `agent-guidance.lock` |
+  | marker | `.grayom-component.json` | `.agent-guidance-component.json` |
+  | MCP suffix | `<id>-grayom` | `<id>-agent-guidance` |
+  | ownership | `GRAYOM_INSTALLED` | `AGENT_GUIDANCE_INSTALLED` |
+
+  The author keeps his name where it belongs: the GitHub owner, the `authors` field, and one
+  dim credit line under the project name in the header.
+
+### Added
+
+- A notice naming the old state directory when it is still on disk and the new one is not. It
+  is not moved: that directory records what was installed into the user's Agents, and
+  relocating it on their behalf without asking is not this program's call. Without the notice
+  the first run after an upgrade looks like every installed component has vanished.
+
+## Unreleased
+
+### Changed
+
 - The mark is an eye again, with a scanner reticle for an iris: a broken outer arc, a ring of
   sixteen ticks, an inner ring and a core. The plain eye before it was withdrawn for reading as
   nmap's logo, and the reticle is what keeps this one from doing the same; it also says what
@@ -26,7 +57,7 @@ in Chromium under the headers GitHub serves a README image with.
 
 ### Fixed
 
-- `docs/assets/grayom-mark.svg` was not well-formed XML. A comment in it carried a double
+- `docs/assets/agent-guidance-mark.svg` was not well-formed XML. A comment in it carried a double
   hyphen, which XML forbids, so GitHub and other strict parsers refused the file and the
   README showed a broken image. Chromium parses SVG leniently and drew it correctly, which is
   why rendering it in a browser -- the check meant to be the careful one -- reported nothing.
@@ -44,7 +75,7 @@ in Chromium under the headers GitHub serves a README image with.
 
 - The mark is a terminal window with a prompt and the lines being written into it, which is
   what this program is. The eye it replaces read as nmap's logo; a bold blue letter G, tried
-  on the way here, read as Google's. The file is `docs/assets/grayom-mark.svg` and is flat
+  on the way here, read as Google's. The file is `docs/assets/agent-guidance-mark.svg` and is flat
   shapes with literal fills -- no defs, gradients, clipPath or `<use>` -- so there is nothing
   in it for a restrictive renderer to drop. Checked in Chromium on a light and a dark page,
   and again served under the headers GitHub uses for a README image
@@ -79,7 +110,7 @@ in Chromium under the headers GitHub serves a README image with.
   tapered lid read as a chip instead. Rendered in a browser at the width a 96-column terminal
   occupies, every multi-row attempt came out as scattered brackets, so the drawing stays in the
   SVG, where curves are available.
-- `grayom uninstall` now names the directory it left behind and says to delete it by hand. The
+- `agent-guidance uninstall` now names the directory it left behind and says to delete it by hand. The
   note read "changed since install", which said what happened without saying where to look.
 
 ### Fixed
@@ -115,24 +146,24 @@ questions, the help, and the README.
   existed. The interview is an InquirerPy prompt, so each screen is driven through a pty with
   scripted keystrokes and read back from a VT100 emulator; `--check` re-captures and fails if
   a committed image no longer matches the program.
-- `python -m grayom_agent_guidance`, for a source checkout or an unactivated virtualenv where
-  the `grayom` script is not on PATH.
+- `python -m agent_guidance`, for a source checkout or an unactivated virtualenv where
+  the `agent-guidance` script is not on PATH.
 
 ### Changed
 
-- `grayom --help` is now two panels, "Everyday use" and "When something goes wrong", instead
+- `agent-guidance --help` is now two panels, "Everyday use" and "When something goes wrong", instead
   of one flat list of seven commands that made all seven look equally necessary. Every
   description is written for someone who has just installed this: "Reconcile and
   transactionally apply an Agent environment" is now "Choose your work, review the plan, then
   install (asks before changing anything)."
 - `--probe-mcp/--no-probe-mcp` and `setup --dry-run` are hidden from help. The first is
   internal and weakens the health check when turned off; the second duplicates
-  `grayom recommend`, which says what it does in its name. Both still work for scripts and
+  `agent-guidance recommend`, which says what it does in its name. Both still work for scripts and
   tests.
 - The menu offers every command it should. `uninstall` was reachable only by typing it, so
   the menu could install but not undo. Each entry now says what choosing it does.
 - The detected-Agents line reads `Codex (0.160.0)` and `Claude Code (2.1.287)`. Both adapters
-  stored the raw `--version` output and printed it inside GrayOM's own parentheses, which
+  stored the raw `--version` output and printed it inside Agent Guidance's own parentheses, which
   gave `Codex (codex-cli 0.160.0)` and `Claude Code (2.1.287 (Claude Code))`.
 - The README is a walkthrough with the captured screenshots: one command, what each screen
   asks, and what the plan tells you before you approve it.
@@ -146,17 +177,17 @@ has not been exercised on any machine available to the project so far.
 
 ### Added
 
-- `grayom uninstall`, which removes what GrayOM installed and refuses to remove anything
+- `agent-guidance uninstall`, which removes what Agent Guidance installed and refuses to remove anything
   else. It works from state rather than from a transaction manifest, so a component can be
   removed long after the run that installed it — which `rollback` could never do. Three
   refusals carry the safety, each reported rather than silently narrowing the work: a
-  component that was already there is not GrayOM's, a Skill directory whose files no longer
-  hash to what was installed stays with the user, and an MCP registration GrayOM did not
+  component that was already there is not Agent Guidance's, a Skill directory whose files no longer
+  hash to what was installed stays with the user, and an MCP registration Agent Guidance did not
   write is never deleted. `--agent` removes for one Agent and leaves the other's install
   intact; `--dry-run` shows the plan without touching anything.
-- State records the MCP registration names and marketplaces GrayOM actually wrote, per
+- State records the MCP registration names and marketplaces Agent Guidance actually wrote, per
   Agent. Without them an uninstall would have to guess, and an MCP can land under `<id>`,
-  `<id>-grayom` or `<id>-grayom-2` depending on what the user already had — so the guess
+  `<id>-agent-guidance` or `<id>-agent-guidance-2` depending on what the user already had — so the guess
   would eventually delete someone's own server.
 - `scripts/real_agent_check.py` and a `real-agents` CI job on Linux, Windows and macOS. It
   installs the Agents themselves and drives detect, install, health, uninstall and verify
@@ -183,7 +214,7 @@ has not been exercised on any machine available to the project so far.
 - A curated path upstream has moved or dropped is reported and skipped instead of failing
   the install, because `update` reinstalls at a newer ref carrying the same paths. Curated
   paths are resolved inside the clone only.
-- Claude Code Plugin installation, delegated to `claude plugin` and wrapped in a GrayOM
+- Claude Code Plugin installation, delegated to `claude plugin` and wrapped in a Agent Guidance
   transaction. Each step has an inverse (`marketplace add`/`remove`, `install`/`uninstall`), the
   manifest records only what the run added, and rollback removes plugins before marketplaces.
 - GitHub discovery reads `.claude-plugin/marketplace.json` and builds a `<plugin>@<marketplace>`

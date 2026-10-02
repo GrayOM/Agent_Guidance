@@ -1,4 +1,4 @@
-from grayom_agent_guidance.observability import EventLogger, redact
+from agent_guidance.observability import EventLogger, redact
 
 
 def test_secret_values_are_redacted_from_logs(tmp_path) -> None:

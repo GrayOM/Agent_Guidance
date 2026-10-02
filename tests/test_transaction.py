@@ -1,9 +1,9 @@
 import shutil
 from pathlib import Path
 
-from grayom_agent_guidance.adapters import AgentAdapter
-from grayom_agent_guidance.core import MultiAgentInstallationTransaction, find_incomplete_transactions
-from grayom_agent_guidance.models import (
+from agent_guidance.adapters import AgentAdapter
+from agent_guidance.core import MultiAgentInstallationTransaction, find_incomplete_transactions
+from agent_guidance.models import (
     AdapterCapabilities, AgentComponentAction, AgentInstallation, AgentPlan, AgentType, BackupEntry, BackupManifest,
     CheckResult, CompatibilityResult, CompatibilityStatus, Component, ComponentInstallResult, ComponentRemovalResult,
     ComponentType, HealthCheckResult, InstallationManifest, MultiAgentPlan, RollbackResult,
@@ -91,7 +91,7 @@ def test_successful_transaction_is_committed_and_not_incomplete(tmp_path) -> Non
 
 
 def test_prepared_manifest_is_detected_for_crash_recovery(tmp_path) -> None:
-    from grayom_agent_guidance.models import MultiAgentManifest
+    from agent_guidance.models import MultiAgentManifest
 
     manifest = MultiAgentManifest(root=tmp_path / "backups" / "crashed", selected_agents=[AgentType.CODEX])
     manifest.save()

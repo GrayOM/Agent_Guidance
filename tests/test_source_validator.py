@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta, timezone
 
-from grayom_agent_guidance.models import AgentType, CandidateState, MaintenanceStatus, SourceType
-from grayom_agent_guidance.sources.base import RawCandidate
-from grayom_agent_guidance.sources.normalizer import normalize_candidate
-from grayom_agent_guidance.sources.validator import ComponentValidator
+from agent_guidance.models import AgentType, CandidateState, MaintenanceStatus, SourceType
+from agent_guidance.sources.base import RawCandidate
+from agent_guidance.sources.normalizer import normalize_candidate
+from agent_guidance.sources.validator import ComponentValidator
 
 
 def raw_candidate(*, archived=False, pushed_at=None, readme="Codex vulnerability research skill"):

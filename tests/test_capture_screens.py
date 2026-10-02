@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from grayom_agent_guidance.cli.interview import TASKS
-from grayom_agent_guidance.labels import domain_label, task_label
-from grayom_agent_guidance.models import WorkDomain
+from agent_guidance.cli.interview import TASKS
+from agent_guidance.labels import domain_label, task_label
+from agent_guidance.models import WorkDomain
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -66,7 +66,7 @@ def test_no_screenshot_is_left_in_the_assets_directory_unused(capture):
         for image in (screen.get("images") or [screen])
     }
     # The mark is drawn by hand on purpose; everything else is captured.
-    on_disk = {path.name for path in ASSETS.glob("*.svg")} - {"grayom-mark.svg"}
+    on_disk = {path.name for path in ASSETS.glob("*.svg")} - {"agent-guidance-mark.svg"}
     assert on_disk == produced
 
 

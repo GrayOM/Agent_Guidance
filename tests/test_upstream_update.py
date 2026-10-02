@@ -1,7 +1,7 @@
-"""`grayom update` has to compare against what upstream publishes now.
+"""`agent-guidance update` has to compare against what upstream publishes now.
 
 Comparing against the Local Registry's pinned refs meant a component was only ever out of
-date when GrayOM itself shipped a new Registry, and a component discovered on GitHub was
+date when Agent Guidance itself shipped a new Registry, and a component discovered on GitHub was
 never comparable at all.
 """
 
@@ -9,16 +9,16 @@ import asyncio
 
 import httpx
 
-from grayom_agent_guidance.core.update import build_update_plan
-from grayom_agent_guidance.models import (
+from agent_guidance.core.update import build_update_plan
+from agent_guidance.models import (
     AgentType, Capability, Component, ComponentType, InstallKind, InstallMethod, Ownership,
 )
-from grayom_agent_guidance.sources.base import RawCandidate
-from grayom_agent_guidance.sources.normalizer import _install_ref
-from grayom_agent_guidance.sources.upstream import (
+from agent_guidance.sources.base import RawCandidate
+from agent_guidance.sources.normalizer import _install_ref
+from agent_guidance.sources.upstream import (
     UpstreamRef, UpstreamResolver, parse_repository, pinning_of, resolve_upstream_refs,
 )
-from grayom_agent_guidance.state import ManagedComponent, StateStore
+from agent_guidance.state import ManagedComponent, StateStore
 
 HEAD = "a" * 40
 INSTALLED = "b" * 40
@@ -28,7 +28,7 @@ REPOSITORY = "https://github.com/someone/skills"
 def _state(tmp_path, **overrides) -> StateStore:
     values = {
         "component_id": "someone-skills", "agents": [AgentType.CLAUDE_CODE],
-        "ownership": Ownership.GRAYOM_INSTALLED, "transaction_id": "t",
+        "ownership": Ownership.AGENT_GUIDANCE_INSTALLED, "transaction_id": "t",
         "component_name": "Someone's Skills", "component_type": ComponentType.SKILL,
         "source_repository": REPOSITORY, "source_ref": INSTALLED,
         "install_method": InstallMethod(
@@ -91,7 +91,7 @@ def _resolve(handler, store_values=None) -> dict[str, UpstreamRef]:
     )
     managed = ManagedComponent(**{
         "component_id": "someone-skills", "agents": [AgentType.CLAUDE_CODE],
-        "ownership": Ownership.GRAYOM_INSTALLED, "transaction_id": "t",
+        "ownership": Ownership.AGENT_GUIDANCE_INSTALLED, "transaction_id": "t",
         "source_repository": REPOSITORY, "source_ref": INSTALLED,
         **(store_values or {}),
     })
@@ -169,7 +169,7 @@ def test_a_transport_failure_degrades_to_an_empty_result() -> None:
     )
     managed = ManagedComponent(
         component_id="someone-skills", agents=[AgentType.CLAUDE_CODE],
-        ownership=Ownership.GRAYOM_INSTALLED, transaction_id="t",
+        ownership=Ownership.AGENT_GUIDANCE_INSTALLED, transaction_id="t",
         source_repository=REPOSITORY, source_ref=INSTALLED,
     )
     result = resolve_upstream_refs([managed], client=client)
@@ -270,4 +270,4 @@ def test_local_modification_is_warned_before_an_upstream_update(tmp_path) -> Non
 
     plan = build_update_plan(store, [], upstream=upstream)
 
-    assert any("was modified after GrayOM installed it" in w for w in plan.items[0].warnings)
+    assert any("was modified after Agent Guidance installed it" in w for w in plan.items[0].warnings)
