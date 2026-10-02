@@ -148,7 +148,18 @@ TASK_CAPABILITIES: dict[str, set[Capability]] = {
     "mobile_application_assessment": {
         Capability.WEB_SECURITY_TESTING, Capability.MOBILE_ANDROID, Capability.MOBILE_IOS,
     },
+    # Reading the target's source as a diagnosis, which is where SAST tooling belongs. It is
+    # a phase of an assessment here, not the tool-building work that owns the other table.
+    "secure_code_review": {Capability.SOURCE_ANALYSIS, Capability.SECURITY_ANALYSIS},
     "infrastructure_testing": {Capability.NETWORK_ACCESS, Capability.SECURITY_ANALYSIS},
+    # Checklist work, not attack work: a baseline review of servers, network gear and
+    # databases asks for benchmark runners rather than for exploitation tooling.
+    "configuration_assessment": {
+        Capability.CONFIGURATION_AUDIT, Capability.SECURITY_ANALYSIS,
+    },
+    "cloud_configuration_assessment": {
+        Capability.CONFIGURATION_AUDIT, Capability.CLOUD_PLATFORM,
+    },
     # Reproduction is the evidence a report stands on, so it asks for the vulnerability
     # vocabulary and the write-up, not for offensive tooling.
     "finding_reproduction": {Capability.VULNERABILITY_RESEARCH, Capability.REPORTING},

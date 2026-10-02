@@ -10,6 +10,7 @@ CAPABILITY_TERMS: dict[Capability, str] = {
     Capability.AI_VULNERABILITY_ANALYSIS: "LLM security",
     Capability.VULNERABILITY_RESEARCH: "vulnerability research",
     Capability.WEB_SECURITY_TESTING: "web application security testing",
+    Capability.CONFIGURATION_AUDIT: "security configuration hardening audit",
     Capability.SECURITY_ANALYSIS: "security analysis",
     Capability.SOURCE_ANALYSIS: "source code analysis",
     Capability.ORCHESTRATION: "kubernetes",

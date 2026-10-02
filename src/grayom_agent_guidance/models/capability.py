@@ -31,6 +31,10 @@ class Capability(StrEnum):
     # SOURCE_ANALYSIS both surface SAST tooling, which is the wrong tool class for someone
     # assessing a deployed application they did not write.
     WEB_SECURITY_TESTING = "web_security_testing"
+    # Checking a target's settings against a baseline, which neither reads its source nor
+    # attacks it: CIS benchmarks, hardening guides, cloud posture. The tools are checklist
+    # runners, so neither the SAST nor the dynamic-testing vocabulary reaches them.
+    CONFIGURATION_AUDIT = "configuration_audit"
 
     # Delivery and operations
     CI_CD = "ci_cd"

@@ -5,7 +5,13 @@
   github_url: https://github.com/trailofbits/skills
   official: false
   supported_agents: [codex, claude_code]
-  capabilities: [security_analysis, source_analysis, vulnerability_research, reporting]
+  # Verified at the pinned ref 82fe8226, not at the default branch: `burpsuite-project-parser`
+  # carries web_security_testing and `firebase-apk-scanner` carries configuration_audit, so
+  # Skill selection can satisfy an assessment profile from a repository GrayOM already pins.
+  capabilities: [
+    security_analysis, source_analysis, vulnerability_research, reporting,
+    web_security_testing, configuration_audit,
+  ]
   permissions: [filesystem_read, shell, subprocess, external_download]
   context_cost: 3
   quality_score: 88
@@ -21,7 +27,7 @@
     filesystem_write: true
   maintenance_metadata:
     status: ACTIVE
-    last_verified: "2026-09-29"
+    last_verified: "2026-10-02"
     license: CC-BY-SA-4.0
 
 - id: superpowers

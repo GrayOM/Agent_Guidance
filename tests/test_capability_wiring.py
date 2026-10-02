@@ -252,7 +252,7 @@ def test_reproduction_asks_for_verification_and_a_write_up() -> None:
 def test_each_engagement_phase_asks_for_something_the_others_do_not() -> None:
     """Ten questions that all inferred the same thing would be one question."""
     phases = TASKS[WorkDomain.PENETRATION_TESTING]
-    assert len(phases) == 10
+    assert len(phases) == 13
     distinct = {frozenset(TASK_CAPABILITIES[task]) for task in phases}
 
-    assert len(distinct) >= 8, f"engagement phases collapse into {len(distinct)} profiles"
+    assert len(distinct) >= 11, f"engagement phases collapse into {len(distinct)} profiles"

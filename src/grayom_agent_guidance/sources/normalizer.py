@@ -28,6 +28,12 @@ CAPABILITY_KEYWORDS: dict[Capability, tuple[str, ...]] = {
         "penetration test", "pentest", "web security", "dast", "burp", "owasp zap",
         "nuclei", "sqlmap", "web vulnerability", "ffuf",
     ),
+    # Again the named tools, plus the words a baseline review actually uses.
+    Capability.CONFIGURATION_AUDIT: (
+        "cis benchmark", "hardening", "security baseline", "misconfiguration",
+        "security configuration", "lynis", "openscap", "prowler", "scoutsuite",
+        "compliance scan",
+    ),
     Capability.REPOSITORY_ACCESS: (
         "repository", "repositories", "github", "pull request", "issues",
     ),

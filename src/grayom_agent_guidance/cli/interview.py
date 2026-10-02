@@ -43,7 +43,8 @@ TASKS: dict[WorkDomain, list[str]] = {
     WorkDomain.PENETRATION_TESTING: [
         "web_application_assessment", "authentication_testing", "authorization_testing",
         "injection_testing", "api_security_testing", "mobile_application_assessment",
-        "infrastructure_testing", "finding_reproduction", "assessment_reporting",
+        "secure_code_review", "infrastructure_testing", "configuration_assessment",
+        "cloud_configuration_assessment", "finding_reproduction", "assessment_reporting",
         "retest_verification",
     ],
     WorkDomain.OSINT: [
