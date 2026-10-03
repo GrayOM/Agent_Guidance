@@ -6,8 +6,10 @@ three outcomes have to stay distinct. A blocked network must not read as a defec
 person to see this output learns to ignore it.
 """
 
+import builtins
 import importlib.util
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -17,12 +19,9 @@ ROOT = Path(__file__).resolve().parent.parent
 
 @pytest.fixture()
 def report():
-    spec = importlib.util.spec_from_file_location(
-        "design_check", ROOT / "scripts" / "design_check.py"
-    )
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.Report()
+    from agent_guidance.core.self_check import Report
+
+    return Report()
 
 
 def test_everything_passing_exits_zero(report, capsys) -> None:
@@ -58,9 +57,48 @@ def test_a_failure_outranks_an_unproven_claim(report) -> None:
     assert report.verdict() == 1
 
 
-def test_the_script_names_the_claims_the_readme_promises() -> None:
-    """The script and the README have to describe the same six claims."""
-    source = (ROOT / "scripts" / "design_check.py").read_text(encoding="utf-8")
+def test_the_check_names_the_claims_the_readme_promises() -> None:
+    source = (ROOT / "src" / "agent_guidance" / "core" / "self_check.py").read_text(
+        encoding="utf-8"
+    )
     for number in range(1, 7):
-        assert f'[{number}]' in source, f"claim {number} is not printed"
-    assert "design_check.py" in (ROOT / "README.md").read_text(encoding="utf-8")
+        assert f"[{number}]" in source, f"claim {number} is not printed"
+    assert "self-check" in (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def test_the_script_answers_a_missing_install_instead_of_raising(capsys) -> None:
+    """The defect this file now also covers.
+
+    scripts/design_check.py puts src on sys.path, which makes the package importable without
+    making its dependencies available. The first person to run it on a fresh clone got
+    `ModuleNotFoundError: tomlkit` out of the middle of an adapter: a stack trace that reads
+    as a broken program and means nothing was installed.
+    """
+    spec = importlib.util.spec_from_file_location(
+        "design_check", ROOT / "scripts" / "design_check.py"
+    )
+    script = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(script)
+
+    real_import = builtins.__import__
+
+    def refuse(name, *args, **kwargs):
+        if name.startswith("agent_guidance"):
+            raise ModuleNotFoundError("No module named 'tomlkit'", name="tomlkit")
+        return real_import(name, *args, **kwargs)
+
+    with mock.patch.object(builtins, "__import__", refuse):
+        assert script.main() == 3
+
+    message = capsys.readouterr().err
+    assert "tomlkit" in message
+    assert "pip install" in message and "agent-guidance self-check" in message
+    assert "Traceback" not in message
+
+
+def test_the_command_is_how_the_check_is_meant_to_be_run() -> None:
+    """A command can only run where the program is installed, so its dependencies are there."""
+    from agent_guidance.cli.main import app
+
+    names = {command.name or command.callback.__name__ for command in app.registered_commands}
+    assert "self-check" in names
