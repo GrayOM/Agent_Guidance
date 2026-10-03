@@ -16,7 +16,7 @@ runner = CliRunner()
 # Written out rather than read from the app, because the point is to notice when a command
 # changes panel or a new one appears without anyone deciding which list it belongs in.
 EVERYDAY_COMMANDS = {"setup", "recommend", "update"}
-TROUBLE_COMMANDS = {"doctor", "rollback", "uninstall", "debug-info"}
+TROUBLE_COMMANDS = {"doctor", "rollback", "uninstall", "debug-info", "self-check"}
 
 MENU_ACTIONS = {"setup", "recommend", "update", "doctor", "uninstall", "rollback", "exit"}
 
@@ -101,9 +101,14 @@ def test_every_command_is_reachable_from_the_menu(monkeypatch):
     main._interactive_menu()
 
     assert {item["value"] for item in choices} == MENU_ACTIONS
-    # Everything typed as a command is offered in the menu too, apart from debug-info, which
-    # only makes sense when someone is already filing a bug report and following its text.
-    assert MENU_ACTIONS - {"exit"} == (EVERYDAY_COMMANDS | TROUBLE_COMMANDS) - {"debug-info"}
+    # Everything typed as a command is offered in the menu too, apart from two that are only
+    # reached by following written instructions: debug-info, when someone is already filing a
+    # bug report, and self-check, when someone is deciding whether to trust or publish this.
+    # "Check my setup" is already in the menu and means something else: whether what is
+    # installed still works, not whether the program does what it claims.
+    assert MENU_ACTIONS - {"exit"} == (
+        (EVERYDAY_COMMANDS | TROUBLE_COMMANDS) - {"debug-info", "self-check"}
+    )
 
 
 def test_menu_entries_say_what_will_happen(monkeypatch):

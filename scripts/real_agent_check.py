@@ -47,6 +47,17 @@ def main() -> int:
     os.environ.pop("GH_TOKEN", None)
     try:
         return check(home, arguments.require)
+    except ImportError as exc:
+        # Adding src to sys.path makes the package importable without making its dependencies
+        # available, so a fresh clone fails on the first one an adapter imports. A stack trace
+        # out of the middle of an adapter reads as a broken program; it means nothing is
+        # installed. See scripts/design_check.py, where the same trap was found first.
+        print(
+            f"\nAgent Guidance is not installed in this Python: {exc.name or exc} is missing."
+            f"\nInstall it first:  python -m pip install -e \"{ROOT}\"",
+            file=sys.stderr,
+        )
+        return 3
     finally:
         shutil.rmtree(workspace, ignore_errors=True)
 

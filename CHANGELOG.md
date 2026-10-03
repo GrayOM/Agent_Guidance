@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `agent-guidance self-check`, which checks that the program does what it was designed to do
+  on the machine running it and prints what each of six claims measured. It installs nothing
+  and writes nothing outside a temporary directory.
+
+### Fixed
+
+- The design check ran as a script from a clone, and a clone that has not been installed has
+  the package on `sys.path` without any of its dependencies. The first person to run it got
+  `ModuleNotFoundError: tomlkit` out of the middle of an adapter: a stack trace that reads as
+  a broken program and means nothing was installed. The check now lives in the package, where
+  a command can only run in an environment that has the dependencies, and
+  `scripts/design_check.py` answers a missing install with the command to run instead of a
+  traceback. `scripts/real_agent_check.py` carried the same trap and now answers the same way.
+
 ## 0.1.0 — 2026-10-02
 
 The first release. Every feature in `architecture.md` is implemented, and the audit's own gaps

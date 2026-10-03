@@ -480,6 +480,18 @@ def update(
     console.print("[green]Update completed.[/green]")
 
 
+@app.command("self-check", rich_help_panel=TROUBLE)
+def self_check_command() -> None:
+    """Check that this does what it was designed to do. Installs nothing.
+
+    Exit code 0 means every claim passed, 1 means one failed, and 2 means everything
+    reachable passed but this machine could not reach GitHub, which is not a defect here.
+    """
+    from agent_guidance.core.self_check import self_check
+
+    raise typer.Exit(code=self_check())
+
+
 @app.command("debug-info", rich_help_panel=TROUBLE)
 def debug_info() -> None:
     """Write a report you can attach to a bug report. No tokens or passwords are included."""
