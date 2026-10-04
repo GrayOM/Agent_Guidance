@@ -261,6 +261,54 @@ def _choose_plugin(plugins: list[tuple[str, str]]) -> tuple[str, str | None]:
     )
 
 
+# Hosts that publish a `/mcp/` path which is not an MCP endpoint: editor install redirects
+# and documentation. Their links sit at the top of a README, above the endpoint the project
+# actually serves, because that is where an install badge goes.
+NOT_AN_ENDPOINT = (
+    "insiders.vscode.dev", "vscode.dev", "code.visualstudio.com", "marketplace.visualstudio.com",
+    "aka.ms", "github.com", "www.github.com", "docs.github.com", "modelcontextprotocol.io",
+)
+
+# `/mcp` has to end the URL. Without the lookahead the pattern matches a *prefix* of a longer
+# one, so `.../redirect/mcp/install?name=x` reads as an endpoint at `.../redirect/mcp/`.
+#
+# A full stop ends the URL only when a sentence ends with it, so `/mcp.` in prose is an
+# endpoint at `/mcp` while `/mcp.json` stays a path and matches nothing.
+_MCP_URL = re.compile(
+    r"https://[^\s)`\"'\]<>]+?/mcp/?(?=[\s)`\"'\]<>,;]|\.(?=\s|$)|$)", flags=re.I | re.M,
+)
+
+
+def _mcp_endpoint(readme: str) -> str | None:
+    """The HTTP MCP endpoint a README documents, as far as a README can be trusted for it.
+
+    This picked `urls[0]` and got it wrong on the most important repository there is. The
+    GitHub MCP Server's README opens with two "Install in VS Code" badges pointing at
+    `https://insiders.vscode.dev/redirect/mcp/install?...`, and the endpoint it actually
+    serves, `https://api.githubcopilot.com/mcp/`, is the fourth match. Users had an MCP server
+    registered against a Microsoft editor-redirect host — carrying, after the merge with the
+    registry entry, a `bearer_token_env_var` holding their GitHub PAT. Nothing malicious
+    happened, because of whose host it is; the shape is a credential sent somewhere nobody
+    chose, and that is not a shape to leave in place.
+
+    Two things decide it now. A badge or docs host is not an endpoint, whatever order it
+    appears in. Among what is left, the most frequently written URL wins: a README repeats the
+    endpoint through its examples and mentions an aside once.
+    """
+    found = [match.group(0).rstrip(".,") for match in _MCP_URL.finditer(readme)]
+    counted: dict[str, int] = {}
+    for url in found:
+        host = url.split("/", 3)[2].lower() if url.count("/") >= 2 else ""
+        if host in NOT_AN_ENDPOINT:
+            continue
+        counted[url] = counted.get(url, 0) + 1
+    if not counted:
+        return None
+    # Ties go to the earliest, which `sorted` preserves because dict insertion order follows
+    # the README.
+    return max(counted, key=lambda url: counted[url])
+
+
 def _install_method(
     raw: RawCandidate, component_type: ComponentType,
 ) -> tuple[InstallMethod, str | None]:
@@ -289,10 +337,10 @@ def _install_method(
     # from_readme records that, so the risk review can say it on the approval screen and the
     # npm resolver knows which candidates it has to check before they are installable.
     readme = raw.readme or ""
-    urls = re.findall(r"https://[^\s)`\"']+/mcp/?", readme, flags=re.I)
-    if urls:
+    endpoint = _mcp_endpoint(readme)
+    if endpoint:
         return InstallMethod(
-            kind=InstallKind.MCP_HTTP, url=urls[0].rstrip(".,"), from_readme=True,
+            kind=InstallKind.MCP_HTTP, url=endpoint, from_readme=True,
         ), None
     npx = re.search(r"\bnpx\s+(?:-y\s+)?([@\w./-]+)([^\n`]*)", readme)
     if npx:
