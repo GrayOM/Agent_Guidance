@@ -159,3 +159,75 @@ def test_the_pinning_claim_counts_how_many_of_how_many(report, capsys) -> None:
     output = capsys.readouterr().out
     assert "1 of 2 pinned" in output
     assert "unpinned-mcp" in output
+
+
+def fake_discovery(*, read_failures: int, candidates=(), discovered: int = 0):
+    """A DiscoveryResult shaped like the run being reproduced."""
+    from agent_guidance.core.discovery import DiscoveryResult
+    from agent_guidance.sources.base import SourceResult
+
+    return DiscoveryResult(
+        candidates=list(candidates),
+        sources=[SourceResult(
+            source="github", checked=True, discovered=discovered,
+            validated=len(candidates), read_failures=read_failures,
+        )],
+        warnings=["GitHub rate limit reached (remaining=0)"] if read_failures else [],
+    )
+
+
+def test_a_rate_limited_run_is_unproven_not_failed(report, monkeypatch, capsys) -> None:
+    """The regression this covers, which shipped twice in different shapes.
+
+    An anonymous run gets 60 GitHub requests an hour. A second run inside that hour reaches
+    the search endpoint, is told about repositories, and is then refused every one of them.
+    The `checked` flag is True, so the earlier guard passes, and the claims that read the
+    candidate list then found it empty and reported two FAILs and exit 1 — a user being told
+    their program is broken because they ran the check twice.
+    """
+    from agent_guidance.core import self_check as module
+
+    monkeypatch.setattr(
+        module, "discover_components_sync",
+        lambda *a, **k: fake_discovery(read_failures=5, discovered=5),
+    )
+    module.live_github_discovery(_answer(), fake_discovery(read_failures=0), report)
+
+    assert report.verdict() == 2, "a refused read must not read as a defect"
+    output = capsys.readouterr().out
+    assert "refused 5 of them" in output
+    assert "GITHUB_TOKEN" in output
+    assert "FAIL" not in output
+
+
+def test_discovering_nothing_pinnable_is_unproven_not_failed(report, monkeypatch, capsys) -> None:
+    """An empty set satisfies "every candidate is pinned" vacuously, which proves nothing."""
+    from agent_guidance.core import self_check as module
+    from agent_guidance.models import Component, ComponentType, InstallKind, InstallMethod
+
+    http_only = Component(
+        id="http-mcp", name="HTTP MCP", type=ComponentType.MCP,
+        github_url="https://github.com/someone/http-mcp",
+        install_method=InstallMethod(kind=InstallKind.MCP_HTTP, url="https://x.test/mcp/"),
+        recommendable=True,
+    )
+    monkeypatch.setattr(
+        module, "discover_components_sync",
+        lambda *a, **k: fake_discovery(read_failures=0, candidates=[http_only], discovered=1),
+    )
+    module.live_github_discovery(_answer(), fake_discovery(read_failures=0), report)
+
+    assert report.verdict() == 2
+    output = capsys.readouterr().out
+    assert "nothing with a version to pin" in output
+    assert "FAIL" not in output
+
+
+def _answer():
+    from agent_guidance.cli.interview import build_answer
+    from agent_guidance.models import AgentType, SetupMode, WorkDomain
+
+    return build_answer(
+        agents=[AgentType.CODEX], domains=[WorkDomain.PENETRATION_TESTING],
+        tasks=["web_application_assessment"], mode=SetupMode.MINIMAL,
+    )

@@ -303,6 +303,7 @@ class GitHubSource(ComponentSource):
                     result.validated += 1
             except Exception as exc:
                 failures.setdefault(str(exc), []).append(raw.repository_full_name)
+        result.read_failures = sum(len(group) for group in failures.values())
         # One refusal that stopped every repository is one problem, not one per repository.
         for message, repositories in failures.items():
             if len(repositories) == 1:
