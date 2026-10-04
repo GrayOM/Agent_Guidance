@@ -1,8 +1,27 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-10-04
+
+Everything below came out of the first runs on a machine that was not this project's. Live
+GitHub discovery ran for the first time, and what it returned found four defects that no test
+had covered, three of them about the same thing: a README is the repository owner's own text,
+and this program had been reading it as fact.
 
 ### Added
+
+- The release workflow can publish to PyPI, through Trusted Publishing: PyPI is told which
+  repository, which workflow file and which environment may publish this project, and the job
+  proves it with a short-lived OIDC token minted for that one run. No API token is created,
+  stored as a secret or printed anywhere, so there is none to leak or rotate. Until the
+  publisher is configured on PyPI the job fails and nothing is published, and the `pypi`
+  environment can carry a required reviewer, so an irreversible action waits for a person.
+
+- The published description rewrites README.md's relative paths to absolute ones. The file
+  refers to its screenshots and the other documents by relative path, which is right in a
+  checkout and broken on PyPI: published as-is the project page would have carried eight
+  broken images — the logo and every screenshot — and five links that 404. The file itself is
+  unchanged, and a test applies the configured rewrite to the real README so a screenshot
+  added later with a relative path fails in CI rather than on a page nobody checks.
 
 - `scripts/real_agent_check.py` now seeds its throwaway HOME with hand-written Agent
   configuration — a comment, an option set by hand, an MCP server registered by hand with its
@@ -68,6 +87,12 @@
   that has nothing to do with the repository.
 
 ### Fixed
+
+- `tests/test_version.py` asserted `__version__ == "0.1.0"`, so every release broke it and the
+  fix was to edit the number — a test that only confirms someone typed the same thing twice.
+  It now asserts the version and the newest changelog section agree, which is the invariant
+  the release workflow depends on. The `--version` test reads the running version for the same
+  reason.
 
 - Recommendations ranked a sprawling README above a focused one, because the first sort key
   counted how many needed capabilities a component claims and a capability is inferred from a

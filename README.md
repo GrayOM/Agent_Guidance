@@ -254,7 +254,7 @@ Claude Code Plugin은 `claude plugin` 명령에 위임하고 Agent Guidance 트�
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 
-현재 버전은 `0.1.0`입니다.
+현재 버전은 `0.2.0`입니다.
 
 ## License
 
