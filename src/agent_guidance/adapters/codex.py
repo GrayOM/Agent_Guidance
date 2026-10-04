@@ -258,6 +258,23 @@ class CodexAdapter(AgentAdapter):
         result.configured_mcp.append(registration_name)
         return result
 
+    def _trailing_newlines(self) -> str:
+        """The newline run the config currently ends with, or one for a file being created.
+
+        Read from disk rather than remembered, because install and uninstall each open the
+        file fresh and the user may have edited it in between.
+        """
+        try:
+            text = self.config_path.read_text(encoding="utf-8")
+        except OSError:
+            return "\n"
+        if not text:
+            return "\n"
+        # No `or "\n"` fallback here: an empty run is the answer for a file the user keeps
+        # without a final newline, and defaulting it to one newline would add a byte they did
+        # not ask for. Only an absent or empty file gets the conventional single newline.
+        return text[len(text.rstrip("\n")):]
+
     def _write_config(self, document: Any) -> None:
         """Render, fsync, re-parse and atomically replace the Codex config.
 
@@ -265,6 +282,13 @@ class CodexAdapter(AgentAdapter):
         config that fails to parse is never the one left on disk.
         """
         rendered = tomlkit.dumps(document)
+        # Removing a table leaves the blank line that separated it behind, so a config that
+        # ended in one newline came back from an uninstall ending in two. Trailing whitespace
+        # carries no meaning in TOML, but "uninstall puts your file back" should be true to
+        # the byte, and it was not. The file's own trailing newlines are restored rather than
+        # normalised to one: a file the user keeps without a final newline is theirs to keep
+        # that way, and this code has no business tidying it.
+        rendered = rendered.rstrip("\n") + self._trailing_newlines()
         temporary = self.config_path.with_name(f"config.toml.agent-guidance-{uuid4().hex}.tmp")
         validate_managed_path(self.config_path, self.codex_home)
         try:

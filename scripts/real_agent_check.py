@@ -5,6 +5,12 @@ fixtures or this developer's container. This script closes it by doing the whole
 real — detect, install, health check, uninstall, verify nothing of Agent Guidance's is left — inside a
 throwaway HOME, so it can run on a CI runner and on a user's own machine with one command.
 
+The throwaway HOME is not empty. It is seeded with the Agent configuration a person actually
+keeps — a comment explaining a choice, an option they set deliberately, an MCP server they
+registered themselves — because the promise the README makes is about merging into that, and an
+empty HOME cannot exercise it. The run then checks all of it survived the install and that
+rollback restores the files byte for byte.
+
 It needs no credentials: discovery runs offline against the Local Registry, and installation
 clones the pinned Skill repositories over HTTPS. Everything it writes lives under a temporary
 directory that is removed on the way out.
@@ -26,6 +32,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
+# Hand-written Agent configuration of the shape a person keeps: a comment that explains a
+# choice, an option set deliberately, and an MCP server registered by hand with its own args
+# and environment. The install has to merge into this and leave every part of it alone.
+EXISTING_CODEX = """\
+# My own settings. Do not lose these.
+model = "o3"
+approval_policy = "on-request"
+
+[mcp_servers.my_own_server]
+command = "python3"
+args = ["-m", "my_internal_tools.mcp"]
+
+[mcp_servers.my_own_server.env]
+MY_ENDPOINT = "https://internal.example.test"
+"""
+
+EXISTING_CLAUDE = {
+    "mcpServers": {
+        "my_own_server": {"command": "python3", "args": ["-m", "my_internal_tools.mcp"]},
+    },
+    "someUnrelatedSetting": {"keepMe": True},
+}
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -40,6 +69,12 @@ def main() -> int:
     workspace = Path(tempfile.mkdtemp(prefix="agent-guidance-real-agent-")).resolve()
     home = workspace / "home"
     home.mkdir()
+    (home / ".codex").mkdir()
+    (home / ".codex" / "config.toml").write_text(EXISTING_CODEX, encoding="utf-8")
+    (home / ".claude").mkdir()
+    (home / ".claude.json").write_text(
+        json.dumps(EXISTING_CLAUDE, indent=2), encoding="utf-8"
+    )
     os.environ["HOME"] = str(home)
     os.environ["USERPROFILE"] = str(home)  # Path.home() reads this one on Windows
     os.environ["AGENT_GUIDANCE_HOME"] = str(workspace / "agent-guidance")
@@ -69,7 +104,7 @@ def check(home: Path, required: list[str]) -> int:
     from agent_guidance.config import load_config
     from agent_guidance.core.discovery import discover_components_sync
     from agent_guidance.core.multi_agent_installer import (
-        MultiAgentInstallationTransaction,
+        MultiAgentInstallationTransaction, rollback_multi_agent,
     )
     from agent_guidance.core.multi_agent_plan import build_multi_agent_plan
     from agent_guidance.core.recommender import recommend
@@ -106,11 +141,17 @@ def check(home: Path, required: list[str]) -> int:
     adapters = {AgentType.CODEX: CodexAdapter(home), AgentType.CLAUDE_CODE: ClaudeCodeAdapter(home)}
 
     print("\n[install]")
+    # PERFORMANCE, and these tasks, because the preservation checks below read the Agent
+    # configuration files and only an MCP server causes those to be written at all. Under
+    # MINIMAL with secure_code_review the recommendation is Skills only, which land in
+    # ~/.agents/skills and leave config.toml untouched — so every "kept a comment" check
+    # passed without the merge code running once. The guard below now makes that a failure
+    # rather than a silent pass.
     answer = build_answer(
         agents=present,
         domains=[WorkDomain.PENETRATION_TESTING],
-        tasks=["web_application_assessment", "secure_code_review", "assessment_reporting"],
-        mode=SetupMode.MINIMAL,
+        tasks=["web_application_assessment", "injection_testing", "assessment_reporting"],
+        mode=SetupMode.PERFORMANCE,
     )
     # Offline keeps the run deterministic: the Local Registry is the input, and installation
     # still clones the pinned repositories for real.
@@ -130,6 +171,40 @@ def check(home: Path, required: list[str]) -> int:
         return report(failures)
     for outcome in result.manifest.outcomes:
         print(f"    {outcome.agent.value}: {outcome.name} — {outcome.summary()}")
+
+    print("\n[preserved]")
+    # The README's promise to anyone with an existing setup: "기존 설정은 덮어쓰지 않고 merge
+    # 합니다. 주석, 직접 등록한 MCP 서버, 기존 옵션 모두 유지됩니다." Nothing checked it, because
+    # every end-to-end run started from an empty HOME, where there is nothing to preserve.
+    codex_after = (home / ".codex" / "config.toml").read_text(encoding="utf-8")
+    claude_raw = (home / ".claude.json").read_text(encoding="utf-8")
+    # Without this the whole section is vacuous: an install that writes to neither file keeps
+    # every fragment by doing nothing, and a broken merge would read as a pass.
+    record(
+        codex_after != EXISTING_CODEX,
+        "the install wrote to the Codex config, so merging was exercised",
+    )
+    record(
+        json.loads(claude_raw) != EXISTING_CLAUDE,
+        "the install wrote to the Claude Code config, so merging was exercised",
+    )
+    for fragment, label in (
+        ("# My own settings. Do not lose these.", "a comment"),
+        ('model = "o3"', "a hand-set option"),
+        ("my_own_server", "a hand-registered MCP server"),
+        ("my_internal_tools.mcp", "that server's args"),
+        ("https://internal.example.test", "that server's env"),
+    ):
+        record(fragment in codex_after, f"codex kept {label}")
+    claude_after = json.loads(claude_raw)
+    record(
+        "my_own_server" in (claude_after.get("mcpServers") or {}),
+        "claude_code kept a hand-registered MCP server",
+    )
+    record(
+        claude_after.get("someUnrelatedSetting") == {"keepMe": True},
+        "claude_code kept an unrelated setting",
+    )
 
     print("\n[health]")
     for agent, health in result.health.items():
@@ -154,6 +229,48 @@ def check(home: Path, required: list[str]) -> int:
             ) if part
         )
         print(f"    {item.component_id}: {detail or 'nothing'}")
+
+    # The user-facing promise of `agent-guidance uninstall`: the config goes back. It is
+    # checked to the byte, against a file that had content before the install, because
+    # restoring an empty file proves nothing. This caught a blank line that the removal of an
+    # MCP table left behind, which made a config that ended in one newline come back ending
+    # in two.
+    record(
+        (home / ".codex" / "config.toml").read_text(encoding="utf-8") == EXISTING_CODEX,
+        "uninstall restored the Codex config byte for byte",
+    )
+    record(
+        json.loads((home / ".claude.json").read_text(encoding="utf-8")) == EXISTING_CLAUDE,
+        "uninstall restored the Claude Code config exactly",
+    )
+
+    print("\n[rollback]")
+    # Rollback is the other half of the same promise, and it has to be checked against a file
+    # that had content before the install — restoring an empty file proves nothing. It runs
+    # here, on a fresh install, because doing it earlier would undo the install the uninstall
+    # section above needs.
+    second = MultiAgentInstallationTransaction(
+        {agent: adapters[agent] for agent in multi.agents},
+        Path(os.environ["AGENT_GUIDANCE_HOME"]) / "backups",
+    ).execute(multi, probe_mcp=False)
+    if not second.success:
+        record(False, "a second install for the rollback check committed", str(second.error or ""))
+    else:
+        outcomes = rollback_multi_agent(
+            second.manifest, {agent: adapters[agent] for agent in multi.agents},
+        )
+        # Each Agent gets its own RollbackResult; the dict is always truthy, so the errors
+        # inside it are what to read.
+        errors = {agent.value: item.errors for agent, item in outcomes.items() if item.errors}
+        record(not errors, "rollback reported no error", str(errors))
+        record(
+            (home / ".codex" / "config.toml").read_text(encoding="utf-8") == EXISTING_CODEX,
+            "rollback restored the Codex config byte for byte",
+        )
+        record(
+            json.loads((home / ".claude.json").read_text(encoding="utf-8")) == EXISTING_CLAUDE,
+            "rollback restored the Claude Code config exactly",
+        )
 
     print("\n[verify]")
     for agent in present:
