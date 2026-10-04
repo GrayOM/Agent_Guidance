@@ -102,3 +102,60 @@ def test_the_command_is_how_the_check_is_meant_to_be_run() -> None:
 
     names = {command.name or command.callback.__name__ for command in app.registered_commands}
     assert "self-check" in names
+
+
+def component(**install):
+    """A candidate carrying only what the pinning claim reads."""
+    from agent_guidance.models import Component, ComponentType, InstallMethod
+
+    return Component(
+        id=install.pop("id", "candidate"), name="Candidate", type=ComponentType.SKILL,
+        github_url="https://github.com/owner/repo",
+        install_method=InstallMethod(**install),
+    )
+
+
+def test_a_pin_counts_whichever_route_its_kind_uses() -> None:
+    """A Skill pins to a commit and an npm MCP server pins to a registry version.
+
+    Both answer the same question, so the claim has to read both. Reading only `ref` would
+    report a correctly pinned npm server as unpinned.
+    """
+    from agent_guidance.models import InstallKind
+    from agent_guidance.core.self_check import _pin
+
+    assert _pin(component(kind=InstallKind.GIT_SKILLS,
+                          repository="https://github.com/owner/repo", ref="a" * 40))
+    assert _pin(component(kind=InstallKind.MCP_STDIO, command="npx",
+                          package="thing", package_version="1.2.3")) == "thing@1.2.3"
+    # A branch name is not a pin: it resolves to something different later.
+    assert not _pin(component(kind=InstallKind.GIT_SKILLS,
+                              repository="https://github.com/owner/repo", ref="main"))
+    assert not _pin(component(kind=InstallKind.MCP_STDIO, command="npx"))
+
+
+def test_the_pinning_claim_counts_how_many_of_how_many(report, capsys) -> None:
+    """The defect in the claim itself.
+
+    It asserted `bool(pinned)`, so a run with three of four candidates pinned printed PASS and
+    listed the three. The gap was invisible, and one pin in a hundred would have read the same.
+    """
+    from agent_guidance.core.self_check import _pin
+
+    pinnable = [
+        component(id="pinned-skill", kind="git_skills",
+                  repository="https://github.com/owner/repo", ref="b" * 40),
+        component(id="unpinned-mcp", kind="mcp_stdio", command="npx", from_readme=True),
+    ]
+    pinned = [item for item in pinnable if _pin(item)]
+    unpinned = [item for item in pinnable if not _pin(item)]
+
+    report.check(
+        bool(pinnable) and not unpinned,
+        "every discovered candidate on offer is pinned to an exact version",
+        f"{len(pinned)} of {len(pinnable)} pinned; not pinned: unpinned-mcp",
+    )
+    assert report.verdict() == 1
+    output = capsys.readouterr().out
+    assert "1 of 2 pinned" in output
+    assert "unpinned-mcp" in output

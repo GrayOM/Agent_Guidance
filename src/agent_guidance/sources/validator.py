@@ -33,6 +33,32 @@ class ComponentValidator:
             warnings.append("license is missing or unclear")
         if component.install_method.kind == InstallKind.NONE:
             hard_failures.append("install method could not be determined")
+        ref = str(component.install_method.ref or "")
+        if component.install_method.repository and len(ref) < 7:
+            # `_install_ref` falls back to default_branch when the commit lookup did not land,
+            # which is a deliberate fallback under an anonymous rate limit rather than a
+            # defect, so this warns instead of refusing — dropping the candidate would shrink
+            # the result set silently, which is the worse failure. A warning reaches the
+            # approval screen, where "what gets installed is whatever this branch is at"
+            # is something the user can weigh.
+            warnings.append(
+                f"not pinned to a commit: installs whatever '{ref or 'the default branch'}' "
+                "points at when it is fetched"
+            )
+        if (
+            component.install_method.kind == InstallKind.MCP_STDIO
+            and component.install_method.from_readme
+            and not component.install_method.package_version
+        ):
+            # The counterpart of the Plugin rule below, which MCP did not have. An npm server
+            # whose launch command came from a README is installable only once the registry
+            # has confirmed the package and given a version to pin to: `npx -y name` fetches
+            # npm's current latest every time the Agent starts it, so an unpinned entry is not
+            # the code that was reviewed on the approval screen. pin_failure carries why.
+            hard_failures.append(
+                component.install_method.pin_failure
+                or "the npm package behind this MCP server could not be resolved to a version"
+            )
         if component.type == ComponentType.PLUGIN:
             # A plugin is installable only through a marketplace: that is the path that
             # fetches it, validates its manifest and has an inverse to roll back.

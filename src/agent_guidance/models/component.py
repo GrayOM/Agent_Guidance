@@ -91,6 +91,22 @@ class InstallMethod(BaseModel):
     env_vars: list[str] = Field(default_factory=list)
     bearer_token_env_var: str | None = None
     startup_timeout_sec: float = Field(default=10, gt=0, le=120)
+    # True when the command and arguments were read out of the repository's README rather
+    # than declared by a manifest or the built-in registry. A README is the repository
+    # owner's own prose, so a command taken from one is a claim about how to run the project,
+    # not evidence of what will run. The risk review says so on the approval screen, and for
+    # an npm-launched server the claim is checked against the registry before it is offered.
+    from_readme: bool = False
+    # The npm package an MCP server is launched from, separated from any version spec its
+    # README carried, and the version the registry resolved it to. An install is only offered
+    # once package_version is set: `npx -y name` fetches npm's current latest every time the
+    # Agent starts the server, so an unpinned entry is not the code that was reviewed.
+    package: str | None = None
+    package_version: str | None = None
+    # Why the package could not be pinned, when it could not. Carried here so the validator
+    # can reject the candidate with the actual reason — no such package, npm unreachable, or
+    # a package that names a different repository — instead of a generic refusal.
+    pin_failure: str | None = None
     # A plugin is addressed as "<plugin>@<marketplace>"; marketplace_source is where the
     # marketplace is added from when the Agent does not already know it.
     plugin_id: str | None = None

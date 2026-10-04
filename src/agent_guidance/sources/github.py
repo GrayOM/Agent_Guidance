@@ -13,6 +13,7 @@ from .base import ComponentSource, RawCandidate, SourceResult, SourceUnavailable
 from .budget import DiscoveryBudget
 from .cache import CandidateCache
 from .normalizer import normalize_candidate
+from .npm import pin_npm_install
 from .validator import ComponentValidator
 
 
@@ -108,10 +109,15 @@ class GitHubSource(ComponentSource):
         cache: CandidateCache | None = None,
         client: httpx.AsyncClient | None = None,
         budget: DiscoveryBudget | None = None,
+        npm_client: httpx.AsyncClient | None = None,
     ) -> None:
         self.validator = validator
         self.cache = cache
         self.client = client
+        # Separate from `client` because that one carries the user's GitHub token. Held as a
+        # field so a test can drive the whole discover() path without the npm lookup reaching
+        # the real registry; left None in normal use, where the resolver opens its own.
+        self.npm_client = npm_client
         self.budget = budget or DiscoveryBudget.detect()
         self.rate_limit_remaining: int | None = None
 
@@ -272,7 +278,16 @@ class GitHubSource(ComponentSource):
                 if cached:
                     return self.validate(cached), raw.source_version, None
                 fetched = await self.fetch(raw)
-                return self.validate(self.normalize(fetched)), raw.source_version, None
+                # The npm lookup sits between normalising and validating because the
+                # validator's answer depends on it: a README-derived npm server is only
+                # installable once the registry has given a version to pin to. A separate
+                # client is used rather than self._client, which carries the user's GitHub
+                # token and must not reach npmjs.org.
+                component = await pin_npm_install(
+                    self.normalize(fetched), repository_full_name=raw.repository_full_name,
+                    client=self.npm_client,
+                )
+                return self.validate(component), raw.source_version, None
 
         processed = await asyncio.gather(*(process(raw) for raw in raw_candidates), return_exceptions=True)
         failures: dict[str, list[str]] = {}

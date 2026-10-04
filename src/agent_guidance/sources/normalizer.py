@@ -12,6 +12,7 @@ from agent_guidance.models import (
 )
 
 from .base import RawCandidate
+from .npm import split_package_spec
 from .repository_security import scan_repository
 
 
@@ -284,14 +285,28 @@ def _install_method(
             marketplace=name, marketplace_source=str(raw.repository_url),
             repository=raw.repository_url, ref=_install_ref(raw),
         ), note
+    # Everything below comes out of the README, which is the repository owner's own prose.
+    # from_readme records that, so the risk review can say it on the approval screen and the
+    # npm resolver knows which candidates it has to check before they are installable.
     readme = raw.readme or ""
     urls = re.findall(r"https://[^\s)`\"']+/mcp/?", readme, flags=re.I)
     if urls:
-        return InstallMethod(kind=InstallKind.MCP_HTTP, url=urls[0].rstrip(".,")), None
+        return InstallMethod(
+            kind=InstallKind.MCP_HTTP, url=urls[0].rstrip(".,"), from_readme=True,
+        ), None
     npx = re.search(r"\bnpx\s+(?:-y\s+)?([@\w./-]+)([^\n`]*)", readme)
     if npx:
-        args = ["-y", npx.group(1)] + [item for item in npx.group(2).strip().split() if not item.startswith("$")]
-        return InstallMethod(kind=InstallKind.MCP_STDIO, command="npx", args=args[:12]), None
+        # The scraped token carries whatever version spec the README wrote — `name@latest` is
+        # one token to the pattern — so the name is separated here and the version is left for
+        # the registry to decide. Keeping `@latest` would be keeping the unpinned install.
+        package, _requested = split_package_spec(npx.group(1))
+        args = ["-y", package] + [
+            item for item in npx.group(2).strip().split() if not item.startswith("$")
+        ]
+        return InstallMethod(
+            kind=InstallKind.MCP_STDIO, command="npx", args=args[:12],
+            package=package, from_readme=True,
+        ), None
     return InstallMethod(), None
 
 
