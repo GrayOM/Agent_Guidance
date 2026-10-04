@@ -46,6 +46,31 @@
 
 ### Fixed
 
+- Recommendations ranked a sprawling README above a focused one, because the first sort key
+  counted how many needed capabilities a component claims and a capability is inferred from a
+  README, so claiming one is free. Measured on a real run where the user asked for web and
+  AI-Agent development:
+
+      component                  claims  covers  precision  README
+      samugit83-redamon              25       7       0.28  101,752 chars  <- 1st
+      aquaticat-monochromatic        14       5       0.36   13,287 chars  <- 2nd
+      superpowers                     5       4       0.80                <- 3rd
+      github (official)               3       2       0.67                <- 4th
+
+  First place went to an autonomous exploitation framework claiming 25 of the 37 capabilities
+  that exist, which installed 1 of its 15 Skills because that was all that matched; second to
+  a 148-package monorepo. Coverage is now weighted by precision — the share of what a
+  component claims that is actually wanted — which puts the focused Skill set first. Coverage
+  still separates two equally focused candidates, and a broad project is still selected when
+  nothing focused covers a capability, which is how that same run still reached it second.
+
+- A Skill made an MCP server redundant. The coverage bookkeeping was keyed by Agent and
+  capability with no component type, so selecting a Skill that mentions code review dropped
+  the official GitHub MCP server as adding nothing — a Skill is written instructions the Agent
+  reads and an MCP server is tools it can call, and `_duplicate_of` already refused to compare
+  across types. The official server had survived only by being ordered first, and fixing the
+  ranking above exposed it.
+
 - `agent-guidance uninstall` did not put a Codex config back to the byte. Removing an MCP
   table leaves the blank line that separated it behind, so a `config.toml` that ended in one
   newline came back from an uninstall ending in two. Trailing whitespace carries no meaning in
