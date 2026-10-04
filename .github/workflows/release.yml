@@ -24,6 +24,12 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Passed to the publish job, which cannot work the version out for itself: on a dispatched
+    # run GITHUB_REF_NAME is the branch, not a tag, so reading the ref would compare the built
+    # version against "main" and fail every dispatched release.
+    outputs:
+      version: ${{ steps.target.outputs.version }}
+      tag: ${{ steps.target.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -65,3 +71,51 @@ jobs:
             --title "${{ steps.target.outputs.tag }}" \
             --notes-file notes.md \
             --target "$GITHUB_SHA"
+
+  # Publishing to PyPI is irreversible: a version number can be yanked but never reused, and
+  # the files are mirrored within seconds. So it is a separate job behind two gates.
+  #
+  # The first is Trusted Publishing. PyPI is told which repository, which workflow file and
+  # which environment may publish this project, and the job proves it with a short-lived OIDC
+  # token minted by GitHub for that one run. No API token is created, stored as a secret, or
+  # printed anywhere, so there is none to leak or rotate. Until the publisher is configured on
+  # PyPI the job fails and nothing is published, which is the behaviour to want: the project
+  # cannot reach PyPI by accident before someone decided it should.
+  #
+  # The second is the `pypi` environment. A required reviewer on it, set in the repository's
+  # settings, makes every publish wait for a person — worth having for an action that cannot
+  # be undone.
+  publish-to-pypi:
+    needs: release
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # The OIDC token is the credential. contents is not needed here: this job builds from the
+      # checkout and talks only to PyPI.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Built again rather than carried from the release job. An artefact passed between jobs
+      # is one more thing that can be swapped; building from the same commit is cheap.
+      - name: Build
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+
+      # Catches a broken long_description before PyPI rejects it, and a version that does not
+      # match the tag before the upload rather than after.
+      - name: Check the artefacts
+        run: |
+          python -m twine check --strict dist/*
+          built=$(ls dist/*.whl | sed -E 's/.*-([0-9][^-]*)-py3.*/\1/')
+          echo "releasing ${{ needs.release.outputs.version }}, built $built"
+          test "$built" = "${{ needs.release.outputs.version }}" || {
+            echo "the release version and the built version disagree" >&2
+            exit 1
+          }
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

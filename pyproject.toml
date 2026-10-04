@@ -1,12 +1,14 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-fancy-pypi-readme"]
 build-backend = "hatchling.build"
 
 [project]
 name = "agent-guidance"
-dynamic = ["version"]
+# readme is dynamic because the published description needs absolute links; see the
+# fancy-pypi-readme hook below. The file itself stays relative, which is what GitHub and a
+# local checkout want.
+dynamic = ["version", "readme"]
 description = "CLI manager for AI Agent skills, MCP servers, and plugins"
-readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "GrayOM" }]
@@ -72,6 +74,36 @@ packages = ["src/agent_guidance"]
 
 [tool.hatch.version]
 path = "src/agent_guidance/__init__.py"
+
+# README.md refers to its screenshots and to the other documents by relative path, which is
+# correct in a checkout and on GitHub and broken on PyPI, where there is no repository to
+# resolve them against. Published as-is, the project page would have shown eight broken
+# images — the logo and every screenshot, which are the point of that page — and five links
+# that 404.
+#
+# So the published description is the same file with those paths made absolute. The file is
+# not rewritten: a reader of the repository should not be sent to raw.githubusercontent.com
+# to see a picture that is sitting next to the README.
+#
+# The URLs point at `main` rather than at the tag. An old release's page therefore shows the
+# current screenshots, which is a small inaccuracy accepted in exchange for not having to
+# rewrite these on every release — and the screenshots are regenerated from the CLI anyway.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'src="docs/'
+replacement = 'src="https://raw.githubusercontent.com/GrayOM/Agent_Guidance/main/docs/'
+
+# Markdown links to files in the repository. The negative lookahead leaves anything already
+# absolute alone, and leaves in-page anchors alone, which would otherwise be sent to GitHub
+# as a path.
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?:|#)([^)]+)\)'
+replacement = '](https://github.com/GrayOM/Agent_Guidance/blob/main/\1)'
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -1,5 +1,6 @@
 from typer.testing import CliRunner
 
+from agent_guidance import __version__
 from agent_guidance.cli.main import app
 
 
@@ -12,7 +13,9 @@ def test_help_and_version_are_fast_and_non_networked(monkeypatch) -> None:
     assert runner.invoke(app, ["--help"]).exit_code == 0
     version = runner.invoke(app, ["--version"])
     assert version.exit_code == 0
-    assert "0.1.0" in version.output
+    # The running version, not a literal: a hardcoded number makes every release a
+    # test edit, and what this line is for is that --version prints the version at all.
+    assert __version__ in version.output
 
 
 def test_the_plan_table_shows_only_what_will_be_installed() -> None:
