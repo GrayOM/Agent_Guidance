@@ -4,6 +4,15 @@
 
 ### Added
 
+- `scripts/real_agent_check.py` now seeds its throwaway HOME with hand-written Agent
+  configuration — a comment, an option set by hand, an MCP server registered by hand with its
+  own args and environment — and checks all of it survived the install, then that both
+  uninstall and rollback restore the files byte for byte. Every end-to-end run before this
+  started from an empty HOME, so the README's promise to anyone with an existing setup had
+  never been exercised; the run also asserts that the install wrote to those files at all,
+  because under the previous answer it recommended Skills only, left `config.toml` untouched,
+  and every preservation check passed without the merge code running once.
+
 - `agent-guidance self-check`, which checks that the program does what it was designed to do
   on the machine running it and prints what each of six claims measured. It installs nothing
   and writes nothing outside a temporary directory.
@@ -36,6 +45,14 @@
   that has nothing to do with the repository.
 
 ### Fixed
+
+- `agent-guidance uninstall` did not put a Codex config back to the byte. Removing an MCP
+  table leaves the blank line that separated it behind, so a `config.toml` that ended in one
+  newline came back from an uninstall ending in two. Trailing whitespace carries no meaning in
+  TOML, but "uninstall puts your config back" is a promise about the file. The file's own
+  trailing newlines are now restored rather than normalised to one: a config kept without a
+  final newline stays that way, because tidying it is still editing someone's file for reasons
+  they did not ask for.
 
 - A `self-check` run that reached GitHub but was refused the repositories it named reported
   two failures and exit 1. An anonymous run gets 60 requests an hour, so a second run inside

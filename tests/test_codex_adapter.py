@@ -105,3 +105,59 @@ def test_health_check_parses_config_discovers_skill_and_mcp(tmp_path, monkeypatc
     result = adapter.health_check([skill_component(), mcp_component()])
     assert result.healthy
     assert all(check.passed for check in result.checks)
+
+
+def test_removing_an_mcp_server_leaves_the_trailing_newlines_alone(tmp_path) -> None:
+    """`uninstall` has to put the file back to the byte, and it did not.
+
+    Removing a table leaves the blank line that separated it behind, so a config ending in one
+    newline came back from an uninstall ending in two. Trailing whitespace means nothing in
+    TOML, but "uninstall puts your config back" is a promise about the file, and the real-Agent
+    check compares it byte for byte.
+    """
+    from agent_guidance.adapters.codex import CodexAdapter
+
+    home = tmp_path / "home"
+    (home / ".codex").mkdir(parents=True)
+    config = home / ".codex" / "config.toml"
+    original = (
+        '# mine\nmodel = "o3"\n\n'
+        '[mcp_servers.mine]\ncommand = "python3"\n\n'
+        '[mcp_servers.theirs]\ncommand = "npx"\n'
+    )
+    config.write_text(original, encoding="utf-8")
+
+    adapter = CodexAdapter(home)
+    removed = adapter._remove_toml_mcp(["theirs"], _removal_result())
+
+    assert removed == ["theirs"]
+    after = config.read_text(encoding="utf-8")
+    assert "theirs" not in after
+    assert "# mine" in after and "mcp_servers.mine" in after
+    assert after.endswith('command = "python3"\n'), repr(after)
+
+
+def test_a_config_kept_without_a_final_newline_stays_that_way(tmp_path) -> None:
+    """The file's own ending is restored, not normalised.
+
+    Rendering always ends in one newline, so the obvious fix — strip and add one — would have
+    quietly added a final newline to a file the user keeps without one. That is still editing
+    someone's file for reasons they did not ask for.
+    """
+    from agent_guidance.adapters.codex import CodexAdapter
+
+    home = tmp_path / "home"
+    (home / ".codex").mkdir(parents=True)
+    config = home / ".codex" / "config.toml"
+    original = '[mcp_servers.mine]\ncommand = "python3"\n\n[mcp_servers.theirs]\ncommand = "npx"'
+    config.write_text(original, encoding="utf-8")
+
+    CodexAdapter(home)._remove_toml_mcp(["theirs"], _removal_result())
+
+    assert config.read_text(encoding="utf-8") == '[mcp_servers.mine]\ncommand = "python3"'
+
+
+def _removal_result():
+    from agent_guidance.models import ComponentRemovalResult
+
+    return ComponentRemovalResult(component_id="theirs")
