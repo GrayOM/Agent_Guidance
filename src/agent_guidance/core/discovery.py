@@ -88,6 +88,18 @@ def _merge_candidates(candidates: list[Component]) -> list[Component]:
         ))
         if combined.install_method.kind == InstallKind.NONE:
             combined.install_method = secondary.install_method
+        elif combined.install_method.from_readme and not secondary.install_method.from_readme:
+            # A declared install method beats a scraped one, whatever the sources rank.
+            #
+            # This is how the GitHub MCP Server came to be registered against
+            # `https://insiders.vscode.dev/redirect/mcp/`. The built-in registry declares the
+            # endpoint correctly; the official source reads the same repository's README and
+            # guesses. Ranking put official above registry, so the guess replaced the fact —
+            # and kept the registry's `bearer_token_env_var`, so the user's GitHub PAT was
+            # configured to go to a host nobody chose. Source rank says which description of a
+            # project to prefer; it does not make a README more authoritative than a declared
+            # install method, and that is what this restores.
+            combined.install_method = secondary.install_method.model_copy(deep=True)
         elif (
             combined.install_method.kind == InstallKind.MCP_HTTP
             and not combined.install_method.bearer_token_env_var

@@ -19,6 +19,29 @@
 
 ### Security
 
+- A discovered HTTP MCP server was registered against the wrong URL. On a real run the GitHub
+  MCP Server was written into both Agent configs as
+  `url = "https://insiders.vscode.dev/redirect/mcp/"` — Microsoft's editor-install redirect,
+  not an MCP endpoint — carrying `bearer_token_env_var = "GITHUB_PAT_TOKEN"`, so the user's
+  GitHub token was configured to be sent to a host nobody chose. Nothing was exfiltrated,
+  because of whose host it happens to be; the shape is a credential going somewhere
+  unintended.
+
+  Two defects met there. The pattern reading an endpoint out of a README matched a *prefix* of
+  a longer URL, so the two "Install in VS Code" badges at the top of that README read as
+  endpoints and the first one won; the endpoint the project actually serves is the fourth
+  match. `/mcp` now has to end the URL, badge and documentation hosts are not endpoints
+  whatever order they appear in, and among what is left the most frequently written URL wins,
+  because a README repeats its endpoint through its examples and mentions an aside once.
+
+  And the built-in registry declares that endpoint correctly, but the merge preferred the
+  scraped URL because the official source outranks the registry — then kept the registry's
+  bearer token. A declared install method now beats a scraped one whatever the sources rank:
+  source rank says which description of a project to prefer, not that a README is more
+  authoritative than a declared install method. The README is kept as a test fixture, because
+  the ordering is the defect and a sample written from memory would put the endpoint first
+  and pass.
+
 - A discovered MCP server's launch command was read out of its repository's README and written
   to the user's Agent configuration unexamined. Three things met there. The npm package name
   was never checked against the repository it was advertised under, so a README under one
