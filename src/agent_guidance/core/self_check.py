@@ -29,7 +29,15 @@ from agent_guidance.cli.interview import TASKS, build_answer
 from agent_guidance.core.capability_inference import infer_capabilities
 from agent_guidance.core.discovery import discover_components_sync
 from agent_guidance.core.recommender import recommend
-from agent_guidance.models import ComponentType, SetupMode, WorkDomain
+from agent_guidance.models import ComponentType, InstallKind, SetupMode, WorkDomain
+
+
+# The install kinds that fetch code, and so have something to pin. MCP_HTTP is left out
+# deliberately: it is an endpoint the Agent talks to, not code this program installs.
+PINNABLE = {
+    InstallKind.GIT_SKILLS, InstallKind.PLUGIN_GIT, InstallKind.PLUGIN_MARKETPLACE,
+    InstallKind.MCP_STDIO,
+}
 
 
 class Report:
@@ -126,7 +134,7 @@ def run() -> int:
         f"{len(plan.items) - len(plan.selected)} considered and not selected",
     )
 
-    print("\n[6] It searches GitHub for other people's Skills, at their latest commit.")
+    print("\n[6] It searches GitHub for other people's Skills, pinned to an exact version.")
     live_github_discovery(answer, offline, report)
 
     return report.verdict()
@@ -174,14 +182,51 @@ def live_github_discovery(answer, offline, report: Report) -> None:
 
     # "Latest" is the whole point of searching rather than shipping a fixed list: an install
     # ref has to be the commit the repository is at now, not a branch name resolved later and
-    # not the cache key the search result was sorted by.
-    pinned = [candidate for candidate in github
-              if candidate.install_method.ref and len(str(candidate.install_method.ref)) >= 7]
+    # not the cache key the search result was sorted by. An npm-launched MCP server pins to a
+    # registry version instead of a commit, which is the same promise by a different route.
+    #
+    # This counts how many of how many, rather than passing on the first pin it finds. The
+    # first version asserted `bool(pinned)`, which passed on a run where three of four
+    # candidates were pinned and printed only the three — so the reader saw PASS and no sign
+    # of the gap. One pin in a hundred would have read the same way.
+    #
+    # Only what fetches code. An HTTP MCP server is a URL the Agent talks to, so there is no
+    # version of anything to pin; its risk is what the Agent sends there, which is a separate
+    # question from this one. Counting it here would fail the claim on the official GitHub MCP
+    # server for not having a property it cannot have.
+    pinnable = [c for c in github if c.recommendable and c.install_method.kind in PINNABLE]
+    pinned = [c for c in pinnable if _pin(c)]
+    unpinned = [c for c in pinnable if not _pin(c)]
     report.check(
-        bool(pinned) if github else False,
-        "a discovered repository is pinned to a real commit",
-        ", ".join(f"{c.id}@{str(c.install_method.ref)[:12]}" for c in pinned[:5]) or "none pinned",
+        bool(pinnable) and not unpinned,
+        "every discovered candidate on offer is pinned to an exact version",
+        f"{len(pinned)} of {len(pinnable)} pinned: "
+        + (", ".join(f"{c.id}@{_pin(c)[:12]}" for c in pinned[:5]) or "none")
+        # An unpinned one is named with whatever it resolved to instead, because the two
+        # causes need different answers and the id alone does not separate them. A branch name
+        # means the commit lookup did not land and `_install_ref` fell back to default_branch;
+        # an empty ref means nothing resolved at all.
+        + (
+            "; not pinned: " + ", ".join(
+                f"{c.id}@{c.install_method.ref or 'nothing'}" for c in unpinned[:5]
+            )
+            if unpinned else ""
+        ),
     )
+
+
+def _pin(component) -> str:
+    """What an install is pinned to, by whichever route its kind uses.
+
+    A Skill or plugin repository is pinned to a commit; an npm-launched MCP server is pinned
+    to a registry version. Both answer the same question — is what gets installed a fixed
+    thing — so both count, and a candidate with neither is unpinned.
+    """
+    method = component.install_method
+    if method.package_version:
+        return f"{method.package}@{method.package_version}"
+    ref = str(method.ref or "")
+    return ref if len(ref) >= 7 else ""
 
 
 def self_check() -> int:

@@ -8,7 +8,40 @@
   on the machine running it and prints what each of six claims measured. It installs nothing
   and writes nothing outside a temporary directory.
 
+### Security
+
+- A discovered MCP server's launch command was read out of its repository's README and written
+  to the user's Agent configuration unexamined. Three things met there. The npm package name
+  was never checked against the repository it was advertised under, so a README under one
+  project could install anyone's package. Nothing was pinned: `npx -y name` resolves npm's
+  current latest every time the Agent starts the server, so a package that is clean when it is
+  installed is not necessarily the package that runs next week, even though Skills from the
+  same search are pinned to `head_sha`. And the risk review had no rule for either, so the
+  approval screen showed nothing and the candidate was labelled verified.
+
+  Such a server is now resolved against the npm registry before it is offered. The package has
+  to exist, it has to declare the repository it was discovered from, and the install is pinned
+  to the exact version the registry reports — the README's own `@latest` included. A package
+  that cannot be resolved is not recommended, and the reason says which of the three it was.
+  This is the counterpart of the rule Plugins already had, which MCP did not.
+
+  The registry lookup uses its own HTTP client. Reusing the GitHub one would have sent the
+  user's `GITHUB_TOKEN` to npmjs.org, which would have been worse than the problem being
+  fixed; a test asserts the request carries no credentials.
+
+- The risk review now reports a launch command that came from a README, and the version an
+  install is pinned to. A Skill that falls back to a branch name because the commit lookup did
+  not land is reported too, as a warning rather than a refusal: that fallback exists for
+  anonymous rate limits, and dropping the candidate would shrink the result set for a reason
+  that has nothing to do with the repository.
+
 ### Fixed
+
+- The `self-check` pinning claim asserted that *some* discovered candidate was pinned, so a run
+  with three of four pinned printed PASS and listed the three. The gap was invisible, and one
+  pin in a hundred would have read the same way. It now counts how many of how many, names the
+  ones that are not pinned and what they resolved to instead, and fails when any candidate on
+  offer is unpinned.
 
 - The design check ran as a script from a clone, and a clone that has not been installed has
   the package on `sys.path` without any of its dependencies. The first person to run it got

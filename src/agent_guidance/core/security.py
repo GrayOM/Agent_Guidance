@@ -24,6 +24,28 @@ def analyze_security(components: list[Component]) -> list[SecurityFinding]:
                 component_id=component.id, level=RiskLevel.WARNING,
                 rule="install.external_command", message="installation executes an external command",
             ))
+        method = component.install_method
+        if method.from_readme:
+            # The approval screen said nothing about this before, so a launch command lifted
+            # out of a stranger's README read exactly like one declared by a manifest. It is
+            # the one thing a reader cannot recover from the component's name.
+            findings.append(SecurityFinding(
+                component_id=component.id, level=RiskLevel.WARNING,
+                rule="install.readme_derived",
+                message=(
+                    "launch command was read from the repository README, which is the "
+                    "repository owner's own text rather than a verified manifest"
+                ),
+            ))
+        if method.package and method.package_version:
+            findings.append(SecurityFinding(
+                component_id=component.id, level=RiskLevel.LOW,
+                rule="install.version_pinned",
+                message=(
+                    f"pinned to {method.package}@{method.package_version}, so a later "
+                    "publish of this package does not change what runs"
+                ),
+            ))
         executable = component.install_method.command
         if executable and executable.lower() in {"sudo", "su", "doas", "runas"}:
             findings.append(SecurityFinding(
