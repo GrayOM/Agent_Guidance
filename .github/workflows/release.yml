@@ -17,6 +17,11 @@ on:
         description: "Version to release, without a leading v (e.g. 0.1.0)"
         required: true
         type: string
+      publish_to_pypi:
+        description: "Also publish to PyPI (needs a Trusted Publisher configured there first)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -87,6 +92,14 @@ jobs:
   # be undone.
   publish-to-pypi:
     needs: release
+    # Off unless asked for. The job cannot succeed until someone has configured a Trusted
+    # Publisher on PyPI, and a GitHub release should not come out marked failed because of a
+    # step nobody has opted into — a red release is read as a broken release.
+    #
+    # A pushed tag therefore never publishes: `inputs` is empty there, so the condition is
+    # false. That is deliberate for an action that cannot be undone. Publishing is a dispatch
+    # with the box ticked, which means a person chose it for that version.
+    if: ${{ inputs.publish_to_pypi }}
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

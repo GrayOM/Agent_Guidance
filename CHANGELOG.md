@@ -9,12 +9,18 @@ and this program had been reading it as fact.
 
 ### Added
 
-- The release workflow can publish to PyPI, through Trusted Publishing: PyPI is told which
-  repository, which workflow file and which environment may publish this project, and the job
+- The release workflow can publish to PyPI, through Trusted Publishing, and only when asked:
+  the dispatch carries a `publish_to_pypi` box that is off by default, and a pushed tag never
+  publishes. The job cannot succeed until a Trusted Publisher exists on PyPI, and a GitHub
+  release should not come out marked failed because of a step nobody opted into — a red
+  release reads as a broken release. For an action that cannot be undone, publishing being a
+  deliberate tick rather than a side effect of tagging is the behaviour to want.
+
+  PyPI is told which repository, which workflow file and which environment may publish, and the job
   proves it with a short-lived OIDC token minted for that one run. No API token is created,
-  stored as a secret or printed anywhere, so there is none to leak or rotate. Until the
-  publisher is configured on PyPI the job fails and nothing is published, and the `pypi`
-  environment can carry a required reviewer, so an irreversible action waits for a person.
+  stored as a secret or printed anywhere, so there is none to leak or rotate. Asked for before
+  that publisher exists, the job fails and nothing is published; and the `pypi` environment can
+  carry a required reviewer, so an irreversible action waits for a person as well.
 
 - The published description rewrites README.md's relative paths to absolute ones. The file
   refers to its screenshots and the other documents by relative path, which is right in a
