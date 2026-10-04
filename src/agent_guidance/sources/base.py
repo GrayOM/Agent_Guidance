@@ -29,6 +29,13 @@ class SourceResult(BaseModel):
     validated: int = 0
     warnings: list[str] = Field(default_factory=list)
     rate_limit_remaining: int | None = None
+    # Repositories the search returned but that could not then be read — a rate limit part
+    # way through, an access decision, a timeout. `checked` says the source was reached and
+    # `discovered` says what it offered, so without this a run that reached GitHub, was told
+    # about two repositories and was refused both looks identical to one that reached GitHub
+    # and genuinely found nothing. The first is untested, the second is an answer, and
+    # reporting the first as an answer is what teaches a reader to ignore the output.
+    read_failures: int = 0
 
 
 class SourceUnavailable(RuntimeError):

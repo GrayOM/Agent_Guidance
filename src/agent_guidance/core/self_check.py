@@ -154,7 +154,8 @@ def live_github_discovery(answer, offline, report: Report) -> None:
 
     for source in live.sources:
         print(f"          {source.source}: checked={source.checked} "
-              f"{source.discovered} discovered, {source.validated} validated")
+              f"{source.discovered} discovered, {source.validated} validated"
+              + (f", {source.read_failures} could not be read" if source.read_failures else ""))
     for warning in live.warnings:
         print(f"          warning: {warning}")
 
@@ -173,6 +174,27 @@ def live_github_discovery(answer, offline, report: Report) -> None:
 
     github = [candidate for candidate in live.candidates
               if str(candidate.github_url).lower() not in registry_repositories]
+
+    # Reaching GitHub is not the same as being able to read what it named. An anonymous run
+    # gets 60 requests an hour, and a second run within the hour reaches the search endpoint,
+    # is told about repositories, and is then refused every one of them. That is this claim
+    # untested, not this claim failed — the same distinction the `checked` flag draws one step
+    # earlier, applied one step later. Without it, running the check twice in an hour reports
+    # the program as broken, which is exactly the reading this output exists to prevent.
+    unread = sum(s.read_failures for s in live.sources)
+    if not github and unread:
+        report.cannot_tell(
+            "repositories nobody curated into this project are discovered",
+            f"GitHub was reached, named repositories, and then refused {unread} of them, so "
+            "nothing arrived to judge. The warnings above carry GitHub's own words. Setting "
+            "GITHUB_TOKEN or GH_TOKEN raises the limit this ran into and will settle it.",
+        )
+        report.cannot_tell(
+            "every discovered candidate on offer is pinned to an exact version",
+            "no discovered candidate could be read, so there was nothing to pin.",
+        )
+        return
+
     report.check(
         bool(github),
         "repositories nobody curated into this project are discovered",
@@ -197,8 +219,19 @@ def live_github_discovery(answer, offline, report: Report) -> None:
     pinnable = [c for c in github if c.recommendable and c.install_method.kind in PINNABLE]
     pinned = [c for c in pinnable if _pin(c)]
     unpinned = [c for c in pinnable if not _pin(c)]
+    if not pinnable:
+        # Nothing that fetches code arrived — only HTTP endpoints, or nothing recommendable.
+        # An empty set satisfies "every candidate is pinned" vacuously and proves nothing, so
+        # it is neither a pass to claim nor a failure to report.
+        report.cannot_tell(
+            "every discovered candidate on offer is pinned to an exact version",
+            f"none of the {len(github)} discovered candidates installs code, so there was "
+            "nothing with a version to pin.",
+        )
+        return
+
     report.check(
-        bool(pinnable) and not unpinned,
+        not unpinned,
         "every discovered candidate on offer is pinned to an exact version",
         f"{len(pinned)} of {len(pinnable)} pinned: "
         + (", ".join(f"{c.id}@{_pin(c)[:12]}" for c in pinned[:5]) or "none")

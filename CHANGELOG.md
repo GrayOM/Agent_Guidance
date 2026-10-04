@@ -37,6 +37,15 @@
 
 ### Fixed
 
+- A `self-check` run that reached GitHub but was refused the repositories it named reported
+  two failures and exit 1. An anonymous run gets 60 requests an hour, so a second run inside
+  that hour reaches the search endpoint, is told about repositories, and is then denied every
+  one of them — and the claims that read the candidate list found it empty. That is the claim
+  untested, not the program broken, which is the same distinction the `checked` flag already
+  drew one step earlier. `SourceResult` now counts the repositories it could not read, and
+  both claims report unproven with GitHub's own words and the remedy. Discovering nothing that
+  installs code reports unproven too, rather than passing vacuously or failing.
+
 - The `self-check` pinning claim asserted that *some* discovered candidate was pinned, so a run
   with three of four pinned printed PASS and listed the three. The gap was invisible, and one
   pin in a hundred would have read the same way. It now counts how many of how many, names the
