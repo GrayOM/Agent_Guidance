@@ -6,54 +6,57 @@
 
 <p align="center"><sub>by GrayOM</sub></p>
 
+<p align="center"><b>English</b> · <a href="README.ko.md">한국어</a></p>
+
 <p align="center">
-  <strong>Codex와 Claude Code를 설치한 다음, 뭘 깔아야 할지 대신 정해주는 CLI</strong>
+  <strong>A CLI that decides which skills, MCP servers and plugins to install for Codex and Claude Code</strong>
 </p>
 
 <p align="center">
-  하는 일을 고르면 됩니다. Skill·MCP·Plugin 이름을 알 필요도, 고를 필요도 없습니다.
+  You pick the work you do. You don't need to know, or choose between, skill, MCP or plugin names.
 </p>
 
 ---
 
-## 명령어는 하나입니다
+## One command
 
 ```bash
 agent-guidance
 ```
 
-나머지는 전부 화살표 키와 Enter로 끝납니다.
+Everything else is arrow keys and Enter.
 
-<img src="docs/assets/menu.svg" alt="agent-guidance 실행 화면 - 설치된 Agent를 찾고 메뉴를 보여준다">
+<img src="docs/assets/menu.svg" alt="agent-guidance start screen - detects installed agents and shows the menu">
 
-설치된 Agent를 먼저 찾아서 버전과 함께 보여주고, 할 일을 고르게 합니다. 각 줄이 **선택하면 무슨 일이
-일어나는지**까지 적혀 있으니 처음 써도 어떤 걸 눌러야 할지 고민할 필요가 없습니다.
+It first detects which agents are installed and shows their versions, then asks what you want to
+do. Every menu entry says **what will happen if you pick it**, so there is no guessing on the
+first run.
 
-> 이 문서의 모든 스크린샷은 실제로 프로그램을 돌려서 캡처한 것입니다
-> (`python scripts/capture_screens.py`). 손으로 그린 그림이 아닙니다.
+> Every screenshot in this document was captured from the real program
+> (`python scripts/capture_screens.py`). None of them are mock-ups.
 
 ---
 
-## 설치
+## Install
 
-Windows, macOS, Linux 모두 같은 명령입니다.
+The same command on Windows, macOS and Linux.
 
 ```bash
 pipx install "git+https://github.com/GrayOM/Agent_Guidance.git@main"
 ```
 
 <details>
-<summary>준비물과, pipx가 없을 때</summary>
+<summary>Requirements, and what to do without pipx</summary>
 
-필요한 것:
+You need:
 
-- Python 3.11 이상
+- Python 3.11 or later
 - Git
-- Codex 또는 Claude Code 중 **하나 이상이 이미 설치되어 있어야** 합니다
-  (Agent Guidance는 Agent 자체를 설치하지 않습니다)
+- **At least one of** Codex or Claude Code already installed
+  (Agent Guidance does not install the agents themselves)
 
-pipx가 없다면 [pipx 설치 문서](https://pipx.pypa.io/stable/installation/)를 보시거나, 가상환경으로
-설치할 수 있습니다.
+Without pipx, see the [pipx installation guide](https://pipx.pypa.io/stable/installation/), or
+install into a virtual environment:
 
 ```bash
 git clone https://github.com/GrayOM/Agent_Guidance.git
@@ -61,200 +64,206 @@ cd Agent_Guidance
 python -m venv .venv
 ```
 
-가상환경을 활성화한 뒤 (Windows PowerShell은 `.venv\Scripts\Activate.ps1`,
-macOS·Linux는 `source .venv/bin/activate`):
+Activate it (`.venv\Scripts\Activate.ps1` in Windows PowerShell, `source .venv/bin/activate` on
+macOS and Linux), then:
 
 ```bash
 python -m pip install .
 agent-guidance
 ```
 
-`agent-guidance` 명령을 찾을 수 없다고 나오면 `pipx ensurepath`를 실행하고 터미널을 다시 여십시오.
-그래도 안 되면 `python -m agent_guidance`로도 똑같이 실행됩니다.
+If `agent-guidance` is not found, run `pipx ensurepath` and open a new terminal. Failing that,
+`python -m agent_guidance` does exactly the same thing.
 
 </details>
 
 ---
 
-## 쓰는 순서
+## How it works
 
-### 1. 분야를 고릅니다 (복수 선택)
+### 1. Pick your fields (multi-select)
 
-<img src="docs/assets/interview-domains.svg" alt="업무 분야 선택 화면 - 모의해킹과 OSINT를 선택한 상태">
+<img src="docs/assets/interview-domains.svg" alt="Field selection screen - penetration testing and OSINT selected">
 
-Space로 체크, Enter로 다음. 설치된 Agent는 **미리 체크되어** 있으니 그대로 Enter를 눌러도 됩니다.
+Space toggles, Enter moves on. Installed agents are **pre-selected**, so Enter alone is fine.
 
-고를 수 있는 분야는 11개입니다.
+There are 11 fields:
 
-| | |
-|---|---|
-| General development | 일반 개발 |
-| Web development | 웹 개발 |
-| Mobile development | 모바일 개발 |
-| AI Agent development | AI Agent 개발 |
-| Security tool development | 보안 도구 개발 |
-| Vulnerability research | 취약점 연구 |
-| **Penetration testing and assessment** | **모의해킹·취약점 진단** |
-| OSINT | OSINT |
-| DevOps | DevOps |
-| Data analysis | 데이터 분석 |
-| Research and writing | 리서치·문서 작성 |
+- General development
+- Web development
+- Mobile development
+- AI Agent development
+- Security tool development
+- Vulnerability research
+- **Penetration testing and assessment**
+- OSINT
+- DevOps
+- Data analysis
+- Research and writing
 
-### 2. 세부 작업을 고릅니다 (복수 선택)
+### 2. Pick the tasks within each field (multi-select)
 
-고른 분야마다 한 번씩 더 묻습니다. 여기가 추천의 정확도를 결정하는 부분입니다.
+Each field you chose gets one more question. This is where the accuracy of the recommendation
+comes from.
 
-<img src="docs/assets/interview-tasks.svg" alt="모의해킹 세부 작업 선택 화면 - 웹앱 진단, 인증 점검, 인젝션 점검을 선택한 상태">
+<img src="docs/assets/interview-tasks.svg" alt="Penetration testing task selection - web application assessment, authentication testing and injection testing selected">
 
-모의해킹·취약점 진단은 위처럼 13개를 묻습니다 — 웹앱 진단, 인증 점검, 권한 우회 점검, 인젝션 점검,
-API 보안 점검, 모바일 앱 진단, 소스코드 보안 점검, 인프라 모의침투, 설정 취약점 진단,
-클라우드 설정 진단, 재현·PoC, 진단 보고서, 재점검. 전체 11개 분야에 세부 작업이 78개 있습니다.
+Penetration testing and assessment asks about 13 tasks, as above: Web application assessment,
+Authentication testing, Authorisation testing, Injection testing, API security testing, Mobile
+application assessment, Secure code review, Infrastructure testing, Configuration assessment,
+Cloud configuration assessment, Finding reproduction and PoC, Assessment reporting and Retest
+verification. Across all 11 fields there are 78 tasks.
 
-마지막으로 구성 모드를 고릅니다.
+Finally, choose a setup mode:
 
-- **Minimal** — 꼭 필요한 것만 최소로
-- **Performance** — 전문 구성까지 넓게
+- **Minimal** — only what is strictly needed
+- **Performance** — a broader, specialist setup
 
-> `GitHub MCP가 필요한가요?` 같은 건 묻지 않습니다. 하는 일만 고르면 필요한 기능은 Agent Guidance가
-> 역으로 추론합니다.
+> It never asks things like "Do you need the GitHub MCP server?". You describe the work; Agent
+> Guidance infers the capabilities that work needs.
 
-### 3. 설치 전에 전부 보여줍니다
+### 3. Everything is shown before anything is installed
 
-<img src="docs/assets/plan.svg" alt="추천 결과 화면 - 선택된 구성요소와 선정 이유">
+<img src="docs/assets/plan.svg" alt="Recommendation screen - selected components and the reasons for each">
 
-- 설치할 Skill·MCP·Plugin과 **그걸 고른 이유**
-- 어떤 선택에서 그 기능이 추론됐는지 (`Inferred from:`)
-- 검토했지만 **제외한 후보** 개수와 사유
-- 아무 후보도 못 채운 기능 (`No verified candidate covers:`) — 과장하지 않고 못 채운 건 못 채웠다고 적습니다
+- The skills, MCP servers and plugins to be installed, and **why each was chosen**
+- Which of your answers each capability was inferred from (`Inferred from:`)
+- How many candidates were considered and **excluded**, and why
+- Capabilities no candidate could cover (`No verified candidate covers:`) — a gap is reported as a
+  gap, not papered over
 
-이어서 Agent별로 실제 변경 내용과 보안 검토 결과가 나옵니다.
+Then, per agent, the actual changes and the security review:
 
-<img src="docs/assets/plan-approval.svg" alt="변경 내역과 보안 검토 화면">
+<img src="docs/assets/plan-approval.svg" alt="Change list and security review screen">
 
-- Agent별 ADD/SKIP과 호환성
-- 파일·네트워크·Shell·Credential 접근 위험 (`LOW` / `WARNING`)
-- 기능이 겹치는 구성요소 (`Conflicts`)
-- 몇 개가 설치되고, 기존 설정은 백업·merge된다는 사실
+- ADD/SKIP and compatibility for each agent
+- File, network, shell and credential access risk (`LOW` / `WARNING`)
+- Components whose functionality overlaps (`Conflicts`)
+- How many will be installed, and that existing configuration is backed up and merged
 
-`WARNING`은 설치를 막는 게 아니라 **승인 전에 알고 있어야 할 정보**입니다. 여기서 Enter를 누르기
-전까지 Agent 설정 파일은 한 글자도 바뀌지 않습니다.
-
----
-
-## 안전장치
-
-- 최종 승인 전에는 아무것도 쓰지 않습니다.
-- 기존 설정은 덮어쓰지 않고 **merge**합니다. 주석, 직접 등록한 MCP 서버, 기존 옵션 모두 유지됩니다.
-- 설치 전에 대상 Agent를 **전부 백업**합니다.
-- 직접 설치한 Component는 건드리지 않습니다.
-- 중간에 실패하면 새로 만든 것만 지우고 원래 상태로 되돌립니다.
-- Token, password, OAuth 값, SSH key는 로그·상태 파일에 저장하지 않습니다.
-- **설치되는 것은 버전이 고정됩니다.** Skill·Plugin은 커밋(`head_sha`)으로, npm으로 실행되는 MCP
-  서버는 레지스트리 버전으로 못 박습니다. 나중에 올라온 버전이 조용히 실행되는 일이 없습니다.
-- **MCP 서버의 실행 명령은 그 저장소 README에서 읽어온 것입니다.** README는 저장소 주인이 쓴 글이라
-  검증된 manifest가 아니므로, npm 패키지가 **실제로 존재하는지**와 **그 저장소를 자기 저장소로
-  선언하는지**를 레지스트리에 확인한 뒤에만 추천합니다. 확인되지 않으면 추천에서 빠지고, 승인
-  화면에 "명령이 README에서 나왔다"는 경고가 함께 뜹니다.
-
-자세한 내용은 [SECURITY.md](SECURITY.md)에 있습니다.
+`WARNING` does not block the install; it is **information you should have before approving**.
+Until you press Enter here, not one character of any agent configuration file changes.
 
 ---
 
-## 문제가 생겼을 때
+## Safety
 
-평소에는 `agent-guidance` 하나면 됩니다. 아래는 뭔가 이상할 때만 쓰십시오.
+- Nothing is written before final approval.
+- Existing configuration is **merged**, not overwritten. Comments, MCP servers you registered
+  yourself and existing options are all preserved.
+- Every target agent is **fully backed up** before installing.
+- Components you installed yourself are left alone.
+- If anything fails midway, only what this run created is removed and the original state is
+  restored.
+- Tokens, passwords, OAuth values and SSH keys are never written to logs or state files.
+- **Everything installed is pinned.** Skills and plugins are pinned to a commit (`head_sha`); MCP
+  servers launched through npm are pinned to a registry version. A newer upload never runs
+  silently later.
+- **An MCP server's launch command comes from that repository's README.** A README is the owner's
+  prose, not a verified manifest, so a server is only recommended after the registry confirms the
+  npm package **exists** and **declares that repository as its own**. If it cannot be confirmed it
+  is dropped, and the approval screen warns that the command was read from a README.
+
+Details are in [SECURITY.md](SECURITY.md) and the [threat model](docs/threat-model.md).
+
+---
+
+## When something goes wrong
+
+Day to day, `agent-guidance` is all you need. The commands below are for when something looks off.
 
 ```bash
-agent-guidance doctor      # Agent와 설치된 것들이 아직 정상인지 점검
-agent-guidance rollback    # 마지막 변경 되돌리기
-agent-guidance uninstall   # Agent Guidance가 설치한 것 제거 (직접 만든 파일은 남김)
-agent-guidance debug-info  # 버그 리포트에 첨부할 진단 정보 (토큰·비밀번호 미포함)
+agent-guidance doctor      # check that agents and installed components are still healthy
+agent-guidance rollback    # undo the last change
+agent-guidance uninstall   # remove what Agent Guidance installed (files you created stay)
+agent-guidance debug-info  # diagnostics for a bug report (no tokens or passwords)
 ```
 
-<img src="docs/assets/doctor.svg" alt="agent-guidance doctor 실행 결과">
+<img src="docs/assets/doctor.svg" alt="agent-guidance doctor output">
 
-전부 메뉴에서도 똑같이 고를 수 있습니다. 명령어를 외울 필요는 없습니다.
+All of these are also in the menu. There is nothing to memorise.
 
 <details>
-<summary><code>agent-guidance --help</code> 전체</summary>
+<summary>Full <code>agent-guidance --help</code></summary>
 
-<img src="docs/assets/help.svg" alt="agent-guidance --help 출력">
+<img src="docs/assets/help.svg" alt="agent-guidance --help output">
 
 </details>
 
-### 업데이트와 제거
+### Updating and removing
 
 ```bash
-pipx upgrade agent-guidance    # Agent Guidance 자체 업데이트
-pipx uninstall agent-guidance  # Agent Guidance 제거
+pipx upgrade agent-guidance    # update Agent Guidance itself
+pipx uninstall agent-guidance  # remove Agent Guidance
 ```
 
-Agent Guidance를 지워도 이미 적용된 Agent 설정은 자동으로 돌아오지 않습니다. 설정까지 되돌리려면 지우기 전에
-`agent-guidance rollback` 또는 `agent-guidance uninstall`을 먼저 실행하십시오.
+Removing Agent Guidance does not revert configuration it already applied. To revert that too, run
+`agent-guidance rollback` or `agent-guidance uninstall` first.
 
 ---
 
-## 지원 범위
+## Support
 
-| Agent | 감지 | Skill | MCP | Plugin | 점검 / 되돌리기 |
+| Agent | Detect | Skill | MCP | Plugin | Doctor / rollback |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Codex | O | O | O | — | O |
 | Claude Code | O | O | O | O | O |
 
-Codex는 자동 설치할 Plugin 형식 자체가 없습니다.
+Codex has no plugin format to install automatically.
 
-Claude Code Plugin은 `claude plugin` 명령에 위임하고 Agent Guidance 트랜잭션으로 감쌉니다. `claude`를
-실행할 수 없으면 Plugin은 추천에서 빠집니다. marketplace manifest가 선언한 Plugin만 설치하며,
-`marketplace add` → `install` 두 단계 모두 이번 실행이 추가한 것만 기록해 역순으로 되돌립니다.
-**marketplace가 선언한 명령을 수락해야 하는 Plugin은 자동 승인하지 않고**, 직접 실행할 명령을
-안내만 합니다.
+Claude Code plugins are delegated to the `claude plugin` command and wrapped in an Agent Guidance
+transaction. If `claude` cannot be run, plugins are left out of the recommendation. Only plugins a
+marketplace manifest declares are installed; both steps, `marketplace add` and `install`, record
+only what this run added and are undone in reverse order. **A plugin that requires accepting a
+command declared by its marketplace is never auto-approved** — you are shown the command to run
+yourself.
 
 ---
 
-## 알아두면 좋은 것
+## Good to know
 
-- 상태·백업·캐시·로그는 `~/.agent-guidance/`에 저장됩니다. 업무 선택 Profile 전체와 Credential 값은
-  저장하지 않습니다.
-- 추천 후보는 내장 Registry와 GitHub에서 가져옵니다. `GITHUB_TOKEN`이 있으면 후보 수가 늘어나고,
-  없어도 동작합니다.
-- 네트워크 없이 쓰려면 `agent-guidance setup --offline` — 내장 Registry와 검증된 캐시만 사용합니다.
-  위 Plan 스크린샷이 이 모드로 캡처한 것이라, 실제로는 후보가 더 많습니다.
-- **설계대로 도는지 직접 확인하려면** — 아무것도 설치하지 않고, 임시 디렉터리 밖으로 한 글자도
-  쓰지 않습니다:
+- State, backups, cache and logs live in `~/.agent-guidance/`. Neither your full answer profile nor
+  any credential value is stored.
+- Candidates come from the built-in registry and from GitHub. `GITHUB_TOKEN` widens the candidate
+  pool; it works without one.
+- To work offline: `agent-guidance setup --offline` uses only the built-in registry and verified
+  cache. The plan screenshot above was captured in this mode, so a live run shows more candidates.
+- **To check it behaves as designed** — installs nothing and writes nothing outside a temporary
+  directory:
 
   ```bash
   agent-guidance self-check
   ```
 
-  여섯 가지를 각각 "무엇을 측정했는지"와 함께 출력합니다. 종료 코드는 `0` 전부 통과,
-  `1` 실패 있음, `2` 확인 가능한 건 전부 통과했지만 GitHub 탐색만 확인 불가입니다.
-  **`2`는 프로그램 결함이 아닙니다.**
+  It prints six checks, each with what it measured. Exit code `0` means all passed, `1` means a
+  failure, and `2` means everything checkable passed but GitHub discovery could not be checked.
+  **`2` is not a defect in the program.**
 
-  `GITHUB_TOKEN` 없이 돌리면 GitHub이 시간당 60회만 허용하므로, 한 시간 안에 두 번 돌리면
-  저장소를 못 읽어서 `2`가 나옵니다. `0`을 보시려면 `GITHUB_TOKEN`을 설정하거나 한 시간 뒤에
-  다시 돌리십시오.
+  Without `GITHUB_TOKEN`, GitHub allows 60 requests an hour, so a second run within the hour cannot
+  read repositories and returns `2`. Set `GITHUB_TOKEN` or wait an hour to see `0`.
 
-  설치하지 않은 클론에서 바로 돌리려면 `python scripts/design_check.py`도 있지만, 그건
-  의존성이 깔려 있어야 합니다. 안 깔려 있으면 설치 명령을 알려주고 종료합니다.
-- **이전 버전(`grayom`)을 쓰셨다면**: 제작자 이름(GrayOM)과 프로젝트 이름(Agent Guidance)이 섞여
-  있던 걸 정리하면서 명령어가 `grayom` → `agent-guidance`, 상태 폴더가 `~/.grayom/` →
-  `~/.agent-guidance/`로 바뀌었습니다. 예전 기록은 지우지 않고 그대로 두니, 이어서 쓰시려면
-  `~/.grayom/`을 `~/.agent-guidance/`로 옮기신 뒤 실행하십시오. 실행하면 안내 문구로도 알려줍니다.
-- `agent-guidance uninstall`은 **설치 후 직접 수정한 Skill은 지우지 않습니다.** 고쳐 쓴 파일을 프로그램이
-  삭제하면 안 되기 때문입니다. 이 경우 어느 디렉터리가 남았는지 경로까지 알려주니, 필요 없으면
-  직접 지우시면 됩니다.
+  From an uninstalled clone, `python scripts/design_check.py` does the same, but needs the
+  dependencies installed; if they are missing it prints the install command and exits.
+- **If you used the earlier `grayom` command**: the author name (GrayOM) and project name (Agent
+  Guidance) were untangled, so the command moved from `grayom` to `agent-guidance` and the state
+  folder from `~/.grayom/` to `~/.agent-guidance/`. Old records are left in place; move
+  `~/.grayom/` to `~/.agent-guidance/` to carry on with them. The program tells you this too.
+- `agent-guidance uninstall` **does not delete a skill you edited after installing it** — a program
+  should not delete files you rewrote. It tells you which directories were left, with their paths,
+  so you can remove them yourself if you no longer need them.
 
 ---
 
-## 개발자 문서
+## Developer documentation
 
 - [Architecture](architecture.md)
 - [Security policy](SECURITY.md)
+- [Threat model](docs/threat-model.md)
 - [Release audit](docs/release-audit.md)
 - [Contributing](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 
-현재 버전은 `0.2.0`입니다.
+The current version is `0.2.0`.
 
 ## License
 
